@@ -73,7 +73,7 @@ head(res)
 
 ### Cleaning pipeline
 
-On a 7,640-row dataset (`data1]`), dataprep 0.1.6 versus 0.1.5:
+On a 7,640-row dataset (`data`), dataprep 0.1.6 versus 0.1.5:
 
 | Function     | 0.1.5      | 0.1.6       | Speed-up |
 |--------------|------------|-------------|----------|
