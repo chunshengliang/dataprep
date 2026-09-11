@@ -91,7 +91,108 @@ boxplot(condextr(data1, cols = "Nucleation",
         main = "condextr", ylab = "")
 ```
 
+## End-to-end example on the full `data` dataset
+
+The `data1` subset used so far has only seven columns and very few
+missing values, so it does not exercise `varidele`, `obsedele`, and
+`condextr` in a realistic way. The full `data` table has 7,640 rows
+and 65 columns (a time column, a grouping column, and 60 particle
+size bins). We use it here to show how the pipeline changes the
+shape of the data.
+
+### A two-month slice
+
+To keep the vignette fast we take two months (January 2020 and
+July 2020) as a representative slice.
+
+```{r}
+data_slice <- data[data$monthyear %in% c("January 2020", "July 2020"), ]
+num_cols   <- which(sapply(data_slice, is.numeric))
+dim(data_slice)
+length(num_cols)
+```
+
+#### Before cleaning
+
+```{r fig.width=7, fig.height=4, warning=FALSE}
+percplot(data_slice, cols = num_cols)
+```
+
+The curves above are the top and bottom percentiles of every size
+bin, plotted on a log-log scale. Long, flat tails at the low and
+high end of the size distribution indicate the presence of outliers
+and long stretches of missing data.
+
+#### Observation deletion
+
+```{r}
+step1 <- obsedele(data_slice, cols = num_cols, group = 4)
+nrow(step1)
+```
+
+Rows whose selected size bins contain a gap longer than `half`
+minutes on both sides are removed.
+
+#### Conditional extremum outlier removal
+
+```{r}
+step2 <- condextr(step1, cols = num_cols, group = 4,
+                  interval = 10, times = 10)
+nrow(step2)
+```
+
+`condextr` combines a percentile threshold with an error margin and
+a magnitude margin, and removes only the single most extreme value
+in each window. Unlike `percoutl`, it does not flatten the tails.
+
+#### After cleaning
+
+```{r fig.width=7, fig.height=4, warning=FALSE}
+num_cols_step2 <- which(sapply(step2, is.numeric))
+percplot(step2, cols = num_cols_step2)
+```
+
+Compare with the earlier figure: the top and bottom percentile
+curves are smoother, the extreme tails are shorter, and the
+interquartile band is tighter. The number of observations in each
+percentile label (`n =` in the legend) is smaller than before
+because whole rows have been dropped.
+
+#### Short-period interpolation
+
+```{r}
+step3 <- shorvalu(step2, cols = num_cols_step2)
+sum(is.na(step2[, num_cols_step2])) - sum(is.na(step3[, num_cols_step2]))
+```
+
+`shorvalu` fills remaining short gaps (within `intervals = 30`
+minutes) from the nearest valid values. The remaining `NA`s are in
+gaps that are too long to interpolate.
+
+### Full dataset
+
+The same pipeline on the full 7,640-row `data` takes a few minutes
+and is not run here:
+
+```{r eval=FALSE}
+cleaned <- dataprep(data,
+                    cols       = which(sapply(data, is.numeric)),
+                    group      = 4,
+                    interval   = 10,
+                    times      = 10,
+                    intervals  = 30)
+dim(cleaned)
+```
+
+Inside `dataprep()`, `varidele` drops columns whose missing
+fraction exceeds `fraction`, `obsedele` and `condextr` run as
+above, and `shorvalu` fills the remaining short gaps. The result
+keeps the leading columns (`date`, `tconc`, `TPNC`, `monthyear`)
+and the size bins that survived `varidele`.
+
 ## One-call pipeline: `dataprep()`
+
+For quick exploration the four steps are wrapped in a single call:
 
 ```{r}
 res <- dataprep(
@@ -104,6 +205,18 @@ res <- dataprep(
 )
 dim(res)
 ```
+
+The arguments mirror the individual steps:
+
+* `cols` selects the numeric variables to process.
+* `group` selects the grouping column used by `obsedele` and
+  `condextr`.
+* `interval` and `times` control how aggressively `condextr` marks
+  outliers between two observation-deletion rounds.
+* `fraction` sets the missing-fraction cutoff for `varidele`.
+* `half` and `by` define the consecutive-missing window for
+  `obsedele`.
+* `intervals` sets the maximum gap that `shorvalu` will fill.
 
 ## Inspecting the plan without running it
 
