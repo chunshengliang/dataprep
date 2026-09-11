@@ -1,0 +1,197 @@
+---
+title: "dataprep: fast reshaping with melt() and dcast()"
+output: rmarkdown::html_vignette
+vignette: >
+  %\documentclass{article}
+  %\VignetteIndexEntry{dataprep: fast reshaping with melt() and dcast()}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.align = "center"
+)
+```
+
+```{r setup}
+library(dataprep)
+set.seed(1)
+```
+
+## Why another reshape implementation
+
+`melt()` and `dcast()` in `dataprep` 0.1.6 are drop-in replacements
+for `reshape2::melt` / `reshape2::dcast`, but the underlying code
+is written in C++ with SIMD (AVX2 / AVX-512) and optional OpenMP
+parallelism. On a 1,000,000 x 10 table, `melt()` is about
+
+* 7x faster than `reshape2::melt`,
+* 24x faster than `tidyr::pivot_longer`,
+* 30x faster than `pandas.melt`.
+
+Benchmarks against the other 7 engines are shipped under
+`inst/melt_benchmark.R` and `inst/dcast_benchmark.R`. To reproduce
+them:
+
+```{r eval=FALSE}
+Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
+source(system.file("melt_benchmark.R", package = "dataprep"))
+```
+
+## Wide to long with `melt()`
+
+### Basic usage
+
+```{r}
+df <- data.frame(
+  id       = 1:3,
+  category = factor(c("a", "b", "c")),
+  v1       = c(1.1, 2.2, 3.3),
+  v2       = c(4.4, 5.5, 6.6)
+)
+melt(df, id.vars = c("id", "category"))
+```
+
+### Measure-side specification
+
+```{r}
+melt(df, measure.vars = c("v1", "v2"))
+```
+
+### Automatic ID inference
+
+Non-numeric and factor columns are treated as IDs by default.
+
+```{r}
+melt(df)
+```
+
+### Custom column names and `na.rm`
+
+```{r}
+df_na <- data.frame(
+  id = 1:3,
+  x  = c(1, NA, 3),
+  y  = c(4, 5, NA)
+)
+melt(df_na, id.vars = "id",
+     variable.name = "var", value.name = "val",
+     na.rm = TRUE)
+```
+
+### Memory layout: `major = "row"` vs `major = "col"`
+
+Row-major (`"row"`, default) is usually faster when there are few
+measure columns; column-major (`"col"`) is often faster when there
+are many measure columns because bulk copies dominate.
+
+```{r}
+wide50 <- data.frame(id = 1:100,
+                     matrix(rnorm(100 * 50), ncol = 50))
+res_row <- melt(wide50, id.vars = "id", major = "row")
+res_col <- melt(wide50, id.vars = "id", major = "col")
+identical(as.data.frame(res_row), as.data.frame(res_col))
+```
+
+### Thread control
+
+`cores` controls OpenMP. `options(dataprep.cores = ...)` sets a
+default for the whole session.
+
+```{r eval=FALSE}
+options(dataprep.cores = 4L)
+melt(df, id.vars = "id")
+options(dataprep.cores = NULL)
+```
+
+## Long to wide with `dcast()`
+
+### Basic usage
+
+```{r}
+long <- melt(df, id.vars = c("id", "category"))
+dcast(long, id = c("id", "category"),
+      variable = "variable", value = "value")
+```
+
+### Formula interface
+
+```{r}
+dcast(long, formula = id + category ~ variable,
+      value.var = "value")
+```
+
+### Fill missing cells
+
+```{r}
+dcast(long, id = c("id", "category"),
+      variable = "variable", value = "value",
+      fill = 0)
+```
+
+### Aggregating duplicate pairs
+
+If a `(id, variable)` pair appears more than once, pass
+`fun.aggregate`. The default is "last occurrence wins", matching
+`data.table::dcast`'s `fun.aggregate = NULL` behaviour.
+
+```{r}
+long_dup <- data.frame(
+  id       = c(1, 1, 2),
+  variable = c("x", "x", "x"),
+  value    = c(1, 2, 3)
+)
+dcast(long_dup, id = "id",
+      variable = "variable", value = "value",
+      fun.aggregate = mean)
+```
+
+### `na.rm`
+
+```{r}
+long_na <- data.frame(
+  id       = c(1, 1, 2, 2),
+  variable = c("x", "y", "x", "y"),
+  value    = c(1, NA, 3, 4)
+)
+dcast(long_na, id = "id",
+      variable = "variable", value = "value",
+      na.rm = TRUE)
+```
+
+## Consistency with other engines
+
+`dataprep::melt` and `dcast` produce the same output as
+`reshape2`, `data.table`, `tidyr`, `pandas`, `polars`, `dask`, and
+`duckdb` on a wide range of shapes and sizes. The consistency
+scripts are shipped under `inst/melt_consistency.R` and
+`inst/dcast_consistency.R`. To run them:
+
+```{r eval=FALSE}
+Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
+source(system.file("melt_consistency.R",  package = "dataprep"))
+source(system.file("dcast_consistency.R", package = "dataprep"))
+melt_all_engines(10000L, n_id = 1L, n_val = 9L)
+dcast_all_engines(1000L, n_id = 2L, n_val = 5L)
+```
+
+## Round-trip example
+
+```{r}
+wide  <- data.frame(id = 1:5, a = rnorm(5), b = rnorm(5))
+long  <- melt(wide, id.vars = "id")
+back  <- dcast(long, id = "id",
+               variable = "variable", value = "value")
+all.equal(as.data.frame(back)[order(back$id), c("a", "b")],
+          wide[, c("a", "b")],
+          tolerance = 1e-12)
+```
+
+## Session info
+
+```{r}
+sessionInfo()
+```

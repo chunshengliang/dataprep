@@ -1,0 +1,66 @@
+Package: dataprep
+Type: Package
+Title: Efficient and Flexible Data Preprocessing Tools
+Version: 0.1.6
+Authors@R: c(
+    person("Chun-Sheng", "Liang", role = c("aut", "cre"),
+           email = "chun-shengliang@qq.com",
+           comment = c(ORCID = "")),
+    person("Hao", "Wu", role = "aut"),
+    person("Hai-Yan", "Li", role = "aut"),
+    person("Qiang", "Zhang", role = "aut"),
+    person("Zhanqing", "Li", role = "aut"),
+    person("Ke-Bin", "He", role = "aut")
+  )
+Description:
+    Efficient and flexible preprocessing of tabular and time-series data.
+    Most routines are implemented in C++ via 'Rcpp', with optional OpenMP
+    parallelization and SIMD acceleration (AVX2 / AVX-512) on supported
+    hardware. Core preprocessing steps include variable deletion by
+    missing fraction, observation deletion by consecutive missing runs,
+    point-by-point weighted outlier removal via conditional extremum,
+    traditional percentile-based outlier removal, and linear interpolation
+    within short time periods. The package also provides fast wide-to-long
+    and long-to-wide reshaping, descriptive statistics, missing-value
+    diagnosis, multiple imputation strategies, winsorization, several
+    outlier detection methods (IQR, MAD, percentile), data transformation
+    and standardization, categorical encoding, duplicate removal, data
+    validation, data quality reporting, and stratified sampling.
+    Feature-engineering helpers cover binning, high-correlation and
+    low-variance filtering, and string cleaning. Time-series tools cover
+    detrending, diurnal-cycle removal, rolling statistics, lag creation,
+    resampling, simple decomposition, day/night and season flags, log
+    returns, drift detection, and panel balancing. Fit/transform-style
+    machine-learning interfaces prevent data leakage during preprocessing.
+    Methods are based on, and improved from:
+    Liang, C.-S., Wu, H., Li, H.-Y., Zhang, Q., Li, Z. & He, K.-B. (2020)
+    <doi:10.1016/j.scitotenv.2020.140923>.
+Depends: R (>= 4.1.2)
+Imports:
+    Rcpp,
+    ggplot2,
+    stats,
+    utils,
+    parallel
+LinkingTo: Rcpp
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    data.table,
+    reshape2,
+    tidyr,
+    dplyr,
+    scales,
+    microbenchmark,
+    reticulate
+VignetteBuilder: knitr, rmarkdown
+SystemRequirements: C++17
+License: GPL (>= 2)
+Encoding: UTF-8
+NeedsCompilation: yes
+URL: https://github.com/chunshengliang/dataprep
+BugReports: https://github.com/chunshengliang/dataprep/issues
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
+LazyData: true

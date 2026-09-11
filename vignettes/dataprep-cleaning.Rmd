@@ -1,0 +1,161 @@
+---
+title: "dataprep: cleaning pipeline"
+output: rmarkdown::html_vignette
+vignette: >
+  %\documentclass{article}
+  %\VignetteIndexEntry{dataprep: cleaning pipeline}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.align = "center"
+)
+```
+
+```{r setup}
+library(dataprep)
+set.seed(1)
+```
+
+## Overview
+
+The 0.1.6 cleaning pipeline consists of four sequential steps:
+
+1. **Variable deletion** (`varidele`): drop columns whose missing
+   fraction is above a threshold.
+2. **Observation deletion** (`obsedele`): drop rows with a run of
+   consecutive missing values longer than `half` on both sides.
+3. **Outlier removal**: `condextr` (point-by-point weighted
+   conditional extremum) or `percoutl` (traditional percentile).
+4. **Short-period interpolation** (`shorvalu`): fill remaining
+   short gaps from nearby valid values.
+
+Steps 1--3 are wrapped by `dataprep()` for one-call use.
+
+## Why `obsedele` changed in 0.1.6
+
+The 0.1.5 implementation collapsed all selected columns into one
+long vector before computing missing runs, which merged runs across
+columns and over-deleted boundary rows. The 0.1.6 C++ version
+scans each column independently and keeps any row whose NA run is
+shorter than `half` on at least one side. See `?obsedele` for the
+formal definition.
+
+The example below shows the new behaviour on a small synthetic
+dataset.
+
+```{r}
+df <- data.frame(
+  date  = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:19 * 600,
+  group = rep(1L, 20),
+  x     = c(1, NA, NA, NA, 5, NA, NA, NA, NA, NA,
+            1, NA, NA, NA, 5, NA, NA, NA, NA, NA),
+  y     = c(NA, 1, NA, NA, 2, NA, NA, NA, NA, NA,
+            NA, 1, NA, NA, 2, NA, NA, NA, NA, NA)
+)
+nrow(df)
+obsedele(df, cols = c("x", "y"), group = "group", half = 2)
+nrow(obsedele(df, cols = c("x", "y"), group = "group", half = 2))
+```
+
+## `condextr` vs `percoutl`
+
+* `percoutl()` is a single-pass percentile threshold: every value
+  above the top quantile or below the bottom quantile is set to NA.
+  It is fast but has no notion of magnitude.
+* `condextr()` adds two safeguards: a percentile **error margin**
+  (`top.error`, `bottom.error`) and a **magnitude margin**
+  (`top.magnitude`, `bottom.magnitude`). Only the extreme point of
+  a window is removed if it exceeds the combined threshold. This
+  preserves a wider dynamic range while still removing the most
+  extreme values.
+
+On `data1`:
+
+```{r fig.width=6, fig.height=3.5}
+par(mfrow = c(1, 2))
+boxplot(data1$Nucleation, main = "raw",  ylab = "Nucleation")
+boxplot(percoutl(data1, cols = "Nucleation")$Nucleation,
+        main = "percoutl", ylab = "")
+```
+
+```{r fig.width=6, fig.height=3.5}
+par(mfrow = c(1, 2))
+boxplot(data1$Nucleation, main = "raw",  ylab = "Nucleation")
+boxplot(condextr(data1, cols = "Nucleation",
+                 interval = 5, times = 3)$Nucleation,
+        main = "condextr", ylab = "")
+```
+
+## One-call pipeline: `dataprep()`
+
+```{r}
+res <- dataprep(
+  data1,
+  cols     = c("Nucleation", "Aitken", "Accumulation"),
+  group    = "monthyear",
+  interval = 5,
+  times    = 3,
+  half     = 30
+)
+dim(res)
+```
+
+## Inspecting the plan without running it
+
+`dry_run()` reports what `varidele` / `obsedele` / `detect_outliers`
+would remove without touching the data.
+
+```{r}
+report <- dry_run(
+  data1,
+  cols       = c("Nucleation", "Aitken", "Accumulation"),
+  steps      = c("varidele", "obsedele", "outlier"),
+  fraction   = 0.5
+)
+str(report, max.level = 2)
+```
+
+## Missing-value diagnostics
+
+`na_diagnose()` summarises missing runs per variable:
+
+```{r}
+na_diagnose(data1, cols = 3:7)
+```
+
+## Additional cleaning helpers
+
+| Function | Purpose |
+|---|---|
+| `detect_outliers()` | IQR / MAD / percentile masks |
+| `winsorize()` | cap extreme values instead of removing them |
+| `phys_filter()` | filter by physical bounds |
+| `filter_high_cor()` | drop highly correlated variables |
+| `filter_low_var()` | drop near-constant variables |
+| `deduplicate()` | exact / fuzzy duplicate removal |
+| `validate_data()` | rule-based validation |
+| `balance_panel()` | balance an unbalanced panel |
+
+```{r}
+# Winsorize instead of removing
+head(winsorize(data1, cols = "Nucleation")$Nucleation)
+
+# Drop a constant column and a near-constant column
+demo <- data.frame(
+  id    = 1:100,
+  const = rep(5, 100),
+  noise = rnorm(100, sd = 0.005)
+)
+names(filter_low_var(demo, cutoff = 0.001))
+```
+
+## Session info
+
+```{r}
+sessionInfo()
+```

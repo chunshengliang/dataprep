@@ -1,0 +1,167 @@
+url: https://liangchunsheng.github.io/dataprep/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#2c3e50"
+    base_font:
+      google: "Source Sans Pro"
+    code_font:
+      google: "Fira Code"
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    github:
+      icon: fa-github
+      href: https://github.com/liangchunsheng/dataprep
+
+reference:
+  - title: "Complete preprocessing workflow"
+    desc: >
+      One-call pipelines and fit/transform interfaces that combine
+      several steps while preventing data leakage.
+    contents:
+      - dataprep
+      - prep_fit
+      - prep_transform
+      - dry_run
+      - data_report
+
+  - title: "Variable and observation deletion"
+    desc: >
+      Remove variables by missing fraction, remove observations by
+      consecutive missing runs, and diagnose the effect beforehand.
+    contents:
+      - varidele
+      - obsedele
+      - na_diagnose
+      - balance_panel
+
+  - title: "Outlier removal and detection"
+    desc: >
+      Point-by-point weighted conditional extremum, traditional
+      percentile removal, mask-based detection, and winsorization.
+    contents:
+      - condextr
+      - percoutl
+      - optisolu
+      - detect_outliers
+      - winsorize
+      - phys_filter
+
+  - title: "Missing-value imputation"
+    desc: >
+      Short-period interpolation and general imputation strategies.
+    contents:
+      - shorvalu
+      - impute_missing
+
+  - title: "Variable selection and encoding"
+    desc: >
+      Drop redundant variables, encode categorical columns, and
+      discretize continuous variables.
+    contents:
+      - filter_high_cor
+      - filter_low_var
+      - encode_categorical
+      - bin_data
+
+  - title: "Transformation and standardization"
+    desc: >
+      Log / Box-Cox / Yeo-Johnson transformations and z-score /
+      min-max / robust scaling.
+    contents:
+      - transform_data
+      - log_returns
+      - zerona
+
+  - title: "Time series tools"
+    desc: >
+      Detrending, diurnal-cycle removal, rolling statistics, lags,
+      resampling, decomposition, drift detection, and time flags.
+    contents:
+      - detrend_ts
+      - remove_diurnal_cycle
+      - roll_apply
+      - create_lags
+      - resample_time
+      - decompose_ts
+      - drift_detect
+      - day_night_flag
+      - season_flag
+
+  - title: "Reshaping"
+    desc: >
+      Fast wide-to-long and long-to-wide reshaping, SIMD + OpenMP
+      C++ backends.
+    contents:
+      - melt
+      - dcast
+
+  - title: "Data cleaning helpers"
+    desc: >
+      String cleaning, duplicate removal, and rule-based validation.
+    contents:
+      - clean_strings
+      - deduplicate
+      - validate_data
+
+  - title: "Sampling and summary"
+    desc: >
+      Stratified sampling, descriptive statistics, and percentile
+      summaries with matching plots.
+    contents:
+      - sample_data
+      - descdata
+      - descplot
+      - percdata
+      - percplot
+
+  - title: "Example datasets"
+    contents:
+      - data
+      - data1
+
+  - title: "Internal C++ backends"
+    desc: >
+      Low-level Rcpp exports. Not intended for direct use; see the
+      corresponding R wrappers instead.
+    contents:
+      - matches("_cpp$")
+
+articles:
+  - title: "Getting started"
+    navbar: ~
+    contents:
+      - dataprep-plots
+
+  - title: "Cleaning and preprocessing"
+    contents:
+      - dataprep-cleaning
+      - dataprep-workflow
+
+  - title: "Reshaping"
+    contents:
+      - dataprep-melt-dcast
+
+news:
+  one_page: true
+  cran_dates: true
+
+authors:
+  Chun-Sheng Liang:
+    href: https://github.com/liangchunsheng
+  Hao Wu: ~
+  Hai-Yan Li: ~
+  Qiang Zhang: ~
+  Zhanqing Li: ~
+  Ke-Bin He: ~
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with

@@ -1,0 +1,10 @@
+^\.Rproj$
+^\.Rproj\.user$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
+^LICENSE\.md$
+^cran-comments\.md$
+^R/data\.R\.bak$
+^dataprep_.*\.tar\.gz$

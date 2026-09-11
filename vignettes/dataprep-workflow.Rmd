@@ -1,0 +1,157 @@
+---
+title: "dataprep: a leakage-free preprocessing workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\documentclass{article}
+  %\VignetteIndexEntry{dataprep: a leakage-free preprocessing workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.align = "center"
+)
+```
+
+```{r setup}
+library(dataprep)
+set.seed(1)
+```
+
+## The data-leakage problem
+
+Standard preprocessing steps such as outlier detection, imputation,
+and scaling are often implemented as one-shot functions. If you
+apply them to training and test data **separately**, the test set
+ends up using its own statistics, which leaks information from the
+test set into the pipeline.
+
+`dataprep` 0.1.6 solves this with a two-step interface:
+
+* `prep_fit()` estimates every parameter (missing fraction, outlier
+  thresholds, imputation method, scaling centre/scale) from the
+  **training data only**, and returns a `prep_plan`.
+* `prep_transform()` applies the plan to **new data** without
+  re-estimating anything.
+
+## A minimal example
+
+```{r}
+train <- data1[1:5000, c("date", "monthyear",
+                         "Nucleation", "Aitken", "Accumulation")]
+test  <- data1[5001:6000, c("date", "monthyear",
+                            "Nucleation", "Aitken", "Accumulation")]
+
+plan <- prep_fit(
+  train,
+  cols       = 3:5,
+  group      = 2,
+  steps      = c("varidele", "outlier", "impute", "scale"),
+  fraction   = 0.5,
+  method_outlier = "iqr",
+  method_impute  = "linear",
+  scale_method   = "zscore"
+)
+
+str(plan, max.level = 2)
+```
+
+Apply the plan to the test set:
+
+```{r}
+test_clean <- prep_transform(plan, test)
+head(test_clean)
+```
+
+## What is stored in the plan
+
+```{r}
+names(plan)
+names(plan$params)
+```
+
+* `params$varidele_keep` -- logical mask of columns to keep
+* `params$outlier_thresholds` -- lower / upper bounds per column
+  (or per column-group)
+* `params$impute_method` -- imputation method string
+* `params$scale_center`, `params$scale_scale` -- per-column
+  centring and scaling constants
+* `data_info` -- original column names and indices, used to
+  realign columns when `test` is fed in with a different order
+
+## Adding a custom step
+
+`prep_fit()` accepts an ordered `steps` vector. Any subset of the
+following is allowed:
+
+```{r eval=FALSE}
+steps = c("varidele", "obsedele", "outlier",
+          "impute", "scale")
+```
+
+* `varidele` -- drop columns whose training-set missing fraction
+  is above `fraction`.
+* `obsedele` -- drop rows with long consecutive NA runs.
+* `outlier` -- detect and replace outliers with NA using IQR, MAD,
+  or percentile thresholds estimated on the training set.
+* `impute` -- fill remaining NAs using LOCF, NOCB, linear, mean,
+  or median.
+* `scale` -- z-score, min-max, robust, centre, or scale.
+
+## Workflow with `dataprep()`
+
+For exploratory analysis where leakage is not a concern, the
+one-call `dataprep()` wrapper chains the four standard steps:
+
+```{r}
+res <- dataprep(
+  data1,
+  cols     = c("Nucleation", "Aitken", "Accumulation"),
+  group    = "monthyear",
+  interval = 5,
+  times    = 3
+)
+dim(res)
+```
+
+## Reporting
+
+`data_report()` prints a compact quality summary:
+
+```{r}
+data_report(data1, cols = 3:7, verbose = TRUE)
+invisible(data_report(data1, cols = 3:7))
+```
+
+## Full applied workflow
+
+```{r eval=FALSE}
+# 1. Inspect
+data_report(data1, cols = 3:7, verbose = TRUE)
+
+# 2. Fit a plan on the training split
+plan <- prep_fit(
+  train,
+  cols     = 3:5,
+  group    = 2,
+  fraction = 0.5
+)
+
+# 3. Apply the same plan to the test split
+test_clean <- prep_transform(plan, test)
+
+# 4. Model on the cleaned training set,
+#    predict on the cleaned test set
+fit  <- lm(Nucleation ~ Aitken + Accumulation,
+           data = plan$final_data)
+pred <- predict(fit, newdata = test_clean)
+```
+
+## Session info
+
+```{r}
+sessionInfo()
+```
