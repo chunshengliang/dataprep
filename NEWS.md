@@ -5,7 +5,7 @@
 Most routines have been rewritten in C++ via Rcpp, with optional
 OpenMP parallelization and SIMD acceleration (AVX2 / AVX-512) on
 supported hardware. Benchmarks against dataprep 0.1.5 on a
-7,640-row dataset ([`data1`](reference/data1.html)) show:
+7,640-row dataset ([`data`](reference/data1.html)) show:
 
   * [`obsedele()`](reference/obsedele.html)       :
     ~450x faster (11.4 s   -> 0.025 s)
