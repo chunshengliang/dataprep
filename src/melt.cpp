@@ -1,7 +1,6 @@
 // [[Rcpp::plugins(cpp17)]]
 // [[Rcpp::plugins(openmp)]]
 #include <Rcpp.h>
-#include <R_ext/Rallocators.h>
 #include <cstring>
 #include <vector>
 #include <algorithm>
@@ -12,15 +11,9 @@
 #include <immintrin.h>
 #include <string>
 #include <cctype>
-#include <mutex>
-#include <utility>
 #include <unordered_map>
 #include <atomic>
 
-#ifdef __linux__
-#include <dlfcn.h>
-#include <sys/mman.h>
-#endif
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -30,7 +23,7 @@ using namespace Rcpp;
 namespace {
 
 // ============================================================
-// 0. Cached SEXP + L3 + levels cache + GC trigger
+// 0. Cached SEXP + L3
 // ============================================================
 struct CachedStr {
   SEXP v = R_NilValue;
@@ -70,9 +63,6 @@ static void detect_l3_size_once() {
   g_l3_size = l3;
 }
 
-// FIX: pre-compute the hash so cache lookups don't re-traverse idx.
-// For n_meas == 9 the saving is ~10 ns per call; for n_meas == 10000
-// it is ~10 us, which is measurable on the 1e3 x 10000val scenario.
 struct LevelsKey {
   SEXP col_names;
   std::vector<int> idx;
@@ -129,194 +119,8 @@ static int get_thread_cap() {
 }
 
 // ============================================================
-// 1. jemalloc
+// SEXP allocation: public R API only
 // ============================================================
-typedef void* (*jmalloc_t)(size_t);
-typedef void  (*jfree_t)(void*);
-static jmalloc_t jm_alloc = malloc;
-static jfree_t   jm_free  = free;
-
-static void init_jemalloc() __attribute__((cold));
-static void init_jemalloc() {
-  static bool init = false;
-  if (init) return;
-  init = true;
-#ifdef __linux__
-  void* h = dlopen("libjemalloc.so.2", RTLD_LAZY);
-  if (!h) h = dlopen("libjemalloc.so", RTLD_LAZY);
-  if (h) {
-    void* a = dlsym(h, "malloc");
-    void* f = dlsym(h, "free");
-    if (a && f) { jm_alloc = (jmalloc_t)a; jm_free = (jfree_t)f; }
-  }
-#endif
-}
-
-// ============================================================
-// 2. Huge allocator + latency-safe free pool
-// ============================================================
-enum class HP { None, MB2, GB1 };
-static HP detect_hp_mode() __attribute__((cold));
-static HP detect_hp_mode() {
-  const char* env = getenv("DATAPREP_HUGEPAGE");
-  if (env) {
-    if (strcmp(env, "none") == 0) return HP::None;
-    if (strcmp(env, "1gb")  == 0) return HP::GB1;
-    if (strcmp(env, "2mb")  == 0) return HP::MB2;
-  }
-#ifdef __linux__
-  FILE* f = fopen("/sys/kernel/mm/hugepages/hugepages-1048576kB/free_hugepages", "r");
-  if (f) { char b[32]={0}; if (fgets(b,sizeof(b),f) && atoi(b)>0) { fclose(f); return HP::GB1; } fclose(f); }
-  f = fopen("/sys/kernel/mm/hugepages/hugepages-2048kB/free_hugepages", "r");
-  if (f) { char b[32]={0}; if (fgets(b,sizeof(b),f) && atoi(b)>0) { fclose(f); return HP::MB2; } fclose(f); }
-  f = fopen("/sys/kernel/mm/transparent_hugepage/enabled", "r");
-  if (f) { char b[128]={0}; bool got=(fgets(b,sizeof(b),f)!=nullptr); fclose(f);
-           if (got && !strstr(b,"[never]")) return HP::MB2; }
-#endif
-  return HP::None;
-}
-
-static constexpr size_t HUGE_THRESHOLD     = 512ULL << 10;
-static constexpr size_t HUGE_ALIGN         = 2ULL << 20;
-static constexpr size_t GB_ALIGN           = 1ULL << 30;
-static constexpr size_t POPULATE_LIMIT     = 8ULL << 30;
-static constexpr size_t HEAD_SIZE          = 64;
-static constexpr size_t POOL_MAX_BYTES     = 32ULL << 30;
-static constexpr size_t POOL_MAX_ENTRIES   = 512;
-static constexpr size_t POOL_MATCH_FACTOR  = 4;
-static constexpr size_t NT_SEG_MIN_BYTES   = 1ULL << 20;
-
-static constexpr uint32_t HP_MAGIC         = 0x4D454C54u;
-static constexpr uint32_t HP_KIND_MALLOC   = 0u;
-static constexpr uint32_t HP_KIND_MMAP     = 1u;
-
-struct Header {
-  uint32_t magic, kind;
-  size_t   total;
-  uint64_t pad0,pad1,pad2,pad3,pad4,pad5;
-};
-static_assert(sizeof(Header) <= HEAD_SIZE, "");
-
-static HP   g_mode      = HP::None;
-static bool g_mode_init = false;
-
-static std::mutex g_pool_mtx;
-static std::vector<std::pair<void*, size_t>> g_pool;
-static size_t g_pool_bytes = 0;
-static std::atomic<int> g_pool_miss_streak{0};
-
-static void* pool_take(size_t need) {
-  for (size_t i = 0; i < g_pool.size(); ++i) {
-    size_t t = g_pool[i].second;
-    if (t >= need && t <= need * POOL_MATCH_FACTOR) {
-      void* raw = g_pool[i].first;
-      g_pool_bytes -= t;
-      g_pool[i] = g_pool.back();
-      g_pool.pop_back();
-      g_pool_miss_streak.store(0, std::memory_order_relaxed);
-      return raw;
-    }
-  }
-  return nullptr;
-}
-static bool pool_put(void* raw, size_t total) {
-  if (g_pool.size() >= POOL_MAX_ENTRIES) return false;
-  if (g_pool_bytes + total > POOL_MAX_BYTES) return false;
-  g_pool.emplace_back(raw, total);
-  g_pool_bytes += total;
-  return true;
-}
-
-static void* try_mmap_1gb(size_t size, size_t& out_total) {
-#if defined(__linux__) && defined(MAP_HUGETLB) && defined(MAP_HUGE_SHIFT)
-  constexpr int SHIFT = 30;
-  size_t total = (size + GB_ALIGN - 1) & ~(GB_ALIGN - 1);
-  void* p = mmap(nullptr, total, PROT_READ | PROT_WRITE,
-                 MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB |
-                   (SHIFT << MAP_HUGE_SHIFT), -1, 0);
-  if (p != MAP_FAILED) { out_total = total; return p; }
-#else
-  (void)size; (void)out_total;
-#endif
-  return MAP_FAILED;
-}
-
-static void* huge_alloc(R_allocator_t*, size_t size) {
-  if (__builtin_expect(size < HUGE_THRESHOLD || g_mode == HP::None, 1)) {
-    void* p = jm_alloc(size + HEAD_SIZE);
-    if (__builtin_expect(!p, 0)) Rf_error("allocator: OOM (%zu)", size);
-    Header* h = (Header*)p;
-    h->magic = HP_MAGIC; h->kind = HP_KIND_MALLOC; h->total = size;
-    return (char*)p + HEAD_SIZE;
-  }
-  size_t alloc_size = size + HEAD_SIZE;
-
-  {
-    std::lock_guard<std::mutex> lk(g_pool_mtx);
-    if (void* raw = pool_take(alloc_size)) {
-      Header* h = (Header*)raw;
-      size_t total = h->total;
-      h->magic = HP_MAGIC; h->kind = HP_KIND_MMAP; h->total = total;
-      return (char*)raw + HEAD_SIZE;
-    }
-  }
-
-  if (g_pool_miss_streak.fetch_add(1, std::memory_order_relaxed) >= 4) {
-    g_pool_miss_streak.store(0, std::memory_order_relaxed);
-    g_gc_requested.store(1, std::memory_order_relaxed);
-  }
-
-  void*  raw   = MAP_FAILED;
-  size_t total = 0;
-  if (g_mode == HP::GB1) raw = try_mmap_1gb(alloc_size, total);
-  if (raw == MAP_FAILED) {
-    total = (alloc_size + HUGE_ALIGN - 1) & ~(HUGE_ALIGN - 1);
-    raw = mmap(nullptr, total, PROT_READ | PROT_WRITE,
-               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (__builtin_expect(raw == MAP_FAILED, 0)) {
-      void* p = jm_alloc(size + HEAD_SIZE);
-      if (!p) Rf_error("allocator: OOM (%zu)", size);
-      Header* h = (Header*)p;
-      h->magic = HP_MAGIC; h->kind = HP_KIND_MALLOC; h->total = size;
-      return (char*)p + HEAD_SIZE;
-    }
-#ifdef MADV_HUGEPAGE
-    madvise(raw, total, MADV_HUGEPAGE);
-#endif
-  }
-  Header* h = (Header*)raw;
-  h->magic = HP_MAGIC; h->kind = HP_KIND_MMAP; h->total = total;
-  void* user_ptr = (char*)raw + HEAD_SIZE;
-  static int want_populate = -1;
-  if (want_populate < 0) {
-    const char* e = getenv("DATAPREP_POPULATE");
-    want_populate = (e && e[0] == '0') ? 0 : 1;
-  }
-#ifdef MADV_POPULATE_WRITE
-  if (want_populate && total <= POPULATE_LIMIT)
-    madvise(user_ptr, size, MADV_POPULATE_WRITE);
-#endif
-  return user_ptr;
-}
-
-static void huge_free(R_allocator_t*, void* p) {
-  if (__builtin_expect(!p || p == MAP_FAILED, 1)) return;
-  Header* h = (Header*)((char*)p - HEAD_SIZE);
-  if (__builtin_expect(h->magic != HP_MAGIC, 0)) { jm_free(h); return; }
-  if (h->kind == HP_KIND_MALLOC) { jm_free(h); return; }
-  size_t total = h->total;
-  {
-    std::lock_guard<std::mutex> lk(g_pool_mtx);
-    if (pool_put((void*)h, total)) return;
-  }
-#ifdef MADV_DONTNEED
-  madvise(h, total, MADV_DONTNEED);
-#endif
-  munmap(h, total);
-}
-
-static R_allocator_t huge_allocator = { huge_alloc, huge_free };
-
 static inline size_t sizeof_sexp(SEXPTYPE type) {
   switch(type) {
   case INTSXP:  return sizeof(int);
@@ -327,9 +131,7 @@ static inline size_t sizeof_sexp(SEXPTYPE type) {
   }
 }
 static inline SEXP alloc_smart(SEXPTYPE type, R_xlen_t n) {
-  size_t bytes = (size_t)n * sizeof_sexp(type);
-  if (__builtin_expect(bytes < HUGE_THRESHOLD, 1)) return Rf_allocVector(type, n);
-  return Rf_allocVector3(type, n, &huge_allocator);
+  return Rf_allocVector(type, n);
 }
 
 // ============================================================
@@ -781,13 +583,8 @@ static void init_cpu_features() {
 }
 
 static void melt_lazy_init() {
-  init_jemalloc();
   init_cpu_features();
   detect_l3_size_once();
-  if (!g_mode_init) {
-    g_mode = detect_hp_mode();
-    g_mode_init = true;
-  }
 #ifdef _OPENMP
   static bool omp_pool_fixed = false;
   if (__builtin_expect(!omp_pool_fixed, 0)) {
@@ -939,20 +736,23 @@ static SEXP melt_small_cpp(SEXP df,
 
   for (int k = 0; k < n_meas; ++k) {
     SEXP col = VECTOR_ELT(df, meas_idx[k]);
-    src_ptrs[k]  = DATAPTR(col);
+    src_ptrs[k]  = (const void*)DATAPTR_RO(col);
     src_types[k] = TYPEOF(col);
   }
   for (int i = 0; i < n_id; ++i) {
     SEXP s = VECTOR_ELT(df, id_idx[i]);
     SEXP d = VECTOR_ELT(out, i);
-    id_src[i]  = DATAPTR(s);
-    id_dst[i]  = DATAPTR(d);
-    id_es[i]   = sizeof_sexp(TYPEOF(s));
-    id_type[i] = TYPEOF(s);
+    id_src[i]  = (const void*)DATAPTR_RO(s);
+    SEXPTYPE t = TYPEOF(s);
+    if (t == INTSXP || t == LGLSXP)      id_dst[i] = (void*)INTEGER(d);
+    else if (t == REALSXP)               id_dst[i] = (void*)REAL(d);
+    else if (t == STRSXP)                id_dst[i] = (void*)STRING_PTR(d);
+    else                                  id_dst[i] = (void*)DATAPTR_RO(d);
+    id_es[i]   = sizeof_sexp(t);
+    id_type[i] = t;
   }
 
   if (!row_major) {
-    // Phase 1: value + variable
     {
       double* pv2 = pval;
       int*    pv  = pvar;
@@ -980,7 +780,6 @@ static SEXP melt_small_cpp(SEXP df,
       }
     }
 
-    // Phase 2: id columns via exponential fill
     for (int i = 0; i < n_id; ++i) {
       size_t es = id_es[i];
       if (!es) continue;
@@ -1083,15 +882,15 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
                           variable_name, value_name, row_major);
   }
 
-  std::vector<void*>    meas_ptrs;
-  std::vector<SEXPTYPE> meas_types;
-  std::vector<bool>     meas_is_factor;
+  std::vector<const void*> meas_ptrs;
+  std::vector<SEXPTYPE>    meas_types;
+  std::vector<bool>        meas_is_factor;
   meas_ptrs.reserve(n_meas);
   meas_types.reserve(n_meas);
   meas_is_factor.reserve(n_meas);
   for (int k = 0; k < n_meas; ++k) {
     SEXP col = VECTOR_ELT(df, meas_idx[k]);
-    meas_ptrs.push_back(DATAPTR(col));
+    meas_ptrs.push_back((const void*)DATAPTR_RO(col));
     meas_types.push_back(TYPEOF(col));
     meas_is_factor.push_back(Rf_isFactor(col));
   }
@@ -1161,10 +960,10 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
   SEXP out       = PROTECT(alloc_smart(VECSXP, n_id + 2));
   SEXP out_names = PROTECT(Rf_allocVector(STRSXP, n_id + 2));
 
-  std::vector<void*>    id_ptrs;
-  std::vector<SEXPTYPE> id_types;
-  std::vector<void*>    out_id_ptrs;
-  std::vector<size_t>   id_elem_sizes;
+  std::vector<const void*> id_ptrs;
+  std::vector<SEXPTYPE>    id_types;
+  std::vector<void*>       out_id_ptrs;
+  std::vector<size_t>      id_elem_sizes;
   id_ptrs.reserve(n_id);
   id_types.reserve(n_id);
   out_id_ptrs.reserve(n_id);
@@ -1172,14 +971,18 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
 
   for (int i = 0; i < n_id; ++i) {
     SEXP src = VECTOR_ELT(df, id_idx[i]);
-    SEXP dst = PROTECT(alloc_smart(TYPEOF(src), total_out));
+    SEXPTYPE t = TYPEOF(src);
+    SEXP dst = PROTECT(alloc_smart(t, total_out));
     Rf_copyMostAttrib(src, dst);
     SET_VECTOR_ELT(out, i, dst);
     SET_STRING_ELT(out_names, i, STRING_ELT(col_names, id_idx[i]));
-    id_ptrs.push_back(DATAPTR(src));
-    id_types.push_back(TYPEOF(src));
-    out_id_ptrs.push_back(DATAPTR(dst));
-    id_elem_sizes.push_back(sizeof_sexp(TYPEOF(src)));
+    id_ptrs.push_back((const void*)DATAPTR_RO(src));
+    id_types.push_back(t);
+    if (t == INTSXP || t == LGLSXP)      out_id_ptrs.push_back((void*)INTEGER(dst));
+    else if (t == REALSXP)               out_id_ptrs.push_back((void*)REAL(dst));
+    else if (t == STRSXP)                out_id_ptrs.push_back((void*)STRING_PTR(dst));
+    else                                  out_id_ptrs.push_back((void*)DATAPTR_RO(dst));
+    id_elem_sizes.push_back(sizeof_sexp(t));
     UNPROTECT(1);
   }
 
@@ -1202,9 +1005,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
                  (!Rf_isNull(value_name) && TYPEOF(value_name) == STRSXP) ?
                    STRING_ELT(value_name, 0) : g_value_name("value"));
 
-  // ============================================================
-  // Parallelism
-  // ============================================================
   bool use_parallel = false;
   int actual_threads = 1;
 #ifdef _OPENMP
@@ -1242,9 +1042,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
 
   bool used_nt_store = false;
 
-  // ============================================================
-  // Column-major path
-  // ============================================================
   if (!row_major) {
     const size_t val_bytes_total = (size_t)total * sizeof(double);
     const size_t var_bytes_total = (size_t)total * sizeof(int);
@@ -1279,15 +1076,15 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
             size_t bytes = (size_t)len * es;
             char* dst = (char*)out_id_ptrs[i] + (R_xlen_t)out_off * es;
             const char* src = (const char*)id_ptrs[i] + (size_t)r0 * es;
-            if (nt_id_col && bytes >= NT_SEG_MIN_BYTES) nt_memcpy_ptr(dst, src, bytes);
-            else                                        memcpy(dst, src, bytes);
+            if (nt_id_col && bytes >= (1ULL << 20)) nt_memcpy_ptr(dst, src, bytes);
+            else                                     memcpy(dst, src, bytes);
           }
         }
 
         if (!var_split) {
           size_t bytes = (size_t)len * sizeof(int);
-          if (nt_var_col && bytes >= NT_SEG_MIN_BYTES) nt_fill_int_ptr(pvar + out_off, k + 1, (size_t)len);
-          else                                         fill_i32_helper(pvar + out_off, k + 1, (size_t)len);
+          if (nt_var_col && bytes >= (1ULL << 20)) nt_fill_int_ptr(pvar + out_off, k + 1, (size_t)len);
+          else                                      fill_i32_helper(pvar + out_off, k + 1, (size_t)len);
         }
 
         double* val_dst = pval + out_off;
@@ -1295,8 +1092,8 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
         if (type == REALSXP) {
           const double* src = (const double*)meas_ptrs[k] + r0;
           size_t bytes = (size_t)len * sizeof(double);
-          if (nt_val_col && bytes >= NT_SEG_MIN_BYTES) nt_memcpy_ptr(val_dst, src, bytes);
-          else                                         memcpy(val_dst, src, bytes);
+          if (nt_val_col && bytes >= (1ULL << 20)) nt_memcpy_ptr(val_dst, src, bytes);
+          else                                      memcpy(val_dst, src, bytes);
         } else if (type == INTSXP && !meas_is_factor[k]) {
           int2double_ptr((const int*)meas_ptrs[k] + r0, val_dst, (size_t)len, false);
         } else if (type == LGLSXP) {
@@ -1331,22 +1128,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
         for (int k = 0; k < n_meas; ++k) process_sub(k, 0, n);
       }
     } else {
-      // ============================================================
-      // na_rm column-major path  (refactored: gather ids by keep_idx)
-      //
-      // Before: for every kept row r, an inner loop of n_id writes to
-      //         the id columns.  That inner loop is short (n_id bytes)
-      //         and drives a lot of loop-control + register pressure.
-      //
-      // After:  Phase 1 records the kept row indices (SIMD-dense scan)
-      //         into a thread-local buffer, and writes value/variable.
-      //         Phase 2 walks each id column once with a single gather
-      //         pass: `for j: dst[j] = src[keep_idx[j]]`.
-      //
-      // The memory traffic is the same, but the inner loop collapses to
-      // a single linear scan per id column, which lets the CPU's
-      // prefetcher and out-of-order engine run ahead.
-      // ============================================================
       thread_local std::vector<R_xlen_t> tl_keep_idx;
 
       auto process_col_na_rm = [&](int k) {
@@ -1362,7 +1143,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
         tl_keep_idx.clear();
         tl_keep_idx.reserve((size_t)cnt);
 
-        // Phase 1: value + variable + record kept indices
         R_xlen_t j = 0;
         for (R_xlen_t i = 0; i < n; ++i) {
           if (is_na_meas_at(mp, t, is_fac, i)) continue;
@@ -1373,7 +1153,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
         }
         const R_xlen_t m = j;
 
-        // Phase 2: gather each id column (linear in m per id col)
         const R_xlen_t* kidx = tl_keep_idx.data();
         for (int ii = 0; ii < n_id; ++ii) {
           SEXPTYPE it = id_types[ii];
@@ -1401,9 +1180,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
       }
     }
   }
-  // ============================================================
-  // Row-major path
-  // ============================================================
   else {
     size_t bytes_per_row = (size_t)n_meas * (sizeof(double) + sizeof(int));
     for (size_t es : id_elem_sizes) bytes_per_row += es;
@@ -1787,10 +1563,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
     }
   }
 
-  // FIX: _mm_sfence() is required for BOTH AVX2 and AVX512 streaming
-  // stores.  Previously only the AVX512 build emitted the fence,
-  // leaving a theoretical window where R could observe stale data on
-  // AVX2 builds.
   if (used_nt_store) {
 #if defined(__AVX512F__) || defined(__AVX2__)
     _mm_sfence();

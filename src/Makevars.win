@@ -1,2 +1,2 @@
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -O3 -march=native -mtune=native -funroll-loops -fno-semantic-interposition -fvisibility=hidden
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -O3 -funroll-loops -fno-semantic-interposition -fvisibility=hidden
 PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS)

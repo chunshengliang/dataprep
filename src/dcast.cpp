@@ -1,7 +1,6 @@
 // [[Rcpp::plugins(cpp17)]]
 // [[Rcpp::plugins(openmp)]]
 #include <Rcpp.h>
-#include <R_ext/Rallocators.h>
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
@@ -17,11 +16,6 @@
 #include <limits>
 #include <immintrin.h>
 
-#ifdef __linux__
-#include <dlfcn.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#endif
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -29,31 +23,9 @@
 using namespace Rcpp;
 
 // =====================================================================
-// 1. jemalloc
+// cgroup CPU quota (cached)
 // =====================================================================
-typedef void* (*jmalloc_t)(size_t);
-typedef void  (*jfree_t)(void*);
-static jmalloc_t jm_alloc = malloc;
-static jfree_t   jm_free  = free;
-static void init_jemalloc() {
-  static bool done = false;
-  if (done) return;
-  done = true;
-#ifdef __linux__
-  void* h = dlopen("libjemalloc.so.2", RTLD_LAZY);
-  if (!h) h = dlopen("libjemalloc.so", RTLD_LAZY);
-  if (h) {
-    void* a = dlsym(h, "malloc");
-    void* f = dlsym(h, "free");
-    if (a && f) { jm_alloc = (jmalloc_t)a; jm_free = (jfree_t)f; }
-  }
-#endif
-}
-
-// =====================================================================
-// 2. cgroup CPU quota (cached)
-// =====================================================================
-static int __attribute__((unused)) cgroup_cpu_limit() {
+static int cgroup_cpu_limit() {
   static int cached = -2;
   if (__builtin_expect(cached != -2, 1)) return cached;
   cached = -1;
@@ -73,79 +45,10 @@ static int __attribute__((unused)) cgroup_cpu_limit() {
 }
 
 // =====================================================================
-// 3. Huge-page allocator
+// SEXP allocation: use only public R API
 // =====================================================================
-static constexpr size_t HUGE_THRESHOLD     = 1ULL << 20;
-static constexpr size_t HUGE_ALIGN         = 2ULL << 20;
-static constexpr size_t POPULATE_THRESHOLD = 128ULL << 20;
-static constexpr size_t HEAD_SIZE          = 64;
-
-static constexpr uint32_t HP_MAGIC       = 0x4D454C54u;
-static constexpr uint32_t HP_KIND_MALLOC = 0u;
-static constexpr uint32_t HP_KIND_MMAP   = 1u;
-
-struct Header {
-  uint32_t magic;
-  uint32_t kind;
-  size_t   total;
-  uint64_t pad[5];
-};
-static_assert(sizeof(Header) <= HEAD_SIZE, "Header must fit");
-
-static void* huge_alloc(R_allocator_t*, size_t size) {
-  size_t alloc_size = size + HEAD_SIZE;
-  if (alloc_size < HUGE_THRESHOLD) {
-    void* p = jm_alloc(alloc_size);
-    if (!p) Rf_error("allocator: OOM (%zu)", size);
-    Header* h = (Header*)p;
-    h->magic = HP_MAGIC; h->kind = HP_KIND_MALLOC; h->total = size;
-    return (char*)p + HEAD_SIZE;
-  }
-  size_t total = (alloc_size + HUGE_ALIGN - 1) & ~(HUGE_ALIGN - 1);
-  int flags = MAP_PRIVATE | MAP_ANONYMOUS;
-  if (total >= POPULATE_THRESHOLD) flags |= MAP_POPULATE;
-  void* raw = mmap(nullptr, total, PROT_READ | PROT_WRITE, flags, -1, 0);
-  if (raw == MAP_FAILED) {
-    void* p = jm_alloc(alloc_size);
-    if (!p) Rf_error("allocator: OOM (fallback, %zu)", size);
-    Header* h = (Header*)p;
-    h->magic = HP_MAGIC; h->kind = HP_KIND_MALLOC; h->total = size;
-    return (char*)p + HEAD_SIZE;
-  }
-#ifdef MADV_HUGEPAGE
-  madvise(raw, total, MADV_HUGEPAGE);
-#endif
-#ifdef MADV_POPULATE_WRITE
-  if (total >= POPULATE_THRESHOLD) madvise(raw, total, MADV_POPULATE_WRITE);
-#endif
-  Header* h = (Header*)raw;
-  h->magic = HP_MAGIC; h->kind = HP_KIND_MMAP; h->total = total;
-  return (char*)raw + HEAD_SIZE;
-}
-
-static void huge_free(R_allocator_t*, void* p) {
-  if (!p || p == MAP_FAILED) return;
-  Header* h = (Header*)((char*)p - HEAD_SIZE);
-  if (h->magic != HP_MAGIC) { jm_free(h); return; }
-  if (h->kind == HP_KIND_MALLOC) { jm_free(h); return; }
-  munmap(h, h->total);
-}
-
-static R_allocator_t huge_allocator = { huge_alloc, huge_free };
-
-// =====================================================================
-// v3.13: 强制 64B 对齐的 aligend 分配（针对小 REALSXP 向量）
-// =====================================================================
-struct AlignedBuf {
-  void*  base;
-  size_t total;
-};
-
-static inline SEXP alloc_aligned_real(R_xlen_t n) {
-  // 用 huge_alloc 保证 64B 对齐（HEAD_SIZE = 64）
-  size_t bytes = (size_t)n * sizeof(double);
-  if (bytes < HUGE_THRESHOLD) return Rf_allocVector(REALSXP, n);
-  return Rf_allocVector3(REALSXP, n, &huge_allocator);
+static inline SEXP alloc_smart(SEXPTYPE type, R_xlen_t n) {
+  return Rf_allocVector(type, n);
 }
 
 static inline size_t sizeof_sexpvec(SEXPTYPE t) {
@@ -158,14 +61,9 @@ static inline size_t sizeof_sexpvec(SEXPTYPE t) {
   default:      return 0;
   }
 }
-static inline SEXP alloc_smart(SEXPTYPE type, R_xlen_t n) {
-  size_t bytes = (size_t)n * sizeof_sexpvec(type);
-  if (bytes < HUGE_THRESHOLD) return Rf_allocVector(type, n);
-  return Rf_allocVector3(type, n, &huge_allocator);
-}
 
 // =====================================================================
-// 4. SIMD fill
+// SIMD fill
 // =====================================================================
 static void fill_fallback(double* d, double v, size_t n) {
   for (size_t i = 0; i < n; ++i) d[i] = v;
@@ -209,7 +107,7 @@ static void init_cpu_features() {
 }
 
 // =====================================================================
-// 5. 8x8 转置 (AVX-512)
+// 8x8 转置 (AVX-512)
 // =====================================================================
 #if defined(__AVX512F__)
 static inline void transpose8x8_avx512(
@@ -233,19 +131,19 @@ static inline void transpose8x8_avx512(
   __m512d s5 = _mm512_shuffle_f64x2(t4, t6, 0xDD);
   __m512d s6 = _mm512_shuffle_f64x2(t5, t7, 0x88);
   __m512d s7 = _mm512_shuffle_f64x2(t5, t7, 0xDD);
-  c0 = _mm512_shuffle_f64x2(s0, s4, 0x88);  // 列 0
-  c1 = _mm512_shuffle_f64x2(s2, s6, 0x88);  // 列 1
-  c2 = _mm512_shuffle_f64x2(s1, s5, 0x88);  // 列 2
-  c3 = _mm512_shuffle_f64x2(s3, s7, 0x88);  // 列 3
-  c4 = _mm512_shuffle_f64x2(s0, s4, 0xDD);  // 列 4
-  c5 = _mm512_shuffle_f64x2(s2, s6, 0xDD);  // 列 5
-  c6 = _mm512_shuffle_f64x2(s1, s5, 0xDD);  // 列 6
-  c7 = _mm512_shuffle_f64x2(s3, s7, 0xDD);  // 列 7
+  c0 = _mm512_shuffle_f64x2(s0, s4, 0x88);
+  c1 = _mm512_shuffle_f64x2(s2, s6, 0x88);
+  c2 = _mm512_shuffle_f64x2(s1, s5, 0x88);
+  c3 = _mm512_shuffle_f64x2(s3, s7, 0x88);
+  c4 = _mm512_shuffle_f64x2(s0, s4, 0xDD);
+  c5 = _mm512_shuffle_f64x2(s2, s6, 0xDD);
+  c6 = _mm512_shuffle_f64x2(s1, s5, 0xDD);
+  c7 = _mm512_shuffle_f64x2(s3, s7, 0xDD);
 }
 #endif
 
 // =====================================================================
-// 6. fast_itoa
+// fast_itoa
 // =====================================================================
 static inline int fast_itoa(int v, char* out) {
   if (v == NA_INTEGER) { out[0] = 'N'; out[1] = 'A'; return 2; }
@@ -261,7 +159,7 @@ static inline int fast_itoa(int v, char* out) {
 }
 
 // =====================================================================
-// 7. Hash primitives
+// Hash primitives
 // =====================================================================
 static inline uint64_t mix64(uint64_t x) {
   x ^= x >> 30; x *= 0xBF58476D1CE4E5B9ULL;
@@ -277,7 +175,7 @@ static inline uint64_t fmix64(uint64_t x) {
 }
 
 // =====================================================================
-// 8. Column descriptor + KeyFn
+// Column descriptor + KeyFn
 // =====================================================================
 struct ColDesc {
   const int32_t* raw  = nullptr;
@@ -317,7 +215,7 @@ struct KeyFnDyn {
 };
 
 // =====================================================================
-// 9. Hash tables
+// Hash tables
 // =====================================================================
 struct KeyTable64 {
   std::unique_ptr<uint64_t[]> keys;
@@ -339,8 +237,8 @@ struct KeyTable64 {
     KeyTable64 nh; nh.allocate((mask + 1) << 1);
     for (size_t i = 0; i <= mask; ++i)
       if (vals[i] >= 0) nh.insert_raw(keys[i], vals[i]);
-      keys.swap(nh.keys); vals.swap(nh.vals);
-      mask = nh.mask; count = nh.count;
+    keys.swap(nh.keys); vals.swap(nh.vals);
+    mask = nh.mask; count = nh.count;
   }
   inline int32_t find_or_insert(uint64_t k, int32_t nv) {
     if (__builtin_expect((count + 1) * 2 >= mask + 1, 0)) grow();
@@ -359,7 +257,7 @@ struct KeyTable64 {
 };
 
 // =====================================================================
-// 10. 96-bit fingerprint
+// 96-bit fingerprint
 // =====================================================================
 static inline void hash_codes_96(const int32_t* __restrict__ codes, int n,
                                  uint64_t& h1_out, uint32_t& h2_out) {
@@ -413,16 +311,16 @@ struct VerifyTable96 {
     tmp.reserve(count);
     for (size_t i = 0; i <= mask; ++i)
       if (slots[i].val >= 0) tmp.push_back(slots[i]);
-      size_t new_cap = (mask + 1) << 1;
-      slots.reset(new Slot96[new_cap]);
-      for (size_t i = 0; i < new_cap; ++i) slots[i].val = -1;
-      mask = new_cap - 1;
-      count = 0;
-      for (auto& s : tmp) {
-        size_t idx = (size_t)hash_of(s.h1) & mask;
-        while (slots[idx].val >= 0) idx = (idx + 1) & mask;
-        slots[idx] = s; ++count;
-      }
+    size_t new_cap = (mask + 1) << 1;
+    slots.reset(new Slot96[new_cap]);
+    for (size_t i = 0; i < new_cap; ++i) slots[i].val = -1;
+    mask = new_cap - 1;
+    count = 0;
+    for (auto& s : tmp) {
+      size_t idx = (size_t)hash_of(s.h1) & mask;
+      while (slots[idx].val >= 0) idx = (idx + 1) & mask;
+      slots[idx] = s; ++count;
+    }
   }
   inline int32_t find_or_insert(uint64_t h1, uint32_t h2, int32_t nv) {
     if (__builtin_expect((count + 1) * 2 >= mask + 1, 0)) grow();
@@ -442,7 +340,7 @@ struct VerifyTable96 {
 };
 
 // =====================================================================
-// 11. Radix sort
+// Radix sort
 // =====================================================================
 static void radix_sort_u64_idx(const uint64_t* keys, std::vector<int32_t>& idx,
                                R_xlen_t n) {
@@ -463,7 +361,7 @@ static void radix_sort_u64_idx(const uint64_t* keys, std::vector<int32_t>& idx,
 }
 
 // =====================================================================
-// 12. Phase 1 builders
+// Phase 1 builders
 // =====================================================================
 template <class KF>
 static void build_block_phase1(KF kf,
@@ -565,7 +463,7 @@ static void build_general_phase1(KF kf,
 }
 
 // =====================================================================
-// 13. Arg resolution
+// Arg resolution
 // =====================================================================
 static int resolve_col(SEXP data, SEXP spec, int default_idx) {
   if (Rf_isNull(spec)) return default_idx;
@@ -580,7 +478,7 @@ static int resolve_col(SEXP data, SEXP spec, int default_idx) {
     const char* target = CHAR(STRING_ELT(spec, 0));
     for (int i = 0; i < ncols; ++i)
       if (strcmp(CHAR(STRING_ELT(names, i)), target) == 0) return i;
-      stop("Column '%s' not found", target);
+    stop("Column '%s' not found", target);
   }
   stop("Invalid column spec");
   return -1;
@@ -594,8 +492,8 @@ static std::vector<int> resolve_id_cols(SEXP data, SEXP id_spec,
   if (Rf_isNull(id_spec)) {
     for (int i = 0; i < ncols; ++i)
       if (i != var_idx && i != val_idx) id_cols.push_back(i);
-      if (id_cols.empty()) stop("dcast_cpp: no id columns inferred; specify id explicitly");
-      return id_cols;
+    if (id_cols.empty()) stop("dcast_cpp: no id columns inferred; specify id explicitly");
+    return id_cols;
   }
   if (TYPEOF(id_spec) == INTSXP) {
     R_xlen_t len = XLENGTH(id_spec);
@@ -618,7 +516,7 @@ static std::vector<int> resolve_id_cols(SEXP data, SEXP id_spec,
           if (!seen[j]) { seen[j] = 1; id_cols.push_back(j); }
           found = true; break;
         }
-        if (!found) stop("Column '%s' not found", tgt);
+      if (!found) stop("Column '%s' not found", tgt);
     }
     return id_cols;
   }
@@ -634,11 +532,11 @@ static void infer_var_val(SEXP data, SEXP& variable, SEXP& value) {
       if (strcmp(CHAR(STRING_ELT(names, i)), "variable") == 0) {
         variable = Rf_ScalarInteger(i + 1); break;
       }
-      if (Rf_isNull(value))
-        for (int i = 0; i < ncols; ++i)
-          if (strcmp(CHAR(STRING_ELT(names, i)), "value") == 0) {
-            value = Rf_ScalarInteger(i + 1); break;
-          }
+  if (Rf_isNull(value))
+    for (int i = 0; i < ncols; ++i)
+      if (strcmp(CHAR(STRING_ELT(names, i)), "value") == 0) {
+        value = Rf_ScalarInteger(i + 1); break;
+      }
 }
 
 static bool parse_fill(SEXP fill, double& out) {
@@ -662,7 +560,7 @@ static bool parse_fill(SEXP fill, double& out) {
 }
 
 // =====================================================================
-// 14. Main
+// Main
 // =====================================================================
 // [[Rcpp::export]]
 SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
@@ -671,7 +569,6 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
                int cores = 0,
                SEXP fill = R_NilValue,
                bool na_rm = false) {
-  init_jemalloc();
   init_cpu_features();
 
   if (TYPEOF(data) != VECSXP) stop("data must be a data.frame");
@@ -698,283 +595,371 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
   for (int idx : id_cols)
     if (XLENGTH(VECTOR_ELT(data, idx)) != nlong)
       stop("id columns must have the same length as variable/value");
-    if (nlong == 0) stop("data has no rows");
-    if (nlong > (R_xlen_t)INT32_MAX)
-      stop("dcast_cpp: input too large (nlong > INT32_MAX)");
+  if (nlong == 0) stop("data has no rows");
+  if (nlong > (R_xlen_t)INT32_MAX)
+    stop("dcast_cpp: input too large (nlong > INT32_MAX)");
 
-    double fill_val = NA_REAL;
-    bool use_fill = parse_fill(fill, fill_val);
+  double fill_val = NA_REAL;
+  bool use_fill = parse_fill(fill, fill_val);
 
-    bool use_parallel = false;
-    int  actual_threads = 1;
-    (void)use_parallel;
-    (void)actual_threads;
+  bool use_parallel = false;
+  int  actual_threads = 1;
+  (void)use_parallel;
+  (void)actual_threads;
 #ifdef _OPENMP
-    int hw = omp_get_max_threads();
-    int cg = cgroup_cpu_limit();
-    if (cg > 0 && cg < hw) hw = cg;
-    int target = 1;
-    if (cores > 0) {
-      target = std::max(1, std::min(cores, hw));
-    } else if (nlong >= (R_xlen_t)200000 && hw > 1) {
-      R_xlen_t calc = nlong / 200000;
-      target = (int)std::min<R_xlen_t>((R_xlen_t)hw, calc);
-      target = std::max(1, target);
-    }
-    actual_threads = target;
-    use_parallel = (actual_threads > 1) && (nlong > 50000);
-    if (use_parallel) {
-      omp_set_dynamic(0);
-      omp_set_num_threads(actual_threads);
-    }
+  int hw = omp_get_max_threads();
+  int cg = cgroup_cpu_limit();
+  if (cg > 0 && cg < hw) hw = cg;
+  int target = 1;
+  if (cores > 0) {
+    target = std::max(1, std::min(cores, hw));
+  } else if (nlong >= (R_xlen_t)200000 && hw > 1) {
+    R_xlen_t calc = nlong / 200000;
+    target = (int)std::min<R_xlen_t>((R_xlen_t)hw, calc);
+    target = std::max(1, target);
+  }
+  actual_threads = target;
+  use_parallel = (actual_threads > 1) && (nlong > 50000);
+  if (use_parallel) {
+    omp_set_dynamic(0);
+    omp_set_num_threads(actual_threads);
+  }
 #else
-    (void)cores;
-    (void)nlong;
+  (void)cores;
 #endif
 
-    bool var_is_factor = Rf_isFactor(var_col);
-    SEXP var_levels = var_is_factor
+  bool var_is_factor = Rf_isFactor(var_col);
+  SEXP var_levels = var_is_factor
     ? Rf_getAttrib(var_col, R_LevelsSymbol) : R_NilValue;
-    SEXPTYPE var_type = TYPEOF(var_col);
-    const int*    var_int = (var_type == INTSXP)  ? INTEGER(var_col) : nullptr;
-    const int*    var_lgl = (var_type == LGLSXP)  ? LOGICAL(var_col) : nullptr;
-    const double* var_dbl = (var_type == REALSXP) ? REAL(var_col)    : nullptr;
-    const int*    var_fac = var_is_factor ? INTEGER(var_col) : nullptr;
+  SEXPTYPE var_type = TYPEOF(var_col);
+  const int*    var_int = (var_type == INTSXP)  ? INTEGER(var_col) : nullptr;
+  const int*    var_lgl = (var_type == LGLSXP)  ? LOGICAL(var_col) : nullptr;
+  const double* var_dbl = (var_type == REALSXP) ? REAL(var_col)    : nullptr;
+  const int*    var_fac = var_is_factor ? INTEGER(var_col) : nullptr;
 
-    // ---------------- period detection ----------------
-    R_xlen_t period = 0;
-    {
-      auto veq = [&](R_xlen_t a, R_xlen_t b) -> bool {
-        if (var_type == STRSXP) return STRING_ELT(var_col, a) == STRING_ELT(var_col, b);
-        if (var_type == REALSXP) {
-          double x = var_dbl[a], y = var_dbl[b];
-          if (ISNAN(x) || ISNAN(y)) return ISNAN(x) && ISNAN(y);
-          return x == y;
-        }
-        if (var_is_factor) return var_fac[a] == var_fac[b];
-        if (var_type == INTSXP) return var_int[a] == var_int[b];
-        if (var_type == LGLSXP) return var_lgl[a] == var_lgl[b];
-        return false;
-      };
-      R_xlen_t lim = std::min<R_xlen_t>(nlong, (R_xlen_t)1024);
-      for (R_xlen_t i = 1; i < lim; ++i)
-        if (veq(i, 0)) { period = i; break; }
-        if (period > 0 && (nlong % period) == 0) {
-          R_xlen_t step = std::max<R_xlen_t>(1, nlong / 4096);
-          for (R_xlen_t i = 0; i < nlong; i += step)
-            if (!veq(i, i % period)) { period = 0; break; }
-        } else { period = 0; }
-    }
-    bool block_path = (period > 0);
-
-    // ---------------- verify block alignment ----------------
-    if (block_path) {
-      R_xlen_t n_blocks = nlong / period;
-      for (int j = 0; j < n_id && period > 0; ++j) {
-        SEXP col = VECTOR_ELT(data, id_cols[j]);
-        SEXPTYPE t = TYPEOF(col);
-        if (t == INTSXP || t == LGLSXP) {
-          const int* v = (t == INTSXP) ? INTEGER(col) : LOGICAL(col);
-          for (R_xlen_t b = 0; b < n_blocks && period > 0; ++b) {
-            int first = v[b * period];
-            if (period > 1 && v[b * period + period - 1] != first) { period = 0; break; }
-            if (period > 2 && v[b * period + period / 2] != first) { period = 0; break; }
-          }
-        } else if (t == STRSXP) {
-          const SEXP* s = (const SEXP*)DATAPTR(col);
-          for (R_xlen_t b = 0; b < n_blocks && period > 0; ++b) {
-            SEXP first = s[b * period];
-            if (period > 1 && s[b * period + period - 1] != first) { period = 0; break; }
-            if (period > 2 && s[b * period + period / 2] != first) { period = 0; break; }
-          }
-        } else if (t == REALSXP) {
-          const double* s = REAL(col);
-          for (R_xlen_t b = 0; b < n_blocks && period > 0; ++b) {
-            double first = s[b * period];
-            if (period > 1 && s[b * period + period - 1] != first) { period = 0; break; }
-            if (period > 2 && s[b * period + period / 2] != first) { period = 0; break; }
-          }
-        } else { period = 0; }
+  // ---------------- period detection ----------------
+  R_xlen_t period = 0;
+  {
+    auto veq = [&](R_xlen_t a, R_xlen_t b) -> bool {
+      if (var_type == STRSXP) return STRING_ELT(var_col, a) == STRING_ELT(var_col, b);
+      if (var_type == REALSXP) {
+        double x = var_dbl[a], y = var_dbl[b];
+        if (ISNAN(x) || ISNAN(y)) return ISNAN(x) && ISNAN(y);
+        return x == y;
       }
-      if (period > 0) {
-        std::unordered_set<std::string> seen;
-        char buf[64];
-        for (R_xlen_t k = 0; k < period; ++k) {
-          std::string key;
-          if (var_type == STRSXP) {
-            SEXP s = STRING_ELT(var_col, k);
-            key = (s == NA_STRING) ? std::string("\x01NA") : std::string(CHAR(s));
-          } else if (var_is_factor) {
-            int code = var_fac[k];
-            if (code == NA_INTEGER) key = "\x01NA";
-            else key = std::string(CHAR(STRING_ELT(var_levels, code - 1)));
-          } else if (var_type == INTSXP) {
-            int len = fast_itoa(var_int[k], buf); key.assign(buf, len);
-          } else if (var_type == LGLSXP) {
-            int v = var_lgl[k];
-            key = (v == NA_LOGICAL) ? "\x01NA" : (v ? "TRUE" : "FALSE");
-          } else if (var_type == REALSXP) {
-            double x = var_dbl[k];
-            if (ISNA(x)) { key = "\x01NA"; }
-            else {
-              int l = std::snprintf(buf, sizeof(buf), "%.17g", x);
-              if (l < 0) l = 0;
-              if ((size_t)l >= sizeof(buf)) l = (int)sizeof(buf) - 1;
-              key.assign(buf, l);
-            }
-          }
-          if (!seen.insert(key).second) { period = 0; break; }
+      if (var_is_factor) return var_fac[a] == var_fac[b];
+      if (var_type == INTSXP) return var_int[a] == var_int[b];
+      if (var_type == LGLSXP) return var_lgl[a] == var_lgl[b];
+      return false;
+    };
+    R_xlen_t lim = std::min<R_xlen_t>(nlong, (R_xlen_t)1024);
+    for (R_xlen_t i = 1; i < lim; ++i)
+      if (veq(i, 0)) { period = i; break; }
+    if (period > 0 && (nlong % period) == 0) {
+      R_xlen_t step = std::max<R_xlen_t>(1, nlong / 4096);
+      for (R_xlen_t i = 0; i < nlong; i += step)
+        if (!veq(i, i % period)) { period = 0; break; }
+    } else { period = 0; }
+  }
+  bool block_path = (period > 0);
+
+  // ---------------- verify block alignment ----------------
+  if (block_path) {
+    R_xlen_t n_blocks = nlong / period;
+    for (int j = 0; j < n_id && period > 0; ++j) {
+      SEXP col = VECTOR_ELT(data, id_cols[j]);
+      SEXPTYPE t = TYPEOF(col);
+      if (t == INTSXP || t == LGLSXP) {
+        const int* v = (t == INTSXP) ? INTEGER(col) : LOGICAL(col);
+        for (R_xlen_t b = 0; b < n_blocks && period > 0; ++b) {
+          int first = v[b * period];
+          if (period > 1 && v[b * period + period - 1] != first) { period = 0; break; }
+          if (period > 2 && v[b * period + period / 2] != first) { period = 0; break; }
         }
-      }
-      block_path = (period > 0);
+      } else if (t == STRSXP) {
+        const SEXP* s = STRING_PTR(col);
+        for (R_xlen_t b = 0; b < n_blocks && period > 0; ++b) {
+          SEXP first = s[b * period];
+          if (period > 1 && s[b * period + period - 1] != first) { period = 0; break; }
+          if (period > 2 && s[b * period + period / 2] != first) { period = 0; break; }
+        }
+      } else if (t == REALSXP) {
+        const double* s = REAL(col);
+        for (R_xlen_t b = 0; b < n_blocks && period > 0; ++b) {
+          double first = s[b * period];
+          if (period > 1 && s[b * period + period - 1] != first) { period = 0; break; }
+          if (period > 2 && s[b * period + period / 2] != first) { period = 0; break; }
+        }
+      } else { period = 0; }
     }
+    if (period > 0) {
+      std::unordered_set<std::string> seen;
+      char buf[64];
+      for (R_xlen_t k = 0; k < period; ++k) {
+        std::string key;
+        if (var_type == STRSXP) {
+          SEXP s = STRING_ELT(var_col, k);
+          key = (s == NA_STRING) ? std::string("\x01NA") : std::string(CHAR(s));
+        } else if (var_is_factor) {
+          int code = var_fac[k];
+          if (code == NA_INTEGER) key = "\x01NA";
+          else key = std::string(CHAR(STRING_ELT(var_levels, code - 1)));
+        } else if (var_type == INTSXP) {
+          int len = fast_itoa(var_int[k], buf); key.assign(buf, len);
+        } else if (var_type == LGLSXP) {
+          int v = var_lgl[k];
+          key = (v == NA_LOGICAL) ? "\x01NA" : (v ? "TRUE" : "FALSE");
+        } else if (var_type == REALSXP) {
+          double x = var_dbl[k];
+          if (ISNA(x)) { key = "\x01NA"; }
+          else {
+            int l = std::snprintf(buf, sizeof(buf), "%.17g", x);
+            if (l < 0) l = 0;
+            if ((size_t)l >= sizeof(buf)) l = (int)sizeof(buf) - 1;
+            key.assign(buf, l);
+          }
+        }
+        if (!seen.insert(key).second) { period = 0; break; }
+      }
+    }
+    block_path = (period > 0);
+  }
 
-    // ---------------- Phase -1: perm shortcut ----------------
-    bool perm_shortcut = false;
-    std::vector<int32_t> perm_first_src;
+  // ---------------- Phase -1: perm shortcut ----------------
+  bool perm_shortcut = false;
+  std::vector<int32_t> perm_first_src;
 
-    if (block_path) {
-      R_xlen_t n_blk = nlong / period;
-      for (int j = 0; j < n_id && !perm_shortcut; ++j) {
-        SEXP col = VECTOR_ELT(data, id_cols[j]);
-        SEXPTYPE t = TYPEOF(col);
-        if (t != INTSXP && t != LGLSXP) continue;
+  if (block_path) {
+    R_xlen_t n_blk = nlong / period;
+    for (int j = 0; j < n_id && !perm_shortcut; ++j) {
+      SEXP col = VECTOR_ELT(data, id_cols[j]);
+      SEXPTYPE t = TYPEOF(col);
+      if (t != INTSXP && t != LGLSXP) continue;
+      const int32_t* v = (t == INTSXP) ? (const int32_t*)INTEGER(col)
+        : (const int32_t*)LOGICAL(col);
+      int32_t mn = INT32_MAX, mx = INT32_MIN;
+      bool has_na = false;
+      for (R_xlen_t b = 0; b < n_blk; ++b) {
+        int32_t x = v[b * period];
+        if (x == NA_INTEGER) { has_na = true; break; }
+        if (x < mn) mn = x;
+        if (x > mx) mx = x;
+      }
+      if (has_na) continue;
+      int64_t range = (int64_t)mx - (int64_t)mn + 1;
+      if (range <= 0 || range > (int64_t)n_blk * 4) continue;
+      std::vector<int32_t> lut((size_t)range, -1);
+      std::vector<int32_t> codes((size_t)n_blk);
+      int32_t next_code = 0;
+      bool ok = true;
+      for (R_xlen_t b = 0; b < n_blk; ++b) {
+        int32_t x = v[b * period] - mn;
+        if (x < 0 || x >= range) { ok = false; break; }
+        int32_t& slot = lut[(size_t)x];
+        if (slot < 0) slot = next_code++;
+        codes[(size_t)b] = slot;
+      }
+      if (!ok || (R_xlen_t)next_code != n_blk) continue;
+      perm_first_src.assign((size_t)n_blk, 0);
+      for (R_xlen_t b = 0; b < n_blk; ++b)
+        perm_first_src[(size_t)codes[(size_t)b]] =
+          (int32_t)((int64_t)b * (int64_t)period);
+      perm_shortcut = true;
+    }
+  }
+
+  // ---------------- column descriptors ----------------
+  std::vector<ColDesc> desc(n_id);
+  std::vector<std::vector<int32_t>> owned(n_id);
+  const R_xlen_t id_n    = block_path ? (nlong / period) : nlong;
+  const R_xlen_t id_step = block_path ? period : 1;
+  auto id_index = [&](R_xlen_t b) -> R_xlen_t { return b * id_step; };
+
+  if (!perm_shortcut) {
+    for (int j = 0; j < n_id; ++j) {
+      SEXP col = VECTOR_ELT(data, id_cols[j]);
+      SEXPTYPE t = TYPEOF(col);
+      ColDesc& d = desc[j];
+      if (t == INTSXP || t == LGLSXP) {
         const int32_t* v = (t == INTSXP) ? (const int32_t*)INTEGER(col)
           : (const int32_t*)LOGICAL(col);
         int32_t mn = INT32_MAX, mx = INT32_MIN;
         bool has_na = false;
-        for (R_xlen_t b = 0; b < n_blk; ++b) {
-          int32_t x = v[b * period];
-          if (x == NA_INTEGER) { has_na = true; break; }
+        for (R_xlen_t b = 0; b < id_n; ++b) {
+          int32_t x = v[id_index(b)];
+          if (x == NA_INTEGER) { has_na = true; continue; }
           if (x < mn) mn = x;
           if (x > mx) mx = x;
         }
-        if (has_na) continue;
-        int64_t range = (int64_t)mx - (int64_t)mn + 1;
-        if (range <= 0 || range > (int64_t)n_blk * 4) continue;
-        std::vector<int32_t> lut((size_t)range, -1);
-        std::vector<int32_t> codes((size_t)n_blk);
-        int32_t next_code = 0;
-        bool ok = true;
-        for (R_xlen_t b = 0; b < n_blk; ++b) {
-          int32_t x = v[b * period] - mn;
-          if (x < 0 || x >= range) { ok = false; break; }
-          int32_t& slot = lut[(size_t)x];
-          if (slot < 0) slot = next_code++;
-          codes[(size_t)b] = slot;
-        }
-        if (!ok || (R_xlen_t)next_code != n_blk) continue;
-        perm_first_src.assign((size_t)n_blk, 0);
-        for (R_xlen_t b = 0; b < n_blk; ++b)
-          perm_first_src[(size_t)codes[(size_t)b]] =
-            (int32_t)((int64_t)b * (int64_t)period);
-        perm_shortcut = true;
-      }
-    }
-
-    // ---------------- column descriptors ----------------
-    std::vector<ColDesc> desc(n_id);
-    std::vector<std::vector<int32_t>> owned(n_id);
-    const R_xlen_t id_n    = block_path ? (nlong / period) : nlong;
-    const R_xlen_t id_step = block_path ? period : 1;
-    auto id_index = [&](R_xlen_t b) -> R_xlen_t { return b * id_step; };
-
-    if (!perm_shortcut) {
-      for (int j = 0; j < n_id; ++j) {
-        SEXP col = VECTOR_ELT(data, id_cols[j]);
-        SEXPTYPE t = TYPEOF(col);
-        ColDesc& d = desc[j];
-        if (t == INTSXP || t == LGLSXP) {
-          const int32_t* v = (t == INTSXP) ? (const int32_t*)INTEGER(col)
-            : (const int32_t*)LOGICAL(col);
-          int32_t mn = INT32_MAX, mx = INT32_MIN;
-          bool has_na = false;
-          for (R_xlen_t b = 0; b < id_n; ++b) {
-            int32_t x = v[id_index(b)];
-            if (x == NA_INTEGER) { has_na = true; continue; }
-            if (x < mn) mn = x;
-            if (x > mx) mx = x;
-          }
-          if (mn > mx) { mn = 0; mx = 0; }
-          uint64_t range = (uint64_t)((int64_t)mx - (int64_t)mn) + 1;
-          uint64_t units = range + (has_na ? 1 : 0);
-          if (units <= ((uint64_t)1 << 26) || units <= (uint64_t)id_n * 4) {
-            if (block_path) {
-              owned[j].resize((size_t)id_n);
-              for (R_xlen_t b = 0; b < id_n; ++b) {
-                int32_t x = v[id_index(b)];
-                int32_t code;
-                if (x == NA_INTEGER) code = has_na ? (int32_t)(units - 1) : 0;
-                else                 code = (int32_t)((int64_t)x - (int64_t)mn);
-                owned[j][b] = code;
-              }
-              d.code = owned[j].data();
-            } else {
-              d.raw = v; d.mn = mn; d.has_na = has_na;
-              d.na_code = has_na ? (uint32_t)(units - 1) : 0;
-            }
-            d.units = (uint32_t)units;
-          } else {
+        if (mn > mx) { mn = 0; mx = 0; }
+        uint64_t range = (uint64_t)((int64_t)mx - (int64_t)mn) + 1;
+        uint64_t units = range + (has_na ? 1 : 0);
+        if (units <= ((uint64_t)1 << 26) || units <= (uint64_t)id_n * 4) {
+          if (block_path) {
             owned[j].resize((size_t)id_n);
-            std::unordered_map<int32_t, int32_t> m; m.reserve(4096);
-            int32_t card = 0;
             for (R_xlen_t b = 0; b < id_n; ++b) {
               int32_t x = v[id_index(b)];
-              auto it = m.find(x);
-              if (it == m.end()) m.emplace(x, card), owned[j][b] = card++;
-              else               owned[j][b] = it->second;
+              int32_t code;
+              if (x == NA_INTEGER) code = has_na ? (int32_t)(units - 1) : 0;
+              else                 code = (int32_t)((int64_t)x - (int64_t)mn);
+              owned[j][b] = code;
             }
-            d.code = owned[j].data(); d.units = (uint32_t)card;
+            d.code = owned[j].data();
+          } else {
+            d.raw = v; d.mn = mn; d.has_na = has_na;
+            d.na_code = has_na ? (uint32_t)(units - 1) : 0;
           }
-        } else if (t == STRSXP) {
+          d.units = (uint32_t)units;
+        } else {
           owned[j].resize((size_t)id_n);
-          std::unordered_map<SEXP, int32_t> m; m.reserve(4096);
+          std::unordered_map<int32_t, int32_t> m; m.reserve(4096);
           int32_t card = 0;
           for (R_xlen_t b = 0; b < id_n; ++b) {
-            SEXP s = STRING_ELT(col, id_index(b));
-            auto it = m.find(s);
-            if (it == m.end()) m.emplace(s, card), owned[j][b] = card++;
+            int32_t x = v[id_index(b)];
+            auto it = m.find(x);
+            if (it == m.end()) m.emplace(x, card), owned[j][b] = card++;
             else               owned[j][b] = it->second;
           }
           d.code = owned[j].data(); d.units = (uint32_t)card;
-        } else if (t == REALSXP) {
-          owned[j].resize((size_t)id_n);
-          std::unordered_map<uint64_t, int32_t> m; m.reserve(4096);
-          int32_t card = 0;
-          for (R_xlen_t b = 0; b < id_n; ++b) {
-            double x = REAL(col)[id_index(b)];
-            uint64_t bits; std::memcpy(&bits, &x, sizeof(bits));
-            if (x == 0.0) bits = 0;
-            auto it = m.find(bits);
-            if (it == m.end()) m.emplace(bits, card), owned[j][b] = card++;
-            else               owned[j][b] = it->second;
-          }
-          d.code = owned[j].data(); d.units = (uint32_t)card;
-        } else { stop("unsupported id column type"); }
+        }
+      } else if (t == STRSXP) {
+        owned[j].resize((size_t)id_n);
+        std::unordered_map<SEXP, int32_t> m; m.reserve(4096);
+        int32_t card = 0;
+        for (R_xlen_t b = 0; b < id_n; ++b) {
+          SEXP s = STRING_ELT(col, id_index(b));
+          auto it = m.find(s);
+          if (it == m.end()) m.emplace(s, card), owned[j][b] = card++;
+          else               owned[j][b] = it->second;
+        }
+        d.code = owned[j].data(); d.units = (uint32_t)card;
+      } else if (t == REALSXP) {
+        owned[j].resize((size_t)id_n);
+        std::unordered_map<uint64_t, int32_t> m; m.reserve(4096);
+        int32_t card = 0;
+        for (R_xlen_t b = 0; b < id_n; ++b) {
+          double x = REAL(col)[id_index(b)];
+          uint64_t bits; std::memcpy(&bits, &x, sizeof(bits));
+          if (x == 0.0) bits = 0;
+          auto it = m.find(bits);
+          if (it == m.end()) m.emplace(bits, card), owned[j][b] = card++;
+          else               owned[j][b] = it->second;
+        }
+        d.code = owned[j].data(); d.units = (uint32_t)card;
+      } else { stop("unsupported id column type"); }
+    }
+  }
+
+  // ---------------- column keys ----------------
+  std::vector<std::string> col_keys;
+  col_keys.reserve(256);
+  std::vector<int32_t> col_of;
+  int32_t k_out = 0;
+
+  if (block_path) {
+    char buf[64];
+    for (R_xlen_t k = 0; k < period; ++k) {
+      if (var_is_factor) {
+        int code = var_fac[k];
+        col_keys.emplace_back(code == NA_INTEGER
+                                ? "NA" : CHAR(STRING_ELT(var_levels, code - 1)));
+      } else if (var_type == INTSXP) {
+        char b[16]; int l = fast_itoa(var_int[k], b);
+        col_keys.emplace_back(b, l);
+      } else if (var_type == LGLSXP) {
+        int v = var_lgl[k];
+        col_keys.emplace_back(v == NA_LOGICAL ? "NA" : (v ? "TRUE" : "FALSE"));
+      } else if (var_type == REALSXP) {
+        double x = var_dbl[k];
+        int l;
+        if (ISNA(x)) { buf[0]='N'; buf[1]='A'; l = 2; }
+        else {
+          l = std::snprintf(buf, sizeof(buf), "%.17g", x);
+          if (l < 0) l = 0;
+          if ((size_t)l >= sizeof(buf)) l = (int)sizeof(buf) - 1;
+        }
+        col_keys.emplace_back(buf, l);
+      } else {
+        SEXP s = STRING_ELT(var_col, k);
+        col_keys.emplace_back(s == NA_STRING ? "NA" : CHAR(s));
       }
     }
-
-    // ---------------- column keys ----------------
-    std::vector<std::string> col_keys;
-    col_keys.reserve(256);
-    std::vector<int32_t> col_of;
-    int32_t k_out = 0;
-
-    if (block_path) {
-      char buf[64];
-      for (R_xlen_t k = 0; k < period; ++k) {
-        if (var_is_factor) {
-          int code = var_fac[k];
+    k_out = (int32_t)period;
+  } else {
+    col_of.assign((size_t)nlong, -1);
+    if (var_is_factor && Rf_length(var_levels) < 100000) {
+      int L = Rf_length(var_levels);
+      std::vector<int32_t> c2c((size_t)L + 1, -1);
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        int code = var_fac[i];
+        size_t slot = (code == NA_INTEGER) ? 0 : (size_t)code;
+        int32_t c = c2c[slot];
+        if (c < 0) {
+          c = k_out++; c2c[slot] = c;
           col_keys.emplace_back(code == NA_INTEGER
                                   ? "NA" : CHAR(STRING_ELT(var_levels, code - 1)));
-        } else if (var_type == INTSXP) {
-          char b[16]; int l = fast_itoa(var_int[k], b);
-          col_keys.emplace_back(b, l);
-        } else if (var_type == LGLSXP) {
-          int v = var_lgl[k];
-          col_keys.emplace_back(v == NA_LOGICAL ? "NA" : (v ? "TRUE" : "FALSE"));
-        } else if (var_type == REALSXP) {
-          double x = var_dbl[k];
+        }
+        col_of[i] = c;
+      }
+    } else if (var_type == STRSXP) {
+      std::unordered_map<SEXP, int32_t> m; m.reserve(256);
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        SEXP s = STRING_ELT(var_col, i);
+        auto it = m.find(s);
+        if (it == m.end()) {
+          int32_t c = k_out++; m.emplace(s, c);
+          col_keys.emplace_back(s == NA_STRING ? "NA" : CHAR(s));
+          col_of[i] = c;
+        } else col_of[i] = it->second;
+      }
+    } else if (var_type == INTSXP) {
+      int32_t mn = INT32_MAX, mx = INT32_MIN;
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        int32_t v = var_int[i];
+        if (v == NA_INTEGER) continue;
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+      if (mx >= mn && (int64_t)mx - (int64_t)mn < 1000000) {
+        std::vector<int32_t> lut((size_t)((int64_t)mx - (int64_t)mn) + 1, -1);
+        int32_t na_col = -1;
+        for (R_xlen_t i = 0; i < nlong; ++i) {
+          int32_t v = var_int[i];
+          if (v == NA_INTEGER) {
+            if (na_col < 0) { na_col = k_out++; col_keys.emplace_back("NA"); }
+            col_of[i] = na_col;
+          } else {
+            int32_t& s = lut[(size_t)((int64_t)v - (int64_t)mn)];
+            if (s < 0) {
+              s = k_out++;
+              char b[16]; int l = fast_itoa(v, b);
+              col_keys.emplace_back(b, l);
+            }
+            col_of[i] = s;
+          }
+        }
+      } else {
+        std::unordered_map<int32_t, int32_t> m; m.reserve(256);
+        for (R_xlen_t i = 0; i < nlong; ++i) {
+          int32_t v = var_int[i];
+          auto it = m.find(v);
+          if (it == m.end()) {
+            int32_t c = k_out++; m.emplace(v, c);
+            char b[16]; int l = fast_itoa(v, b);
+            col_keys.emplace_back(b, l); col_of[i] = c;
+          } else col_of[i] = it->second;
+        }
+      }
+    } else if (var_type == REALSXP) {
+      std::unordered_map<uint64_t, int32_t> m; m.reserve(256);
+      char buf[64];
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        double x = var_dbl[i];
+        uint64_t bits; std::memcpy(&bits, &x, sizeof(bits));
+        if (x == 0.0) bits = 0;
+        auto it = m.find(bits);
+        if (it == m.end()) {
+          int32_t c = k_out++; m.emplace(bits, c);
           int l;
           if (ISNA(x)) { buf[0]='N'; buf[1]='A'; l = 2; }
           else {
@@ -982,552 +967,464 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
             if (l < 0) l = 0;
             if ((size_t)l >= sizeof(buf)) l = (int)sizeof(buf) - 1;
           }
-          col_keys.emplace_back(buf, l);
+          col_keys.emplace_back(buf, l); col_of[i] = c;
+        } else col_of[i] = it->second;
+      }
+    } else if (var_type == LGLSXP) {
+      int32_t F = -1, T = -1, N = -1;
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        int v = var_lgl[i];
+        if (v == NA_LOGICAL) {
+          if (N < 0) { N = k_out++; col_keys.emplace_back("NA"); }
+          col_of[i] = N;
+        } else if (v) {
+          if (T < 0) { T = k_out++; col_keys.emplace_back("TRUE"); }
+          col_of[i] = T;
         } else {
-          SEXP s = STRING_ELT(var_col, k);
-          col_keys.emplace_back(s == NA_STRING ? "NA" : CHAR(s));
+          if (F < 0) { F = k_out++; col_keys.emplace_back("FALSE"); }
+          col_of[i] = F;
         }
       }
-      k_out = (int32_t)period;
-    } else {
-      col_of.assign((size_t)nlong, -1);
-      if (var_is_factor && Rf_length(var_levels) < 100000) {
-        int L = Rf_length(var_levels);
-        std::vector<int32_t> c2c((size_t)L + 1, -1);
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          int code = var_fac[i];
-          size_t slot = (code == NA_INTEGER) ? 0 : (size_t)code;
-          int32_t c = c2c[slot];
-          if (c < 0) {
-            c = k_out++; c2c[slot] = c;
-            col_keys.emplace_back(code == NA_INTEGER
-                                    ? "NA" : CHAR(STRING_ELT(var_levels, code - 1)));
-          }
-          col_of[i] = c;
-        }
-      } else if (var_type == STRSXP) {
-        std::unordered_map<SEXP, int32_t> m; m.reserve(256);
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          SEXP s = STRING_ELT(var_col, i);
-          auto it = m.find(s);
-          if (it == m.end()) {
-            int32_t c = k_out++; m.emplace(s, c);
-            col_keys.emplace_back(s == NA_STRING ? "NA" : CHAR(s));
-            col_of[i] = c;
-          } else col_of[i] = it->second;
-        }
-      } else if (var_type == INTSXP) {
-        int32_t mn = INT32_MAX, mx = INT32_MIN;
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          int32_t v = var_int[i];
-          if (v == NA_INTEGER) continue;
-          if (v < mn) mn = v;
-          if (v > mx) mx = v;
-        }
-        if (mx >= mn && (int64_t)mx - (int64_t)mn < 1000000) {
-          std::vector<int32_t> lut((size_t)((int64_t)mx - (int64_t)mn) + 1, -1);
-          int32_t na_col = -1;
-          for (R_xlen_t i = 0; i < nlong; ++i) {
-            int32_t v = var_int[i];
-            if (v == NA_INTEGER) {
-              if (na_col < 0) { na_col = k_out++; col_keys.emplace_back("NA"); }
-              col_of[i] = na_col;
-            } else {
-              int32_t& s = lut[(size_t)((int64_t)v - (int64_t)mn)];
-              if (s < 0) {
-                s = k_out++;
-                char b[16]; int l = fast_itoa(v, b);
-                col_keys.emplace_back(b, l);
-              }
-              col_of[i] = s;
-            }
-          }
-        } else {
-          std::unordered_map<int32_t, int32_t> m; m.reserve(256);
-          for (R_xlen_t i = 0; i < nlong; ++i) {
-            int32_t v = var_int[i];
-            auto it = m.find(v);
-            if (it == m.end()) {
-              int32_t c = k_out++; m.emplace(v, c);
-              char b[16]; int l = fast_itoa(v, b);
-              col_keys.emplace_back(b, l); col_of[i] = c;
-            } else col_of[i] = it->second;
-          }
-        }
-      } else if (var_type == REALSXP) {
-        std::unordered_map<uint64_t, int32_t> m; m.reserve(256);
-        char buf[64];
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          double x = var_dbl[i];
-          uint64_t bits; std::memcpy(&bits, &x, sizeof(bits));
-          if (x == 0.0) bits = 0;
-          auto it = m.find(bits);
-          if (it == m.end()) {
-            int32_t c = k_out++; m.emplace(bits, c);
-            int l;
-            if (ISNA(x)) { buf[0]='N'; buf[1]='A'; l = 2; }
-            else {
-              l = std::snprintf(buf, sizeof(buf), "%.17g", x);
-              if (l < 0) l = 0;
-              if ((size_t)l >= sizeof(buf)) l = (int)sizeof(buf) - 1;
-            }
-            col_keys.emplace_back(buf, l); col_of[i] = c;
-          } else col_of[i] = it->second;
-        }
-      } else if (var_type == LGLSXP) {
-        int32_t F = -1, T = -1, N = -1;
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          int v = var_lgl[i];
-          if (v == NA_LOGICAL) {
-            if (N < 0) { N = k_out++; col_keys.emplace_back("NA"); }
-            col_of[i] = N;
-          } else if (v) {
-            if (T < 0) { T = k_out++; col_keys.emplace_back("TRUE"); }
-            col_of[i] = T;
-          } else {
-            if (F < 0) { F = k_out++; col_keys.emplace_back("FALSE"); }
-            col_of[i] = F;
-          }
-        }
-      } else { stop("unsupported variable column type"); }
+    } else { stop("unsupported variable column type"); }
+  }
+  if (k_out == 0) stop("empty output");
+
+  // =====================================================================
+  // Phase 1
+  // =====================================================================
+  std::vector<int32_t> row_of;
+  std::vector<int32_t> first_src;
+  int32_t n_out = 0;
+
+  R_xlen_t n_items = block_path ? (nlong / period) : nlong;
+  const size_t ht_cap = (size_t)std::min<uint64_t>(
+    ((uint64_t)1 << 25),
+    std::max<uint64_t>(4096, 2 * (uint64_t)std::min<R_xlen_t>(n_items, (R_xlen_t)8e6)));
+
+  if (block_path) {
+    R_xlen_t n_blocks = n_items;
+    first_src.reserve((size_t)n_blocks);
+    bool done = false;
+    if (perm_shortcut) {
+      first_src = std::move(perm_first_src);
+      n_out = (int32_t)n_blocks;
+      done = true;
     }
-    if (k_out == 0) stop("empty output");
-
-    // =====================================================================
-    // Phase 1
-    // =====================================================================
-    std::vector<int32_t> row_of;
-    std::vector<int32_t> first_src;
-    int32_t n_out = 0;
-
-    R_xlen_t n_items = block_path ? (nlong / period) : nlong;
-    const size_t ht_cap = (size_t)std::min<uint64_t>(
-      ((uint64_t)1 << 25),
-                      std::max<uint64_t>(4096, 2 * (uint64_t)std::min<R_xlen_t>(n_items, (R_xlen_t)8e6)));
-
-    if (block_path) {
-      R_xlen_t n_blocks = n_items;
-      first_src.reserve((size_t)n_blocks);
-      bool done = false;
-      if (perm_shortcut) {
-        first_src = std::move(perm_first_src);
-        n_out = (int32_t)n_blocks;
-        done = true;
+    bool bits_overflow = false;
+    std::vector<int> shifts(n_id);
+    {
+      int s = 0;
+      for (int j = n_id - 1; j >= 0; --j) {
+        uint32_t u = desc[j].units;
+        int b = (u <= 1) ? 1 : (int)(64 - __builtin_clzll((uint64_t)(u - 1)));
+        if (b < 1) b = 1;
+        shifts[j] = s; s += b;
+        if (s > 64) { bits_overflow = true; break; }
       }
-      bool bits_overflow = false;
-      std::vector<int> shifts(n_id);
-      {
-        int s = 0;
-        for (int j = n_id - 1; j >= 0; --j) {
-          uint32_t u = desc[j].units;
-          int b = (u <= 1) ? 1 : (int)(64 - __builtin_clzll((uint64_t)(u - 1)));
-          if (b < 1) b = 1;
-          shifts[j] = s; s += b;
-          if (s > 64) { bits_overflow = true; break; }
-        }
-        if (s > 64) bits_overflow = true;
+      if (s > 64) bits_overflow = true;
+    }
+    if (!done && !bits_overflow) {
+      switch (n_id) {
+      case 1: build_block_phase1(KeyFnN<1>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      case 2: build_block_phase1(KeyFnN<2>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      case 3: build_block_phase1(KeyFnN<3>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      case 4: build_block_phase1(KeyFnN<4>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      case 5: build_block_phase1(KeyFnN<5>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      case 6: build_block_phase1(KeyFnN<6>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      case 7: build_block_phase1(KeyFnN<7>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      case 8: build_block_phase1(KeyFnN<8>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
+      default: build_block_phase1(KeyFnDyn{desc.data(), shifts.data(), n_id}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
       }
-      if (!done && !bits_overflow) {
-        switch (n_id) {
-        case 1: build_block_phase1(KeyFnN<1>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        case 2: build_block_phase1(KeyFnN<2>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        case 3: build_block_phase1(KeyFnN<3>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        case 4: build_block_phase1(KeyFnN<4>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        case 5: build_block_phase1(KeyFnN<5>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        case 6: build_block_phase1(KeyFnN<6>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        case 7: build_block_phase1(KeyFnN<7>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        case 8: build_block_phase1(KeyFnN<8>{desc.data(), shifts.data()}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        default: build_block_phase1(KeyFnDyn{desc.data(), shifts.data(), n_id}, desc.data(), n_id, n_blocks, period, ht_cap, first_src, n_out); break;
-        }
-        done = true;
-      }
-      if (!done) {
-        constexpr int BATCH = 64;
-        std::unique_ptr<uint64_t[]> hashes_h1(new uint64_t[(size_t)n_blocks]);
-        std::unique_ptr<uint32_t[]> hashes_h2(new uint32_t[(size_t)n_blocks]);
-        std::vector<int32_t> code_buf((size_t)BATCH * (size_t)n_id);
-        for (R_xlen_t base = 0; base < n_blocks; base += BATCH) {
-          int tb = (int)std::min<R_xlen_t>((R_xlen_t)BATCH, n_blocks - base);
-          for (int c = 0; c < n_id; ++c) {
-            const ColDesc& d = desc[c];
-            int32_t* dst = code_buf.data() + c;
-            if (d.code) {
-              const int32_t* src = d.code + base;
-              for (int r = 0; r < tb; ++r) dst[(size_t)r * n_id] = src[r];
-            } else {
-              const int32_t* src = d.raw + base;
-              const int32_t mn = d.mn;
-              const uint32_t na_code = d.na_code;
-              for (int r = 0; r < tb; ++r) {
-                int32_t v = src[r];
-                dst[(size_t)r * n_id] = (v == NA_INTEGER)
-                  ? (int32_t)na_code : (int32_t)((int64_t)v - (int64_t)mn);
-              }
+      done = true;
+    }
+    if (!done) {
+      constexpr int BATCH = 64;
+      std::unique_ptr<uint64_t[]> hashes_h1(new uint64_t[(size_t)n_blocks]);
+      std::unique_ptr<uint32_t[]> hashes_h2(new uint32_t[(size_t)n_blocks]);
+      std::vector<int32_t> code_buf((size_t)BATCH * (size_t)n_id);
+      for (R_xlen_t base = 0; base < n_blocks; base += BATCH) {
+        int tb = (int)std::min<R_xlen_t>((R_xlen_t)BATCH, n_blocks - base);
+        for (int c = 0; c < n_id; ++c) {
+          const ColDesc& d = desc[c];
+          int32_t* dst = code_buf.data() + c;
+          if (d.code) {
+            const int32_t* src = d.code + base;
+            for (int r = 0; r < tb; ++r) dst[(size_t)r * n_id] = src[r];
+          } else {
+            const int32_t* src = d.raw + base;
+            const int32_t mn = d.mn;
+            const uint32_t na_code = d.na_code;
+            for (int r = 0; r < tb; ++r) {
+              int32_t v = src[r];
+              dst[(size_t)r * n_id] = (v == NA_INTEGER)
+                ? (int32_t)na_code : (int32_t)((int64_t)v - (int64_t)mn);
             }
           }
-          for (int r = 0; r < tb; ++r) {
-            uint64_t h1; uint32_t h2;
-            hash_codes_96(code_buf.data() + (size_t)r * n_id, n_id, h1, h2);
-            hashes_h1[(size_t)(base + r)] = h1;
-            hashes_h2[(size_t)(base + r)] = h2;
-          }
         }
-        VerifyTable96 ht; ht.allocate(ht_cap);
-        uint64_t pk_h1 = ~0ull; uint32_t pk_h2 = 0; bool hp = false;
-        constexpr R_xlen_t PREFETCH_AHEAD = 32;
-        for (R_xlen_t b = 0; b < n_blocks; ++b) {
-          if (b + PREFETCH_AHEAD < n_blocks)
-            ht.prefetch(hashes_h1[(size_t)(b + PREFETCH_AHEAD)]);
-          uint64_t h1 = hashes_h1[(size_t)b];
-          uint32_t h2 = hashes_h2[(size_t)b];
-          if (hp && h1 == pk_h1 && h2 == pk_h2) continue;
-          int32_t r = ht.find_or_insert(h1, h2, n_out);
-          if (r == n_out) { first_src.push_back((int32_t)(b * period)); ++n_out; }
-          pk_h1 = h1; pk_h2 = h2; hp = true;
+        for (int r = 0; r < tb; ++r) {
+          uint64_t h1; uint32_t h2;
+          hash_codes_96(code_buf.data() + (size_t)r * n_id, n_id, h1, h2);
+          hashes_h1[(size_t)(base + r)] = h1;
+          hashes_h2[(size_t)(base + r)] = h2;
         }
+      }
+      VerifyTable96 ht; ht.allocate(ht_cap);
+      uint64_t pk_h1 = ~0ull; uint32_t pk_h2 = 0; bool hp = false;
+      constexpr R_xlen_t PREFETCH_AHEAD = 32;
+      for (R_xlen_t b = 0; b < n_blocks; ++b) {
+        if (b + PREFETCH_AHEAD < n_blocks)
+          ht.prefetch(hashes_h1[(size_t)(b + PREFETCH_AHEAD)]);
+        uint64_t h1 = hashes_h1[(size_t)b];
+        uint32_t h2 = hashes_h2[(size_t)b];
+        if (hp && h1 == pk_h1 && h2 == pk_h2) continue;
+        int32_t r = ht.find_or_insert(h1, h2, n_out);
+        if (r == n_out) { first_src.push_back((int32_t)(b * period)); ++n_out; }
+        pk_h1 = h1; pk_h2 = h2; hp = true;
+      }
+    }
+  } else {
+    row_of.assign((size_t)nlong, -1);
+    first_src.reserve((size_t)std::min<R_xlen_t>(nlong, (R_xlen_t)1 << 22));
+    bool bits_overflow = false;
+    std::vector<int> shifts(n_id);
+    {
+      int s = 0;
+      for (int j = n_id - 1; j >= 0; --j) {
+        uint32_t u = desc[j].units;
+        int b = (u <= 1) ? 1 : (int)(64 - __builtin_clzll((uint64_t)(u - 1)));
+        if (b < 1) b = 1;
+        shifts[j] = s; s += b;
+        if (s > 64) { bits_overflow = true; break; }
+      }
+      if (s > 64) bits_overflow = true;
+    }
+    if (!bits_overflow) {
+      switch (n_id) {
+      case 1: build_general_phase1(KeyFnN<1>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      case 2: build_general_phase1(KeyFnN<2>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      case 3: build_general_phase1(KeyFnN<3>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      case 4: build_general_phase1(KeyFnN<4>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      case 5: build_general_phase1(KeyFnN<5>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      case 6: build_general_phase1(KeyFnN<6>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      case 7: build_general_phase1(KeyFnN<7>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      case 8: build_general_phase1(KeyFnN<8>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      default: build_general_phase1(KeyFnDyn{desc.data(), shifts.data(), n_id}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
       }
     } else {
-      row_of.assign((size_t)nlong, -1);
-      first_src.reserve((size_t)std::min<R_xlen_t>(nlong, (R_xlen_t)1 << 22));
-      bool bits_overflow = false;
-      std::vector<int> shifts(n_id);
-      {
-        int s = 0;
-        for (int j = n_id - 1; j >= 0; --j) {
-          uint32_t u = desc[j].units;
-          int b = (u <= 1) ? 1 : (int)(64 - __builtin_clzll((uint64_t)(u - 1)));
-          if (b < 1) b = 1;
-          shifts[j] = s; s += b;
-          if (s > 64) { bits_overflow = true; break; }
+      constexpr int BATCH = 64;
+      std::unique_ptr<uint64_t[]> hashes_h1(new uint64_t[(size_t)nlong]);
+      std::unique_ptr<uint32_t[]> hashes_h2(new uint32_t[(size_t)nlong]);
+      std::vector<int32_t> code_buf((size_t)BATCH * (size_t)n_id);
+      for (R_xlen_t base = 0; base < nlong; base += BATCH) {
+        int tb = (int)std::min<R_xlen_t>((R_xlen_t)BATCH, nlong - base);
+        for (int c = 0; c < n_id; ++c) {
+          const ColDesc& d = desc[c];
+          int32_t* dst = code_buf.data() + c;
+          if (d.code) {
+            const int32_t* src = d.code + base;
+            for (int r = 0; r < tb; ++r) dst[(size_t)r * n_id] = src[r];
+          } else {
+            const int32_t* src = d.raw + base;
+            const int32_t mn = d.mn;
+            const uint32_t na_code = d.na_code;
+            for (int r = 0; r < tb; ++r) {
+              int32_t v = src[r];
+              dst[(size_t)r * n_id] = (v == NA_INTEGER)
+                ? (int32_t)na_code : (int32_t)((int64_t)v - (int64_t)mn);
+            }
+          }
         }
-        if (s > 64) bits_overflow = true;
+        for (int r = 0; r < tb; ++r) {
+          uint64_t h1; uint32_t h2;
+          hash_codes_96(code_buf.data() + (size_t)r * n_id, n_id, h1, h2);
+          hashes_h1[(size_t)(base + r)] = h1;
+          hashes_h2[(size_t)(base + r)] = h2;
+        }
       }
-      if (!bits_overflow) {
-        switch (n_id) {
-        case 1: build_general_phase1(KeyFnN<1>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        case 2: build_general_phase1(KeyFnN<2>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        case 3: build_general_phase1(KeyFnN<3>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        case 4: build_general_phase1(KeyFnN<4>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        case 5: build_general_phase1(KeyFnN<5>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        case 6: build_general_phase1(KeyFnN<6>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        case 7: build_general_phase1(KeyFnN<7>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        case 8: build_general_phase1(KeyFnN<8>{desc.data(), shifts.data()}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
-        default: build_general_phase1(KeyFnDyn{desc.data(), shifts.data(), n_id}, desc.data(), n_id, nlong, ht_cap, row_of, first_src, n_out); break;
+      VerifyTable96 ht; ht.allocate(ht_cap);
+      uint64_t pk_h1 = ~0ull; uint32_t pk_h2 = 0; bool hp = false;
+      constexpr R_xlen_t PREFETCH_AHEAD = 32;
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        if (i + PREFETCH_AHEAD < nlong)
+          ht.prefetch(hashes_h1[(size_t)(i + PREFETCH_AHEAD)]);
+        uint64_t h1 = hashes_h1[(size_t)i];
+        uint32_t h2 = hashes_h2[(size_t)i];
+        if (hp && h1 == pk_h1 && h2 == pk_h2) { row_of[(size_t)i] = n_out - 1; continue; }
+        int32_t r = ht.find_or_insert(h1, h2, n_out);
+        if (r == n_out) { first_src.push_back((int32_t)i); ++n_out; }
+        row_of[(size_t)i] = r; pk_h1 = h1; pk_h2 = h2; hp = true;
+      }
+    }
+  }
+  if (n_out == 0) stop("empty output");
+
+  // =====================================================================
+  // Phase 2: ID column output
+  // =====================================================================
+  int total_out_cols = n_id + k_out;
+  SEXP out       = PROTECT(Rf_allocVector(VECSXP, total_out_cols));
+  SEXP out_names = PROTECT(Rf_allocVector(STRSXP, total_out_cols));
+
+  const int32_t* fs = first_src.data();
+  constexpr int32_t PF2 = 16;
+  constexpr int PFJ = 4;
+
+  bool can_merge = (n_id >= 4);
+  SEXPTYPE id_t0 = (SEXPTYPE)TYPEOF(VECTOR_ELT(data, id_cols[0]));
+  if (id_t0 == VECSXP) can_merge = false;
+  if (can_merge) {
+    for (int j = 1; j < n_id; ++j) {
+      if ((SEXPTYPE)TYPEOF(VECTOR_ELT(data, id_cols[j])) != id_t0) { can_merge = false; break; }
+    }
+  }
+
+  const bool use_id_pf = (n_out <= (int32_t)4e6);
+
+  if (can_merge) {
+    std::vector<SEXP> dsts(n_id);
+    std::vector<const void*> srcs(n_id);
+    std::vector<void*> dptrs(n_id);
+    for (int j = 0; j < n_id; ++j) {
+      SEXP src = VECTOR_ELT(data, id_cols[j]);
+      SEXP dst = PROTECT(alloc_smart(id_t0, n_out));
+      Rf_copyMostAttrib(src, dst);
+      dsts[j] = dst;
+      if (id_t0 == INTSXP || id_t0 == LGLSXP) {
+        srcs[j]  = (const void*)INTEGER(src);
+        dptrs[j] = (void*)INTEGER(dst);
+      } else if (id_t0 == REALSXP) {
+        srcs[j]  = (const void*)REAL(src);
+        dptrs[j] = (void*)REAL(dst);
+      } else if (id_t0 == STRSXP) {
+        srcs[j]  = (const void*)STRING_PTR(src);
+        dptrs[j] = (void*)STRING_PTR(dst);
+      } else {
+        srcs[j]  = (const void*)DATAPTR_RO(src);
+        dptrs[j] = (void*)DATAPTR_RO(dst);
+      }
+      SET_VECTOR_ELT(out, j, dst);
+      SET_STRING_ELT(out_names, j, STRING_ELT(id_names, id_cols[j]));
+    }
+
+    if (id_t0 == INTSXP || id_t0 == LGLSXP) {
+      std::vector<const int*> s(n_id);
+      std::vector<int*> d(n_id);
+      for (int j = 0; j < n_id; ++j) { s[j] = (const int*)srcs[j]; d[j] = (int*)dptrs[j]; }
+#if defined(__AVX512F__)
+      int32_t i = 0;
+      for (; i + 16 <= n_out; i += 16) {
+        __m512i idx = _mm512_loadu_si512((const void*)&fs[i]);
+        int j = 0;
+        for (; j + 1 < n_id; j += 2) {
+          __m512i g1 = _mm512_i32gather_epi32(idx, (const void*)s[j+0], 4);
+          __m512i g2 = _mm512_i32gather_epi32(idx, (const void*)s[j+1], 4);
+          _mm512_storeu_si512((void*)&d[j+0][i], g1);
+          _mm512_storeu_si512((void*)&d[j+1][i], g2);
+        }
+        if (j < n_id) {
+          __m512i g = _mm512_i32gather_epi32(idx, (const void*)s[j], 4);
+          _mm512_storeu_si512((void*)&d[j][i], g);
+        }
+      }
+      for (; i < n_out; ++i) {
+        R_xlen_t io = (R_xlen_t)fs[i];
+        for (int jj = 0; jj < n_id; ++jj) d[jj][i] = s[jj][io];
+      }
+#else
+      if (use_id_pf) {
+        for (int32_t i = 0; i < n_out; ++i) {
+          if (i + PF2 < n_out) {
+            R_xlen_t nxt = (R_xlen_t)fs[i + PF2];
+            for (int j = 0; j < n_id; j += PFJ) __builtin_prefetch(&s[j][nxt], 0, 1);
+          }
+          R_xlen_t io = (R_xlen_t)fs[i];
+#pragma GCC unroll 4
+          for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
         }
       } else {
-        constexpr int BATCH = 64;
-        std::unique_ptr<uint64_t[]> hashes_h1(new uint64_t[(size_t)nlong]);
-        std::unique_ptr<uint32_t[]> hashes_h2(new uint32_t[(size_t)nlong]);
-        std::vector<int32_t> code_buf((size_t)BATCH * (size_t)n_id);
-        for (R_xlen_t base = 0; base < nlong; base += BATCH) {
-          int tb = (int)std::min<R_xlen_t>((R_xlen_t)BATCH, nlong - base);
-          for (int c = 0; c < n_id; ++c) {
-            const ColDesc& d = desc[c];
-            int32_t* dst = code_buf.data() + c;
-            if (d.code) {
-              const int32_t* src = d.code + base;
-              for (int r = 0; r < tb; ++r) dst[(size_t)r * n_id] = src[r];
-            } else {
-              const int32_t* src = d.raw + base;
-              const int32_t mn = d.mn;
-              const uint32_t na_code = d.na_code;
-              for (int r = 0; r < tb; ++r) {
-                int32_t v = src[r];
-                dst[(size_t)r * n_id] = (v == NA_INTEGER)
-                  ? (int32_t)na_code : (int32_t)((int64_t)v - (int64_t)mn);
-              }
-            }
-          }
-          for (int r = 0; r < tb; ++r) {
-            uint64_t h1; uint32_t h2;
-            hash_codes_96(code_buf.data() + (size_t)r * n_id, n_id, h1, h2);
-            hashes_h1[(size_t)(base + r)] = h1;
-            hashes_h2[(size_t)(base + r)] = h2;
-          }
+        for (int32_t i = 0; i < n_out; ++i) {
+          R_xlen_t io = (R_xlen_t)fs[i];
+#pragma GCC unroll 4
+          for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
         }
-        VerifyTable96 ht; ht.allocate(ht_cap);
-        uint64_t pk_h1 = ~0ull; uint32_t pk_h2 = 0; bool hp = false;
-        constexpr R_xlen_t PREFETCH_AHEAD = 32;
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          if (i + PREFETCH_AHEAD < nlong)
-            ht.prefetch(hashes_h1[(size_t)(i + PREFETCH_AHEAD)]);
-          uint64_t h1 = hashes_h1[(size_t)i];
-          uint32_t h2 = hashes_h2[(size_t)i];
-          if (hp && h1 == pk_h1 && h2 == pk_h2) { row_of[(size_t)i] = n_out - 1; continue; }
-          int32_t r = ht.find_or_insert(h1, h2, n_out);
-          if (r == n_out) { first_src.push_back((int32_t)i); ++n_out; }
-          row_of[(size_t)i] = r; pk_h1 = h1; pk_h2 = h2; hp = true;
+      }
+#endif
+    } else if (id_t0 == REALSXP) {
+      std::vector<const double*> s(n_id);
+      std::vector<double*> d(n_id);
+      for (int j = 0; j < n_id; ++j) { s[j] = (const double*)srcs[j]; d[j] = (double*)dptrs[j]; }
+#if defined(__AVX512F__)
+      int32_t i = 0;
+      for (; i + 8 <= n_out; i += 8) {
+        __m256i idx = _mm256_loadu_si256((const __m256i*)&fs[i]);
+        int j = 0;
+        for (; j + 1 < n_id; j += 2) {
+          __m512d g1 = _mm512_i32gather_pd(idx, (const void*)s[j+0], 8);
+          __m512d g2 = _mm512_i32gather_pd(idx, (const void*)s[j+1], 8);
+          _mm512_storeu_pd(&d[j+0][i], g1);
+          _mm512_storeu_pd(&d[j+1][i], g2);
+        }
+        if (j < n_id) {
+          __m512d g = _mm512_i32gather_pd(idx, (const void*)s[j], 8);
+          _mm512_storeu_pd(&d[j][i], g);
+        }
+      }
+      for (; i < n_out; ++i) {
+        R_xlen_t io = (R_xlen_t)fs[i];
+        for (int jj = 0; jj < n_id; ++jj) d[jj][i] = s[jj][io];
+      }
+#else
+      if (use_id_pf) {
+        for (int32_t i = 0; i < n_out; ++i) {
+          if (i + PF2 < n_out) {
+            R_xlen_t nxt = (R_xlen_t)fs[i + PF2];
+            for (int j = 0; j < n_id; j += PFJ) __builtin_prefetch(&s[j][nxt], 0, 1);
+          }
+          R_xlen_t io = (R_xlen_t)fs[i];
+#pragma GCC unroll 4
+          for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
+        }
+      } else {
+        for (int32_t i = 0; i < n_out; ++i) {
+          R_xlen_t io = (R_xlen_t)fs[i];
+#pragma GCC unroll 4
+          for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
+        }
+      }
+#endif
+    } else if (id_t0 == STRSXP) {
+      std::vector<const SEXP*> s(n_id);
+      std::vector<SEXP*> d(n_id);
+      for (int j = 0; j < n_id; ++j) { s[j] = (const SEXP*)srcs[j]; d[j] = (SEXP*)dptrs[j]; }
+      if (use_id_pf) {
+        for (int32_t i = 0; i < n_out; ++i) {
+          if (i + PF2 < n_out) {
+            R_xlen_t nxt = (R_xlen_t)fs[i + PF2];
+            for (int j = 0; j < n_id; j += PFJ) __builtin_prefetch(&s[j][nxt], 0, 1);
+          }
+          R_xlen_t io = (R_xlen_t)fs[i];
+#pragma GCC unroll 4
+          for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
+        }
+      } else {
+        for (int32_t i = 0; i < n_out; ++i) {
+          R_xlen_t io = (R_xlen_t)fs[i];
+#pragma GCC unroll 4
+          for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
         }
       }
     }
-    if (n_out == 0) stop("empty output");
-
-    // =====================================================================
-    // Phase 2: ID column output
-    // =====================================================================
-    int total_out_cols = n_id + k_out;
-    SEXP out       = PROTECT(Rf_allocVector(VECSXP, total_out_cols));
-    SEXP out_names = PROTECT(Rf_allocVector(STRSXP, total_out_cols));
-
-    const int32_t* fs = first_src.data();
-    constexpr int32_t PF2 = 16;
-    constexpr int PFJ = 4;
-
-    bool can_merge = (n_id >= 4);
-    SEXPTYPE id_t0 = (SEXPTYPE)TYPEOF(VECTOR_ELT(data, id_cols[0]));
-    if (id_t0 == VECSXP) can_merge = false;
-    if (can_merge) {
-      for (int j = 1; j < n_id; ++j) {
-        if ((SEXPTYPE)TYPEOF(VECTOR_ELT(data, id_cols[j])) != id_t0) { can_merge = false; break; }
-      }
-    }
-
-    const bool use_id_pf = (n_out <= (int32_t)4e6);
-
-    if (can_merge) {
-      std::vector<SEXP> dsts(n_id);
-      std::vector<const void*> srcs(n_id);
-      std::vector<void*> dptrs(n_id);
-      for (int j = 0; j < n_id; ++j) {
-        SEXP src = VECTOR_ELT(data, id_cols[j]);
-        SEXP dst = PROTECT(alloc_smart(id_t0, n_out));
-        Rf_copyMostAttrib(src, dst);
-        dsts[j] = dst;
-        srcs[j] = DATAPTR(src);
-        dptrs[j] = DATAPTR(dst);
-        SET_VECTOR_ELT(out, j, dst);
-        SET_STRING_ELT(out_names, j, STRING_ELT(id_names, id_cols[j]));
-      }
-
-      if (id_t0 == INTSXP || id_t0 == LGLSXP) {
-        std::vector<const int*> s(n_id);
-        std::vector<int*> d(n_id);
-        for (int j = 0; j < n_id; ++j) { s[j] = (const int*)srcs[j]; d[j] = (int*)dptrs[j]; }
-#if defined(__AVX512F__)
-        // ============================================================
-        // v3.13: 修复双路 gather 的 j 未重置 bug
-        // ============================================================
-        int32_t i = 0;
-        for (; i + 16 <= n_out; i += 16) {
-          __m512i idx = _mm512_loadu_si512((const void*)&fs[i]);
-          int j = 0;
-          for (; j + 1 < n_id; j += 2) {
-            __m512i g1 = _mm512_i32gather_epi32(idx, (const void*)s[j+0], 4);
-            __m512i g2 = _mm512_i32gather_epi32(idx, (const void*)s[j+1], 4);
-            _mm512_storeu_si512((void*)&d[j+0][i], g1);
-            _mm512_storeu_si512((void*)&d[j+1][i], g2);
-          }
-          if (j < n_id) {
-            __m512i g = _mm512_i32gather_epi32(idx, (const void*)s[j], 4);
-            _mm512_storeu_si512((void*)&d[j][i], g);
-          }
-        }
-        for (; i < n_out; ++i) {
-          R_xlen_t io = (R_xlen_t)fs[i];
-          for (int jj = 0; jj < n_id; ++jj) d[jj][i] = s[jj][io];
-        }
-#else
+    UNPROTECT(n_id);
+  } else {
+    for (int j = 0; j < n_id; ++j) {
+      int src_idx = id_cols[j];
+      SEXP src = VECTOR_ELT(data, src_idx);
+      SEXPTYPE t = TYPEOF(src);
+      SEXP dst = PROTECT(alloc_smart(t, n_out));
+      Rf_copyMostAttrib(src, dst);
+      switch (t) {
+      case INTSXP: {
+        int* d = INTEGER(dst); const int* s = INTEGER(src);
         if (use_id_pf) {
           for (int32_t i = 0; i < n_out; ++i) {
-            if (i + PF2 < n_out) {
-              R_xlen_t nxt = (R_xlen_t)fs[i + PF2];
-              for (int j = 0; j < n_id; j += PFJ) __builtin_prefetch(&s[j][nxt], 0, 1);
-            }
-            R_xlen_t io = (R_xlen_t)fs[i];
-#pragma GCC unroll 4
-            for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
+            if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
+            d[i] = s[fs[i]];
           }
         } else {
-          for (int32_t i = 0; i < n_out; ++i) {
-            R_xlen_t io = (R_xlen_t)fs[i];
-#pragma GCC unroll 4
-            for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
-          }
-        }
-#endif
-      } else if (id_t0 == REALSXP) {
-        std::vector<const double*> s(n_id);
-        std::vector<double*> d(n_id);
-        for (int j = 0; j < n_id; ++j) { s[j] = (const double*)srcs[j]; d[j] = (double*)dptrs[j]; }
-#if defined(__AVX512F__)
-        int32_t i = 0;
-        for (; i + 8 <= n_out; i += 8) {
-          __m256i idx = _mm256_loadu_si256((const __m256i*)&fs[i]);
-          int j = 0;
-          for (; j + 1 < n_id; j += 2) {
-            __m512d g1 = _mm512_i32gather_pd(idx, (const void*)s[j+0], 8);
-            __m512d g2 = _mm512_i32gather_pd(idx, (const void*)s[j+1], 8);
-            _mm512_storeu_pd(&d[j+0][i], g1);
-            _mm512_storeu_pd(&d[j+1][i], g2);
-          }
-          if (j < n_id) {
-            __m512d g = _mm512_i32gather_pd(idx, (const void*)s[j], 8);
-            _mm512_storeu_pd(&d[j][i], g);
-          }
-        }
-        for (; i < n_out; ++i) {
-          R_xlen_t io = (R_xlen_t)fs[i];
-          for (int jj = 0; jj < n_id; ++jj) d[jj][i] = s[jj][io];
-        }
-#else
-        if (use_id_pf) {
-          for (int32_t i = 0; i < n_out; ++i) {
-            if (i + PF2 < n_out) {
-              R_xlen_t nxt = (R_xlen_t)fs[i + PF2];
-              for (int j = 0; j < n_id; j += PFJ) __builtin_prefetch(&s[j][nxt], 0, 1);
-            }
-            R_xlen_t io = (R_xlen_t)fs[i];
-#pragma GCC unroll 4
-            for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
-          }
-        } else {
-          for (int32_t i = 0; i < n_out; ++i) {
-            R_xlen_t io = (R_xlen_t)fs[i];
-#pragma GCC unroll 4
-            for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
-          }
-        }
-#endif
-      } else if (id_t0 == STRSXP) {
-        std::vector<const SEXP*> s(n_id);
-        std::vector<SEXP*> d(n_id);
-        for (int j = 0; j < n_id; ++j) { s[j] = (const SEXP*)srcs[j]; d[j] = (SEXP*)dptrs[j]; }
-        if (use_id_pf) {
-          for (int32_t i = 0; i < n_out; ++i) {
-            if (i + PF2 < n_out) {
-              R_xlen_t nxt = (R_xlen_t)fs[i + PF2];
-              for (int j = 0; j < n_id; j += PFJ) __builtin_prefetch(&s[j][nxt], 0, 1);
-            }
-            R_xlen_t io = (R_xlen_t)fs[i];
-#pragma GCC unroll 4
-            for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
-          }
-        } else {
-          for (int32_t i = 0; i < n_out; ++i) {
-            R_xlen_t io = (R_xlen_t)fs[i];
-#pragma GCC unroll 4
-            for (int j = 0; j < n_id; ++j) d[j][i] = s[j][io];
-          }
-        }
-      }
-      UNPROTECT(n_id);
-    } else {
-      for (int j = 0; j < n_id; ++j) {
-        int src_idx = id_cols[j];
-        SEXP src = VECTOR_ELT(data, src_idx);
-        SEXPTYPE t = TYPEOF(src);
-        SEXP dst = PROTECT(alloc_smart(t, n_out));
-        Rf_copyMostAttrib(src, dst);
-        switch (t) {
-        case INTSXP: {
-          int* d = INTEGER(dst); const int* s = INTEGER(src);
-          if (use_id_pf) {
-            for (int32_t i = 0; i < n_out; ++i) {
-              if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
-              d[i] = s[fs[i]];
-            }
-          } else {
-            for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
-          }
-          break;
-        }
-        case LGLSXP: {
-          int* d = LOGICAL(dst); const int* s = LOGICAL(src);
-          if (use_id_pf) {
-            for (int32_t i = 0; i < n_out; ++i) {
-              if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
-              d[i] = s[fs[i]];
-            }
-          } else {
-            for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
-          }
-          break;
-        }
-        case REALSXP: {
-          double* d = REAL(dst); const double* s = REAL(src);
-          if (use_id_pf) {
-            for (int32_t i = 0; i < n_out; ++i) {
-              if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
-              d[i] = s[fs[i]];
-            }
-          } else {
-            for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
-          }
-          break;
-        }
-        case STRSXP: {
-          const SEXP* s = (const SEXP*)DATAPTR(src);
-          SEXP* d = (SEXP*)DATAPTR(dst);
-          if (use_id_pf) {
-            for (int32_t i = 0; i < n_out; ++i) {
-              if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
-              d[i] = s[fs[i]];
-            }
-          } else {
-            for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
-          }
-          break;
-        }
-        case VECSXP: {
-          const SEXP* s = (const SEXP*)DATAPTR(src);
-          SEXP* d = (SEXP*)DATAPTR(dst);
           for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
-          break;
         }
-        default: stop("unsupported id column type");
+        break;
+      }
+      case LGLSXP: {
+        int* d = LOGICAL(dst); const int* s = LOGICAL(src);
+        if (use_id_pf) {
+          for (int32_t i = 0; i < n_out; ++i) {
+            if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
+            d[i] = s[fs[i]];
+          }
+        } else {
+          for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
         }
-        SET_VECTOR_ELT(out, j, dst);
-        SET_STRING_ELT(out_names, j, STRING_ELT(id_names, src_idx));
-        UNPROTECT(1);
+        break;
       }
-    }
-
-    SEXPTYPE val_type = TYPEOF(val_col);
-    if (val_type != REALSXP && val_type != INTSXP && val_type != LGLSXP)
-      stop("dcast_cpp only supports numeric/logical value columns");
-
-    const bool dense = ((R_xlen_t)n_out * (R_xlen_t)k_out == nlong);
-
-    // =====================================================================
-    // Phase 3
-    // =====================================================================
-    std::vector<double*> out_val((size_t)k_out);
-    {
-      for (int k = 0; k < k_out; ++k) {
-        SEXP vc = PROTECT(alloc_smart(REALSXP, n_out));
-        out_val[(size_t)k] = REAL(vc);
-        SET_VECTOR_ELT(out, n_id + k, vc);
-        SET_STRING_ELT(out_names, n_id + k, Rf_mkChar(col_keys[(size_t)k].c_str()));
-        UNPROTECT(1);
+      case REALSXP: {
+        double* d = REAL(dst); const double* s = REAL(src);
+        if (use_id_pf) {
+          for (int32_t i = 0; i < n_out; ++i) {
+            if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
+            d[i] = s[fs[i]];
+          }
+        } else {
+          for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
+        }
+        break;
       }
+      case STRSXP: {
+        const SEXP* s = STRING_PTR(src);
+        SEXP* d = STRING_PTR(dst);
+        if (use_id_pf) {
+          for (int32_t i = 0; i < n_out; ++i) {
+            if (i + PF2 < n_out) __builtin_prefetch(&s[(R_xlen_t)fs[i + PF2]], 0, 1);
+            d[i] = s[fs[i]];
+          }
+        } else {
+          for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
+        }
+        break;
+      }
+      case VECSXP: {
+        const SEXP* s = (const SEXP*)DATAPTR_RO(src);
+        SEXP* d = (SEXP*)DATAPTR_RO(dst);
+        for (int32_t i = 0; i < n_out; ++i) d[i] = s[fs[i]];
+        break;
+      }
+      default: stop("unsupported id column type");
+      }
+      SET_VECTOR_ELT(out, j, dst);
+      SET_STRING_ELT(out_names, j, STRING_ELT(id_names, src_idx));
+      UNPROTECT(1);
     }
+  }
 
-    const double* vs = (val_type == REALSXP) ? REAL(val_col) : nullptr;
-    const int*    vi = (val_type == INTSXP)  ? INTEGER(val_col) : nullptr;
-    const int*    vl = (val_type == LGLSXP)  ? LOGICAL(val_col) : nullptr;
+  SEXPTYPE val_type = TYPEOF(val_col);
+  if (val_type != REALSXP && val_type != INTSXP && val_type != LGLSXP)
+    stop("dcast_cpp only supports numeric/logical value columns");
 
-#if defined(__AVX512F__)
-    bool nt_store_ok = false;
-    if (n_out * 8 >= (R_xlen_t)(64 * 1024 * 1024) && k_out >= 1) {
-      nt_store_ok = (((uintptr_t)out_val[0] & 63) == 0);
+  const bool dense = ((R_xlen_t)n_out * (R_xlen_t)k_out == nlong);
+
+  // =====================================================================
+  // Phase 3
+  // =====================================================================
+  std::vector<double*> out_val((size_t)k_out);
+  {
+    for (int k = 0; k < k_out; ++k) {
+      SEXP vc = PROTECT(alloc_smart(REALSXP, n_out));
+      out_val[(size_t)k] = REAL(vc);
+      SET_VECTOR_ELT(out, n_id + k, vc);
+      SET_STRING_ELT(out_names, n_id + k, Rf_mkChar(col_keys[(size_t)k].c_str()));
+      UNPROTECT(1);
     }
-#endif
+  }
 
-    // =====================================================================
-    // Phase 4: 16 行 tile + 无补零 (mask store 处理尾部)
-    // =====================================================================
-    if (block_path) {
-      R_xlen_t n_blocks = (R_xlen_t)n_out;
-      const int kk = (int)k_out;
-      const int period_i = (int)period;
-      const bool merged_direct = dense && !na_rm && !use_fill;
+  const double* vs = (val_type == REALSXP) ? REAL(val_col) : nullptr;
+  const int*    vi = (val_type == INTSXP)  ? INTEGER(val_col) : nullptr;
+  const int*    vl = (val_type == LGLSXP)  ? LOGICAL(val_col) : nullptr;
 
-      if (merged_direct && val_type == REALSXP) {
+  // =====================================================================
+  // Phase 4
+  // =====================================================================
+  if (block_path) {
+    R_xlen_t n_blocks = (R_xlen_t)n_out;
+    const int kk = (int)k_out;
+    const int period_i = (int)period;
+    const bool merged_direct = dense && !na_rm && !use_fill;
+
+    if (merged_direct && val_type == REALSXP) {
 #if defined(__AVX512F__)
-        if (period_i >= 8 && period_i <= 128) {
-          const int period_pad = ((period_i + 7) / 8) * 8;
-          constexpr int TR = 16;
-          const R_xlen_t bs_limit16 = (n_blocks >= TR) ? (n_blocks - TR) : (R_xlen_t)-1;
+      if (period_i >= 8 && period_i <= 128) {
+        const int period_pad = ((period_i + 7) / 8) * 8;
+        constexpr int TR = 16;
+        const R_xlen_t bs_limit16 = (n_blocks >= TR) ? (n_blocks - TR) : (R_xlen_t)-1;
 
 #ifdef _OPENMP
 #pragma omp parallel num_threads(actual_threads) if(use_parallel)
@@ -1545,16 +1442,6 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
       if (period_i * 8 > 64)  _mm_prefetch(p + 64,  _MM_HINT_T0);
       if (period_i * 8 > 128) _mm_prefetch(p + 128, _MM_HINT_T0);
       if (period_i * 8 > 192) _mm_prefetch(p + 192, _MM_HINT_T0);
-    }
-    {
-      constexpr R_xlen_t AHEAD = 4;
-      R_xlen_t pf_base = bs + AHEAD * TR;
-      if (pf_base + TR - 1 <= bs_limit16) {
-        for (int t = 0; t < TR; ++t) {
-          R_xlen_t io = (R_xlen_t)first_src[(size_t)(pf_base + t)];
-          _mm_prefetch((const char*)(vs + io), _MM_HINT_T1);
-        }
-      }
     }
     for (int t = 0; t < TR; ++t) {
       R_xlen_t io = (R_xlen_t)first_src[(size_t)(bs + t)];
@@ -1606,52 +1493,18 @@ for (R_xlen_t bs = bs_tail; bs < n_blocks; ++bs) {
   const double* row = vs + (R_xlen_t)first_src[(size_t)bs];
   for (int k = 0; k < kk; ++k) out_val[(size_t)k][bs] = row[k];
 }
-if (nt_store_ok) _mm_sfence();
-        } else {
-          for (R_xlen_t bs = 0; bs < n_blocks; ++bs) {
-            const double* row = vs + (R_xlen_t)first_src[(size_t)bs];
-            for (int k = 0; k < kk; ++k) out_val[(size_t)k][bs] = row[k];
-          }
-        }
-#else
+      } else {
         for (R_xlen_t bs = 0; bs < n_blocks; ++bs) {
           const double* row = vs + (R_xlen_t)first_src[(size_t)bs];
           for (int k = 0; k < kk; ++k) out_val[(size_t)k][bs] = row[k];
         }
-#endif
-      } else {
-        bool need_fill = (!dense) || na_rm;
-        double fv = use_fill ? fill_val : NA_REAL;
-        if (need_fill) {
-          for (int k = 0; k < k_out; ++k)
-            fill_double_ptr(out_val[(size_t)k], fv, (size_t)n_out);
-        }
-        for (R_xlen_t bs = 0; bs < n_blocks; ++bs) {
-          R_xlen_t io = (R_xlen_t)first_src[(size_t)bs];
-          if (val_type == REALSXP) {
-            const double* s = vs + io;
-            for (int k = 0; k < kk; ++k) {
-              double v = s[k];
-              if (na_rm && ISNAN(v)) continue;
-              out_val[(size_t)k][bs] = v;
-            }
-          } else if (val_type == INTSXP) {
-            const int* s = vi + io;
-            for (int k = 0; k < kk; ++k) {
-              int v = s[k];
-              if (na_rm && v == NA_INTEGER) continue;
-              out_val[(size_t)k][bs] = (v == NA_INTEGER) ? NA_REAL : (double)v;
-            }
-          } else {
-            const int* s = vl + io;
-            for (int k = 0; k < kk; ++k) {
-              int v = s[k];
-              if (na_rm && v == NA_LOGICAL) continue;
-              out_val[(size_t)k][bs] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
-            }
-          }
-        }
       }
+#else
+      for (R_xlen_t bs = 0; bs < n_blocks; ++bs) {
+        const double* row = vs + (R_xlen_t)first_src[(size_t)bs];
+        for (int k = 0; k < kk; ++k) out_val[(size_t)k][bs] = row[k];
+      }
+#endif
     } else {
       bool need_fill = (!dense) || na_rm;
       double fv = use_fill ? fill_val : NA_REAL;
@@ -1659,51 +1512,84 @@ if (nt_store_ok) _mm_sfence();
         for (int k = 0; k < k_out; ++k)
           fill_double_ptr(out_val[(size_t)k], fv, (size_t)n_out);
       }
-      const int32_t* rp = row_of.data();
-      const int32_t* cp = col_of.data();
-      if (val_type == REALSXP) {
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static) num_threads(actual_threads) if(use_parallel)
-#endif
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          double v = vs[i];
-          if (na_rm && ISNAN(v)) continue;
-          out_val[(size_t)cp[i]][rp[i]] = v;
-        }
-      } else if (val_type == INTSXP) {
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static) num_threads(actual_threads) if(use_parallel)
-#endif
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          int v = vi[i];
-          if (na_rm && v == NA_INTEGER) continue;
-          out_val[(size_t)cp[i]][rp[i]] = (v == NA_INTEGER) ? NA_REAL : (double)v;
-        }
-      } else {
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static) num_threads(actual_threads) if(use_parallel)
-#endif
-        for (R_xlen_t i = 0; i < nlong; ++i) {
-          int v = vl[i];
-          if (na_rm && v == NA_LOGICAL) continue;
-          out_val[(size_t)cp[i]][rp[i]] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
+      for (R_xlen_t bs = 0; bs < n_blocks; ++bs) {
+        R_xlen_t io = (R_xlen_t)first_src[(size_t)bs];
+        if (val_type == REALSXP) {
+          const double* s = vs + io;
+          for (int k = 0; k < kk; ++k) {
+            double v = s[k];
+            if (na_rm && ISNAN(v)) continue;
+            out_val[(size_t)k][bs] = v;
+          }
+        } else if (val_type == INTSXP) {
+          const int* s = vi + io;
+          for (int k = 0; k < kk; ++k) {
+            int v = s[k];
+            if (na_rm && v == NA_INTEGER) continue;
+            out_val[(size_t)k][bs] = (v == NA_INTEGER) ? NA_REAL : (double)v;
+          }
+        } else {
+          const int* s = vl + io;
+          for (int k = 0; k < kk; ++k) {
+            int v = s[k];
+            if (na_rm && v == NA_LOGICAL) continue;
+            out_val[(size_t)k][bs] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
+          }
         }
       }
     }
-
-    // =====================================================================
-    // Phase 5
-    // =====================================================================
-    Rf_setAttrib(out, R_NamesSymbol, out_names);
-    {
-      SEXP rn = PROTECT(Rf_allocVector(INTSXP, 2));
-      INTEGER(rn)[0] = NA_INTEGER;
-      INTEGER(rn)[1] = -n_out;
-      Rf_setAttrib(out, R_RowNamesSymbol, rn);
-      UNPROTECT(1);
+  } else {
+    bool need_fill = (!dense) || na_rm;
+    double fv = use_fill ? fill_val : NA_REAL;
+    if (need_fill) {
+      for (int k = 0; k < k_out; ++k)
+        fill_double_ptr(out_val[(size_t)k], fv, (size_t)n_out);
     }
-    Rf_setAttrib(out, R_ClassSymbol, Rf_mkString("data.frame"));
+    const int32_t* rp = row_of.data();
+    const int32_t* cp = col_of.data();
+    if (val_type == REALSXP) {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) num_threads(actual_threads) if(use_parallel)
+#endif
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        double v = vs[i];
+        if (na_rm && ISNAN(v)) continue;
+        out_val[(size_t)cp[i]][rp[i]] = v;
+      }
+    } else if (val_type == INTSXP) {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) num_threads(actual_threads) if(use_parallel)
+#endif
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        int v = vi[i];
+        if (na_rm && v == NA_INTEGER) continue;
+        out_val[(size_t)cp[i]][rp[i]] = (v == NA_INTEGER) ? NA_REAL : (double)v;
+      }
+    } else {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) num_threads(actual_threads) if(use_parallel)
+#endif
+      for (R_xlen_t i = 0; i < nlong; ++i) {
+        int v = vl[i];
+        if (na_rm && v == NA_LOGICAL) continue;
+        out_val[(size_t)cp[i]][rp[i]] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
+      }
+    }
+  }
 
-    UNPROTECT(2);
-    return out;
+  // =====================================================================
+  // Phase 5
+  // =====================================================================
+  Rf_setAttrib(out, R_NamesSymbol, out_names);
+  {
+    SEXP rn = PROTECT(Rf_allocVector(INTSXP, 2));
+    INTEGER(rn)[0] = NA_INTEGER;
+    INTEGER(rn)[1] = -n_out;
+    Rf_setAttrib(out, R_RowNamesSymbol, rn);
+    UNPROTECT(1);
+  }
+  Rf_setAttrib(out, R_ClassSymbol, Rf_mkString("data.frame"));
+
+  UNPROTECT(2);
+  return out;
 }

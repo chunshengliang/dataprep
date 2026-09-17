@@ -1,4 +1,4 @@
-# dataprep 0.1.6
+# dataprep 0.1.7
 
 ## Upgrading from 0.1.5? Read this first
 
@@ -18,7 +18,7 @@ quantified comparison below before upgrading.
 
 3. **`optisolu()` no longer crashes with `cores > 16`.** The 0.1.5
    `parallel::makeCluster()` path exhausted memory when the worker
-   processes each received a full copy of the input. The 0.1.6
+   processes each received a full copy of the input. The 0.1.7
    implementation shares read-only data across workers, so
    `cores = 64` and `cores = NULL` (automatic) are both safe.
 
@@ -28,7 +28,7 @@ On SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels,
 10-minute sampling), running the same pipeline with the same
 parameters:
 
-| Stage | 0.1.5 | 0.1.6 | Δ |
+| Stage | 0.1.5 | 0.1.7 | Δ |
 |---|---|---|---|
 | `varidele` | 25 columns deleted | 25 columns deleted | 0 |
 | `obsedele` | 1,494 rows deleted | 1,496 rows deleted | +2 |
@@ -45,7 +45,7 @@ and minimal reproductions of both changes.
 
 ## Performance summary
 
-### Cleaning pipeline (dataprep 0.1.5 → 0.1.6)
+### Cleaning pipeline (dataprep 0.1.5 → 0.1.7)
 
 | Function | 500 rows | 7,640 rows | 49,422 rows |
 |---|---|---|---|
@@ -58,7 +58,7 @@ and minimal reproductions of both changes.
 > **Note on `optisolu` cores.** The 0.1.5 implementation could
 > crash when `cores > 16`. The benchmark above used
 > `cores = 16` for both versions to keep the comparison fair.
-> 0.1.6 shares read-only data across workers and accepts
+> 0.1.7 shares read-only data across workers and accepts
 > `cores = 64` safely, so the practical speed-up on a many-core
 > host is **larger** than the table above.
 
@@ -106,7 +106,7 @@ shipped under `inst/`.
 
 ### `obsedele()` semantics
 
-The 0.1.6 C++ backend (`obsedele_cpp`) implements the retention
+The 0.1.7 C++ backend (`obsedele_cpp`) implements the retention
 criterion with an **anchor-based scan**: for each missing value and
 each selected column, the time distance to the nearest non-missing
 anchor on the left and on the right is computed directly. A row is
@@ -127,7 +127,7 @@ in 0.1.0 and the `rleid`-based criterion used in 0.1.5, but:
 
 The 0.1.5 `parallel::makeCluster()` path gave each worker a full
 copy of the input. With `cores > 16` and large data this exhausted
-memory and aborted the R session. The 0.1.6 implementation shares
+memory and aborted the R session. The 0.1.7 implementation shares
 read-only data across workers and accepts up to 64 cores safely.
 
 ### `melt()` `major` argument
@@ -253,7 +253,7 @@ Seven vignettes ship with the package:
   the four cleaning steps.
 * `vignette("dataprep-performance")` — full benchmark tables and
   8-engine consistency checks.
-* `vignette("dataprep-migration")` — 0.1.5 → 0.1.6 upgrade guide.
+* `vignette("dataprep-migration")` — 0.1.5 → 0.1.7 upgrade guide.
 * `vignette("dataprep-workflow")` — leakage-free preprocessing
   with `prep_fit()` / `prep_transform()`.
 * `vignette("dataprep-melt-dcast")` — fast reshaping usage and
@@ -279,12 +279,6 @@ Seven vignettes ship with the package:
 
 ## Environment variables (optional)
 
-* `DATAPREP_HUGEPAGE` = `none` (default) | `2mb` | `1gb`
-  controls the hugepage mode of the C++ allocator used by
-  [`melt()`](reference/melt.html) and
-  [`dcast()`](reference/dcast.html).
-* `DATAPREP_POPULATE` = `1` pre-populates memory with
-  `MADV_POPULATE_WRITE` to reduce first-touch latency.
 * `DATAPREP_RUN_BENCHMARK` = `1` enables the shipped benchmark
   scripts. They are disabled by default so that `R CMD check`
   does not execute them.
