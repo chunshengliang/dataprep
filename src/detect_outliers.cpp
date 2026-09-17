@@ -1,3 +1,4 @@
+// [[Rcpp::plugins(openmp)]]
 // ==================== detect_outliers.cpp ====================
 #include <Rcpp.h>
 #include <vector>

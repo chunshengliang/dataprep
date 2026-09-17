@@ -23,9 +23,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// condextr_all_cpp
-LogicalVector condextr_all_cpp(NumericVector time_sec, IntegerVector group_int, NumericMatrix x, double step_sec, double half, double threshold_sec, double top, double toperr, double topmag, double bottom, double boterr, double botmag, int interval, int times, int n_threads);
-RcppExport SEXP _dataprep_condextr_all_cpp(SEXP time_secSEXP, SEXP group_intSEXP, SEXP xSEXP, SEXP step_secSEXP, SEXP halfSEXP, SEXP threshold_secSEXP, SEXP topSEXP, SEXP toperrSEXP, SEXP topmagSEXP, SEXP bottomSEXP, SEXP boterrSEXP, SEXP botmagSEXP, SEXP intervalSEXP, SEXP timesSEXP, SEXP n_threadsSEXP) {
+// condextr_cpp
+List condextr_cpp(NumericVector time_sec, IntegerVector group_int, NumericMatrix x, double step_sec, double half, double threshold_sec, double top, double toperr, double topmag, double bottom, double boterr, double botmag, int interval, int times, int n_threads);
+RcppExport SEXP _dataprep_condextr_cpp(SEXP time_secSEXP, SEXP group_intSEXP, SEXP xSEXP, SEXP step_secSEXP, SEXP halfSEXP, SEXP threshold_secSEXP, SEXP topSEXP, SEXP toperrSEXP, SEXP topmagSEXP, SEXP bottomSEXP, SEXP boterrSEXP, SEXP botmagSEXP, SEXP intervalSEXP, SEXP timesSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -44,7 +44,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type interval(intervalSEXP);
     Rcpp::traits::input_parameter< int >::type times(timesSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(condextr_all_cpp(time_sec, group_int, x, step_sec, half, threshold_sec, top, toperr, topmag, bottom, boterr, botmag, interval, times, n_threads));
+    rcpp_result_gen = Rcpp::wrap(condextr_cpp(time_sec, group_int, x, step_sec, half, threshold_sec, top, toperr, topmag, bottom, boterr, botmag, interval, times, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -244,8 +244,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // melt_cpp
-SEXP melt_cpp(SEXP df, SEXP id, SEXP variable_name, SEXP value_name, SEXP major, int n_threads);
-RcppExport SEXP _dataprep_melt_cpp(SEXP dfSEXP, SEXP idSEXP, SEXP variable_nameSEXP, SEXP value_nameSEXP, SEXP majorSEXP, SEXP n_threadsSEXP) {
+SEXP melt_cpp(SEXP df, SEXP id, SEXP variable_name, SEXP value_name, SEXP major, int n_threads, bool na_rm);
+RcppExport SEXP _dataprep_melt_cpp(SEXP dfSEXP, SEXP idSEXP, SEXP variable_nameSEXP, SEXP value_nameSEXP, SEXP majorSEXP, SEXP n_threadsSEXP, SEXP na_rmSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -255,7 +255,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type value_name(value_nameSEXP);
     Rcpp::traits::input_parameter< SEXP >::type major(majorSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(melt_cpp(df, id, variable_name, value_name, major, n_threads));
+    Rcpp::traits::input_parameter< bool >::type na_rm(na_rmSEXP);
+    rcpp_result_gen = Rcpp::wrap(melt_cpp(df, id, variable_name, value_name, major, n_threads, na_rm));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -402,7 +403,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_dataprep_bin_data_cpp", (DL_FUNC) &_dataprep_bin_data_cpp, 3},
-    {"_dataprep_condextr_all_cpp", (DL_FUNC) &_dataprep_condextr_all_cpp, 15},
+    {"_dataprep_condextr_cpp", (DL_FUNC) &_dataprep_condextr_cpp, 15},
     {"_dataprep_create_lags_cpp", (DL_FUNC) &_dataprep_create_lags_cpp, 4},
     {"_dataprep_dcast_cpp", (DL_FUNC) &_dataprep_dcast_cpp, 8},
     {"_dataprep_desc_stats_cpp", (DL_FUNC) &_dataprep_desc_stats_cpp, 3},
@@ -417,7 +418,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dataprep_log_returns_cpp", (DL_FUNC) &_dataprep_log_returns_cpp, 1},
     {"_dataprep_mark_outliers_cpp", (DL_FUNC) &_dataprep_mark_outliers_cpp, 8},
     {"_dataprep_mark_outliers_matrix_cpp", (DL_FUNC) &_dataprep_mark_outliers_matrix_cpp, 9},
-    {"_dataprep_melt_cpp", (DL_FUNC) &_dataprep_melt_cpp, 6},
+    {"_dataprep_melt_cpp", (DL_FUNC) &_dataprep_melt_cpp, 7},
     {"_dataprep_na_frac_cpp", (DL_FUNC) &_dataprep_na_frac_cpp, 1},
     {"_dataprep_na_runs_cpp", (DL_FUNC) &_dataprep_na_runs_cpp, 1},
     {"_dataprep_obsedele_cpp", (DL_FUNC) &_dataprep_obsedele_cpp, 7},

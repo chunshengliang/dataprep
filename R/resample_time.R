@@ -19,7 +19,7 @@ resample_time <- function(data, cols = NULL, date_col = NULL,
     stop("resample_time requires a data frame with a time column")
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
   check_numeric_cols(data, idx)
 
   date_info <- resolve_date_col(data, date_col)

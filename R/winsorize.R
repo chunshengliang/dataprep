@@ -1,12 +1,11 @@
 #' Winsorize extreme values
 #' @param data A data frame, matrix, or numeric vector.
-#' @param cols Columns to winsorize.
+#' @param cols Columns to winsorize. If \code{NULL}, all numeric columns are used.
 #' @param top,bottom Quantile thresholds.
 #' @param group Optional grouping column.
 #' @param verbose Logical.
 #' @return A data frame or vector with capped values.
 #' @export
-#' @noRd
 winsorize <- function(data, cols = NULL, top = 0.995, bottom = 0.0025,
                       group = NULL, verbose = FALSE) {
   t0 <- Sys.time()
@@ -20,7 +19,8 @@ winsorize <- function(data, cols = NULL, top = 0.995, bottom = 0.0025,
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
   check_numeric_cols(data, idx)
 
   if (is.null(group)) {

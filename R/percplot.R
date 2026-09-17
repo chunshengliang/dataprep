@@ -15,7 +15,7 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
                      verbose = FALSE) {
   t0 <- Sys.time()
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
   group_idx <- NULL
   if (!is.null(group)) {
     if (is.character(group)) {
@@ -61,14 +61,16 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
 
   x_log <- FALSE
   if (is_numeric_names) {
-    num_names <- as.numeric(meas_names)
-    if (num_xaxis == "auto") {
+    num_names <- suppressWarnings(as.numeric(meas_names))
+    if (num_xaxis == "auto" && all(is.finite(num_names)) && all(num_names > 0)) {
       d <- diff(log(num_names))
       cond1 <- length(unique(signif(d, 2))) < length(num_names) / 10
       data_range <- range(data[, idx, drop = FALSE], na.rm = TRUE)
-      cond2 <- data_range[2] / data_range[1] >= 1000
+      cond2 <- all(is.finite(data_range)) &&
+               data_range[1] > 0 &&
+               data_range[2] / data_range[1] >= 1000
       x_log <- cond1 && cond2
-    } else if (num_xaxis == "log") {
+    } else if (identical(num_xaxis, "log")) {
       x_log <- TRUE
     }
   }
@@ -85,6 +87,26 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
     pal <- rep(pal, length.out = n_levels)
   } else {
     pal <- pal[1:n_levels]
+  }
+
+  # Pre-compute per-group sample size and missing count for facet labels
+  if (!is.null(group_idx)) {
+    groups <- unique(data[[group_col]])
+    n_vec  <- integer(length(groups))
+    na_vec <- integer(length(groups))
+    for (i in seq_along(groups)) {
+      rows <- which(data[[group_col]] == groups[i])
+      n_vec[i]  <- length(rows)
+      na_vec[i] <- sum(is.na(data[rows, idx, drop = FALSE]))
+    }
+    sizes <- data.frame(
+      grp   = groups,
+      n     = n_vec,
+      na    = na_vec,
+      label = paste0("n=", n_vec, "\nna=", na_vec),
+      stringsAsFactors = FALSE
+    )
+    names(sizes)[1] <- group_col
   }
 
   if (!is_numeric_names && part %in% c("both", 2) && !is.null(group_idx)) {
@@ -114,33 +136,42 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
       ggplot2::xlab("Variable")
 
     if (x_log) {
-      p <- p + ggplot2::scale_x_log10(sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
+      p <- p + ggplot2::scale_x_log10(
+        sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
     } else {
-      p <- p + ggplot2::scale_x_continuous(sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
+      p <- p + ggplot2::scale_x_continuous(
+        sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
     }
 
     if (y_log) {
-      p <- p + ggplot2::scale_y_log10(labels = scales::trans_format("log10", scales::math_format(10^.x)),
-                                      sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
+      # No custom labels argument: use ggplot2's built-in log10 labelling.
+      # This avoids the ggplot2 v3.5+ length check that some custom
+      # label functions fail.
+      p <- p + ggplot2::scale_y_log10(
+        sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
     } else {
-      p <- p + ggplot2::scale_y_continuous(sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
+      p <- p + ggplot2::scale_y_continuous(
+        sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
     }
 
     if (!is.null(group_idx)) {
-      sizes <- aggregate(rep(1, nrow(data)), by = list(data[[group_col]]), FUN = sum)
-      names(sizes) <- c(group_col, "n")
       vals_sub <- data[, idx, drop = FALSE]
       vals_sub[vals_sub == 0] <- NA
       rng <- range(vals_sub, na.rm = TRUE)
-      y_pos <- 10^(quantile(log10(rng), 0.1, na.rm = TRUE))
-      x_pos <- median(as.numeric(meas_names), na.rm = TRUE)
+      if (y_log && all(is.finite(rng)) && rng[1] > 0) {
+        y_pos <- 10^(quantile(log10(rng), 0.1, na.rm = TRUE))
+      } else if (all(is.finite(rng))) {
+        y_pos <- quantile(rng, 0.95, na.rm = TRUE)
+      } else {
+        y_pos <- 1
+      }
+      x_pos <- stats::median(as.numeric(meas_names), na.rm = TRUE)
+      if (!is.finite(x_pos)) x_pos <- mean(seq_along(meas_names))
       p <- p + ggplot2::geom_text(data = sizes,
-                                  ggplot2::aes(x = x_pos, y = y_pos, label = paste0("n=", n)),
+                                  ggplot2::aes(x = x_pos, y = y_pos, label = label),
                                   inherit.aes = FALSE)
-    }
-
-    if (!is.null(group_idx)) {
-      p <- p + ggplot2::facet_wrap(as.formula(paste("~", group_col)), ncol = ncol, scales = "free_y")
+      p <- p + ggplot2::facet_wrap(as.formula(paste("~", group_col)),
+                                   ncol = ncol, scales = "free_y")
     }
 
   } else {
@@ -153,7 +184,19 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
                                   "\n\nPercentiles")) +
       ggplot2::xlab("Variable")
 
-    p <- p + ggplot2::scale_y_continuous(sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
+    p <- p + ggplot2::scale_y_continuous(
+      sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
+
+    if (!is.null(group_idx)) {
+      vals_sub <- data[, idx, drop = FALSE]
+      vals_sub[vals_sub == 0] <- NA
+      rng <- range(vals_sub, na.rm = TRUE)
+      y_pos <- if (all(is.finite(rng))) quantile(rng, 0.95, na.rm = TRUE) else 1
+      x_pos <- 1
+      p <- p + ggplot2::geom_text(data = sizes,
+                                  ggplot2::aes(x = x_pos, y = y_pos, label = label),
+                                  inherit.aes = FALSE)
+    }
 
     if (!is.null(group_idx) && part %in% c("both", 2)) {
       p <- p + ggplot2::facet_grid(part ~ get(group_col), scales = "free_y")

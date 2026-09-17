@@ -1,0 +1,194 @@
+---
+title: "dataprep: upgrading from 0.1.5 to 0.1.6"
+output: rmarkdown::html_vignette
+vignette: >
+  %\documentclass{article}
+  %\VignetteIndexEntry{dataprep: upgrading from 0.1.5 to 0.1.6}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r setup}
+library(dataprep)
+```
+
+## What changed
+
+Three behaviour changes affect row and column counts. All three are
+bug fixes, but each one changes the output on real data. If your
+downstream analysis depends on exact row counts, read the
+quantified comparison in the last section before upgrading.
+
+1. **`obsedele()` now scans each column independently.** The 0.1.5
+   implementation collapsed all selected columns into one long
+   vector before computing missing runs; this merged NA runs
+   across columns and over-deleted boundary rows.
+
+2. **The `half`-minute boundary is now inclusive.** Rows whose
+   nearest anchor is exactly `half` minutes away are retained
+   (`within half minutes` is a `<=` condition).
+
+3. **`optisolu()` no longer crashes with `cores > 16`.** The 0.1.5
+   `parallel::makeCluster()` path exhausted memory when the
+   worker processes each received a full copy of the input. The
+   0.1.6 implementation shares read-only data across workers, so
+   `cores = 64` and `cores = NULL` (automatic) are both safe.
+
+The full description is in `news(package = "dataprep")`. The design
+reasoning behind the pipeline is in
+`vignette("dataprep-philosophy")`.
+
+## Minimal reproduction of the boundary change
+
+Consider five observations sampled every 10 minutes, with a valid
+value only at the two ends:
+
+```{r}
+df <- data.frame(
+  date = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:4 * 600,
+  x    = c(1, NA, NA, NA, 5)
+)
+
+obsedele(df, cols = "x", half = 30)
+```
+
+The three interior rows are each 10, 20, or 30 minutes from the
+nearest valid anchor. Under 0.1.5 the third row was deleted because
+the comparison was strict (`dl > half`); under 0.1.6 it is retained
+because `dl == half` satisfies `within half minutes`.
+
+## Minimal reproduction of the multi-column change
+
+Consider two channels with mutually exclusive missing runs:
+
+```{r}
+df <- data.frame(
+  date = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:9 * 600,
+  x    = c(1, NA, NA, NA, NA, NA, NA, NA, NA, 5),
+  y    = c(NA, NA, NA, NA, 2, NA, NA, NA, NA, NA)
+)
+nrow(obsedele(df, cols = c("x", "y"), half = 60))
+```
+
+Under 0.1.5, the x and y NA runs were merged before computing the
+run length, so the interior rows survived even when only one
+channel was locally anchored. Under 0.1.6 the two channels are
+checked independently: a row is deleted when **every** selected
+column has a run longer than `half` minutes on **both** sides.
+
+## Implementation evolution
+
+The retention criterion has been stable across releases, but the
+implementation has improved steadily. The table below summarises
+the three generations:
+
+| Release | Strategy | Complexity |
+|---|---|---|
+| 0.1.0 | Borrowed running mean: expand the series onto a regular grid with `tidyr::complete()`, compute a 59-minute centred moving average on a temporary column, and use its emptiness pattern to flag long runs. | O(grid length) per subset |
+| 0.1.5 | Run-length encoding: use `data.table::rleid()` and `rowid()` to collapse consecutive NAs into runs, then compare each run length to the number of grid points covered by `half` minutes. | O(n) time, O(n) temporary storage |
+| 0.1.6 | Anchor scan: for each missing value, look up the nearest non-missing anchor on each side and compare the two time distances directly. No grid, no run-length state. | O(n) time, O(1) extra allocation per column |
+
+Each generation produces the same deletion decision on the same
+input, but the constant factors shrink. The 0.1.6 anchor scan is
+the first version that is fast enough to run interactively on
+full-year data: on SMEAR I Varrio 2025 (49,422 rows × 61 numeric
+channels), `obsedele()` now runs in 20 ms against 11.2 s in 0.1.5
+(a 560× speed-up). See `vignette("dataprep-performance")` for the
+full benchmark.
+
+## Quantified effect on a full-year dataset
+
+On SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels,
+10-minute sampling), running the same pipeline with the same
+parameters:
+
+| Stage | 0.1.5 | 0.1.6 | Δ |
+|---|---|---|---|
+| `varidele` | 25 columns deleted | 25 columns deleted | 0 |
+| `obsedele` | 1,494 rows deleted | 1,496 rows deleted | +2 |
+| `condextr` | 1,868 rows deleted | 1,863 rows deleted | −5 |
+| `shorvalu` | 50,376 NAs filled | 50,387 NAs filled | +11 |
+| `dataprep` final | 46,060 rows | 46,063 rows | **+3** |
+
+Net change: 0.006% of the input. The five rows that differ
+between versions all sit at run boundaries where the anchor
+distance is within one sampling interval of `half` minutes.
+
+## Where the difference comes from
+
+The five differing rows fall into two groups:
+
+**Rows kept by 0.1.6, deleted by 0.1.5 (3 rows).** These are rows
+whose nearest anchor is exactly `half` minutes away. Under the
+0.1.5 strict comparison (`dl > half`) they were deleted; under the
+0.1.6 inclusive comparison (`dl >= half`) they are retained. Each
+of these rows has a valid anchor within one sampling interval of
+`half`, so retaining them is consistent with the physical
+constraint described in `vignette("dataprep-philosophy")`.
+
+**Rows deleted by 0.1.6, kept by 0.1.5 (3 rows, overlapping with
+the above).** These are rows that pass the check on some columns
+but fail on at least one. Under 0.1.5 the merge-columns approach
+effectively widened the anchor window on these rows; under 0.1.6
+each column is checked independently, so the row is deleted. These
+rows would have been interpolated across a gap longer than `half`
+minutes in at least one channel, which contradicts the design.
+
+The net result is 3 additional rows in the final output.
+
+## Migration checklist
+
+- [ ] Re-run any downstream analysis that uses the output of
+      `obsedele()`, `condextr()`, `percoutl()`, or `dataprep()`.
+      The three-row difference on SMEAR I Varrio 2025 is
+      representative of the magnitude you should expect on other
+      datasets (well under 0.1% of rows).
+- [ ] If you use `prep_fit()` / `prep_transform()`, re-fit the
+      plan on the new training data. The stored thresholds are not
+      affected by the change, but the row indices that fed into
+      them are.
+- [ ] If you were limiting `optisolu()` to `cores <= 16` as a
+      workaround for the 0.1.5 crash, remove the cap. 0.1.6
+      accepts up to 64.
+- [ ] If downstream behaviour depends on specific boundary rows,
+      verify the difference with `dplyr::anti_join()` between the
+      0.1.5 and 0.1.6 outputs. The example below shows how.
+
+```{r eval=FALSE}
+result_015 <- dataprep::dataprep(data, cols = 5:65, group = 4)
+result_016 <- dataprep(data, cols = 5:65, group = 4)
+
+kept_only_by_016 <- dplyr::anti_join(result_016, result_015, by = "date")
+kept_only_by_015 <- dplyr::anti_join(result_015, result_016, by = "date")
+```
+
+## What did not change
+
+For users who only call `melt()` and `dcast()`, or who only use
+`dataprep` for descriptive statistics (`descdata`, `na_diagnose`,
+`percdata`, `percplot`, `descplot`), there is no behaviour change.
+Those functions have been re-implemented in 0.1.6 for speed
+(`melt` and `dcast`) or reorganised internally (`data_report`,
+`dry_run`), but the output on every tested input is byte-identical
+to 0.1.5 except where noted in the `news` file.
+
+## Where to go next
+
+* **Design philosophy** — `vignette("dataprep-philosophy")`.
+  Why the pipeline has the shape it does.
+* **Cleaning pipeline walkthrough** — `vignette("dataprep-cleaning")`.
+  Step-by-step execution on a real dataset.
+* **Performance and cross-engine consistency** —
+  `vignette("dataprep-performance")`. Full benchmark tables and
+  8-engine consistency checks.
+* **Fast reshaping** — `vignette("dataprep-melt-dcast")`.
+
+## Session info
+
+```{r}
+sessionInfo()
+```

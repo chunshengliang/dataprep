@@ -7,21 +7,24 @@
 #' @param verbose Logical.
 #' @return A data frame of descriptive statistics.
 #' @export
-#' @noRd
-descdata <- function(data, cols = NULL, stats = 1:9, first = "variables",
-                     cores = NULL, verbose = FALSE) {
+descdata <- function(data, cols = NULL, stats = 1:9,
+                     first = "variables", cores = NULL, verbose = FALSE) {
   t0 <- Sys.time()
+
   if (is.vector(data) && !is.list(data)) {
     mat <- matrix(data, ncol = 1)
-    colnames(mat) <- deparse(substitute(data))
+    # FIX: deparse(substitute(data)) becomes "." or the whole
+    # expression inside pipelines. Use a stable name.
+    colnames(mat) <- "value"
     cols <- 1
   } else {
-    idx <- resolve_cols(data, cols)
+    idx <- resolve_numeric_cols(data, cols)
     check_numeric_cols(data, idx)
     mat <- to_numeric_matrix(data, idx)
   }
 
-  stat_names <- c("n", "na", "mean", "sd", "median", "trimmed", "min", "max", "IQR")
+  stat_names <- c("n", "na", "mean", "sd", "median",
+                  "trimmed", "min", "max", "IQR")
   if (is.character(stats)) {
     stats_idx <- match(stats, stat_names)
     if (any(is.na(stats_idx))) stop("Invalid statistic name(s)")
@@ -36,7 +39,7 @@ descdata <- function(data, cols = NULL, stats = 1:9, first = "variables",
   colnames(result) <- stat_names[stats_idx]
 
   if (is.vector(data) && !is.list(data)) {
-    first_col <- deparse(substitute(data))
+    first_col <- "value"
   } else {
     col_names <- colnames(mat)
     first_col <- if (all(!grepl("\\D", gsub("[.]", "", col_names)))) {
@@ -49,6 +52,9 @@ descdata <- function(data, cols = NULL, stats = 1:9, first = "variables",
   names(result)[1] <- first
   rownames(result) <- NULL
 
-  if (verbose) cat("Time used by descdata:", format(Sys.time() - t0, digits = 3), "\n")
+  if (verbose) {
+    cat("Time used by descdata:",
+        format(Sys.time() - t0, digits = 3), "\n")
+  }
   result
 }

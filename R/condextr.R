@@ -1,6 +1,6 @@
 #' Conditional extremum outlier removal
 #' @param data A data frame, matrix, or numeric vector.
-#' @param cols Columns to process.
+#' @param cols Columns to process. If \code{NULL}, all numeric columns are used.
 #' @param group Grouping column.
 #' @param top,top.error,top.magnitude Top threshold parameters.
 #' @param bottom,bottom.error,bottom.magnitude Bottom threshold parameters.
@@ -12,36 +12,41 @@
 #' @param verbose Logical.
 #' @return Data with outliers removed.
 #' @export
-#' @noRd
 condextr <- function(data, cols = NULL, group = NULL, top = .995,
                      top.error = .1, top.magnitude = .2,
-                     bottom = .0025, bottom.error = .2, bottom.magnitude = .4,
-                     interval = 10, by = 'min', half = 30, times = 10,
+                     bottom = .0025, bottom.error = .2,
+                     bottom.magnitude = .4,
+                     interval = 10, by = "min", half = 30, times = 10,
                      date_col = NULL, cores = NULL, verbose = FALSE) {
   t0 <- Sys.time()
 
+  # Vector input: no time axis, so only outlier marking is possible.
   if (is.vector(data) && !is.list(data)) {
-    for (j in 1:times) {
-      for (i in 1:interval) {
+    for (j in seq_len(times)) {
+      for (i in seq_len(interval)) {
         data <- mark_outliers_cpp(data, top, top.error, top.magnitude,
-                                  bottom, bottom.error, bottom.magnitude, TRUE)
+                                  bottom, bottom.error, bottom.magnitude,
+                                  TRUE)
       }
-      data <- obsedele(data, by = by, half = half, date_col = date_col,
-                       cores = cores, verbose = verbose)
     }
     return(data)
   }
 
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
+
   date_info <- resolve_date_col(data, date_col)
   date_name <- date_info$name
-  idx <- resolve_cols(data, cols)
 
   group_idx <- NULL
   if (!is.null(group)) {
-    group_idx <- if (is.character(group)) which(names(data) == group) else as.integer(group)
-    if (group_idx %in% idx) {
+    group_idx <- if (is.character(group)) which(names(data) == group)
+                 else as.integer(group)
+    if (length(group_idx) != 1 || is.na(group_idx) ||
+        group_idx < 1 || group_idx > ncol(data))
+      stop("Invalid group column")
+    if (group_idx %in% idx)
       stop("group column should not be within cols")
-    }
   }
 
   time_vec <- data[[date_name]]
@@ -53,17 +58,9 @@ condextr <- function(data, cols = NULL, group = NULL, top = .995,
     stop("Time column must be POSIXct or Date")
   }
 
-  num <- ifelse(grepl("^[A-Za-z]+$", by), 1, as.numeric(gsub(".*?([0-9]+).*", "\\1", by)))
-  unit_char <- gsub(".*?([a-z]+).*", "\\1", by)
-  unit_sec <- switch(unit_char,
-                     "secs" = 1, "sec" = 1,
-                     "mins" = 60, "min" = 60,
-                     "hours" = 3600, "hour" = 3600,
-                     "days" = 86400, "day" = 86400,
-                     "weeks" = 604800, "week" = 604800,
-                     stop("Unsupported time unit"))
-  step_sec <- num * unit_sec
-  threshold_sec <- half * num * unit_sec
+  tu <- parse_time_unit(by)
+  step_sec      <- tu$step_sec
+  threshold_sec <- half * 60
 
   if (!is.null(group_idx)) {
     group_vec <- data[[group_idx]]
@@ -74,90 +71,60 @@ condextr <- function(data, cols = NULL, group = NULL, top = .995,
   }
 
   mat <- to_numeric_matrix(data, idx)
-  n <- nrow(mat)
-  p <- ncol(mat)
-  orig_idx <- seq_len(n)
-
   n_threads <- if (is.null(cores)) 0L else as.integer(cores)
 
-  mark_matrix <- function(m, grp) {
-    if (all(grp == 0)) {
-      for (j in 1:p) {
-        m[, j] <- mark_outliers_cpp(m[, j], top, top.error, top.magnitude,
-                                    bottom, bottom.error, bottom.magnitude, TRUE)
-      }
-    } else {
-      ug <- unique(grp)
-      for (g in ug) {
-        rows <- which(grp == g)
-        sub <- m[rows, , drop = FALSE]
-        for (j in 1:p) {
-          sub[, j] <- mark_outliers_cpp(sub[, j], top, top.error, top.magnitude,
-                                        bottom, bottom.error, bottom.magnitude, TRUE)
-        }
-        m[rows, ] <- sub
-      }
-    }
-    m
-  }
+  # The full condextr loop (mark + obsedele, repeated `times` times,
+  # with `interval` marking rounds between deletions) is executed
+  # entirely in C++ via condextr_cpp. This avoids any intermediate
+  # matrices crossing the R/C++ boundary.
+  res <- condextr_cpp(
+    time_sec      = time_sec,
+    group_int     = group_int,
+    x             = mat,
+    step_sec      = step_sec,
+    half          = half,
+    threshold_sec = threshold_sec,
+    top           = top,
+    toperr        = top.error,
+    topmag        = top.magnitude,
+    bottom        = bottom,
+    boterr        = bottom.error,
+    botmag        = bottom.magnitude,
+    interval      = as.integer(interval),
+    times         = as.integer(times),
+    n_threads     = n_threads
+  )
 
-  total_deleted <- 0
+  keep      <- res$keep
+  final_mat <- res$mat
 
-  for (round in 1:times) {
-    for (rep in 1:interval) {
-      mat <- mark_matrix(mat, group_int)
-    }
-    old_n <- n
-    keep <- obsedele_cpp(time_sec, group_int, mat,
-                         step_sec, half, threshold_sec, n_threads)
-    mat <- mat[keep, , drop = FALSE]
-    time_sec <- time_sec[keep]
-    group_int <- group_int[keep]
-    orig_idx <- orig_idx[keep]
-    n <- nrow(mat)
-    total_deleted <- total_deleted + (old_n - n)
-    if (n == 0) break
-  }
-
-  if (n > 0) {
-    old_n <- n
-    keep <- obsedele_cpp(time_sec, group_int, mat,
-                         step_sec, half, threshold_sec, n_threads)
-    mat <- mat[keep, , drop = FALSE]
-    time_sec <- time_sec[keep]
-    group_int <- group_int[keep]
-    orig_idx <- orig_idx[keep]
-    n <- nrow(mat)
-    total_deleted <- total_deleted + (old_n - n)
-  }
-
-  final_keep <- rep(FALSE, nrow(data))
-  final_keep[orig_idx] <- TRUE
-  result <- data[final_keep, , drop = FALSE]
-  result[, idx] <- as.data.frame(mat)
-
+  result <- data[keep, , drop = FALSE]
+  result[, idx] <- as.data.frame(final_mat)
   rownames(result) <- NULL
 
-  if (inherits(data, "grouped_df")) {
+  if (inherits(data, "grouped_df") && requireNamespace("dplyr", quietly = TRUE)) {
     group_vars <- dplyr::group_vars(data)
     if (length(group_vars) > 0) {
-      result <- dplyr::group_by(result, dplyr::across(dplyr::all_of(group_vars)))
+      result <- dplyr::group_by(result,
+                                dplyr::across(dplyr::all_of(group_vars)))
     } else {
       result <- dplyr::ungroup(result)
     }
   }
 
-  kept_indices <- which(final_keep)
-  orig_subset <- data[kept_indices, idx, drop = FALSE]
-  final_subset <- result[, idx, drop = FALSE]
-  outliers_marked <- sum(is.na(final_subset) & !is.na(orig_subset))
-
   if (verbose) {
+    kept_idx     <- which(keep)
+    orig_subset  <- data[kept_idx, idx, drop = FALSE]
+    final_subset <- result[, idx, drop = FALSE]
+    outliers_marked <- sum(is.na(final_subset) & !is.na(orig_subset))
+    total_deleted   <- nrow(data) - nrow(result)
     cat(outliers_marked,
         "values are regarded as outliers and deleted excluding those in deleted observations\n")
     cat(total_deleted,
-        "observations are deleted in total by condextr (after", interval * times, "cycles)\n")
-    cat("Time used by condextr:", format(Sys.time() - t0, digits = 3), "\n")
+        "observations are deleted in total by condextr (after",
+        interval * times, "cycles)\n")
+    cat("Time used by condextr:",
+        format(Sys.time() - t0, digits = 3), "\n")
   }
 
   result

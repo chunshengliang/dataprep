@@ -23,19 +23,30 @@ data_report <- function(data, cols = NULL, date_col = NULL, verbose = FALSE) {
   } else {
     numeric_cols <- resolve_cols(data, cols)
   }
-  if (length(numeric_cols) > 0 && verbose) {
+
+  na_res <- NULL
+  de_res <- NULL
+  if (length(numeric_cols) > 0) {
+    na_res <- na_diagnose(data, cols = numeric_cols,
+                          date_col = date_col, verbose = FALSE)
+    de_res <- descdata(data, cols = numeric_cols, verbose = FALSE)
+  }
+
+  if (verbose && length(numeric_cols) > 0) {
     cat("Missing value diagnosis (numeric columns):\n")
-    print(na_diagnose(data, cols = numeric_cols, date_col = date_col, verbose = FALSE))
+    print(na_res)
     cat("\n")
     cat("Descriptive statistics (numeric columns):\n")
-    print(descdata(data, cols = numeric_cols, verbose = FALSE))
+    print(de_res)
     cat("\n")
+    cat("Time used by data_report:",
+        format(Sys.time() - t0, digits = 3), "\n")
   }
-  if (verbose) cat("Time used by data_report:", format(Sys.time() - t0, digits = 3), "\n")
+
   invisible(list(
     dim = c(nrow(data), ncol(data)),
     types = types,
-    na_diagnose = if (length(numeric_cols) > 0) na_diagnose(data, cols = numeric_cols, date_col = date_col, verbose = FALSE) else NULL,
-    desc_stats = if (length(numeric_cols) > 0) descdata(data, cols = numeric_cols, verbose = FALSE) else NULL
+    na_diagnose = na_res,
+    desc_stats = de_res
   ))
 }

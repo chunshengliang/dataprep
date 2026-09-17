@@ -10,8 +10,8 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment  = "#>",
+  collapse  = TRUE,
+  comment   = "#>",
   fig.align = "center"
 )
 ```
@@ -19,22 +19,27 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(dataprep)
 library(ggplot2)
-library(scales)
 ```
 
 ## Overview
 
-`dataprep` provides two families of plotting helpers:
+`dataprep` provides two families of plotting helpers, both built on
+top of the C++ descriptive backends:
 
-* `descplot()` -- descriptive statistics (`n`, `na`, `mean`, `sd`,
+* `descplot()` — descriptive statistics (`n`, `na`, `mean`, `sd`,
   `median`, `trimmed`, `min`, `max`, `IQR`) computed in C++ and
   displayed as line or bar charts.
-* `percplot()` -- top and bottom percentile curves, useful for
+* `percplot()` — top and bottom percentile curves, useful for
   detecting heavy tails and percentile-based outlier cutoffs.
 
 Both share the same interface style: a data frame, a numeric range,
-and optional grouping. Use `data1` (7,640 rows x 7 columns) for
-quick demos, and `data` (7,640 x 65) for full-size examples.
+and optional grouping. Use `data1` (7,640 rows × 7 columns) for
+quick demos, and `data` (7,640 × 65) for full-size examples.
+
+Under the hood, `descplot()` calls `descdata()` (which calls
+`desc_stats_cpp()`), and `percplot()` calls `percdata()` (which
+calls `quantile()` from base R on each column). Both return a
+`ggplot` object, so all usual `ggplot2` layers apply.
 
 ## Descriptive statistics
 
@@ -56,6 +61,10 @@ Pass a subset of statistics by index or by name to focus the plot.
 descplot(data1, cols = 3:7,
          stats = c("na", "min", "max", "IQR"))
 ```
+
+The `stats` argument accepts both forms — numeric indices
+(`1:9`) and character names (`"na"`, `"min"`, `"max"`, `"IQR"`)
+— and can mix them.
 
 ### Bar chart, character variable names
 
@@ -83,6 +92,16 @@ descplot(data1, cols = 3:7, stats = c("min", "max", "IQR")) +
 
 ```{r fig.width=7, fig.height=5, eval=FALSE}
 descplot(data, cols = 5:65)
+```
+
+### The underlying table
+
+If you only need the numbers (not the plot), call `descdata()`
+directly. It returns a data frame with one row per variable and
+one column per statistic.
+
+```{r}
+descdata(data1, cols = 3:7, stats = c(2, 3, 4, 7:9))
 ```
 
 ## Percentile curves
@@ -121,6 +140,24 @@ percplot(data1, cols = 3:7, group = 2, num_xaxis = "numeric") +
                                         hjust = 1, vjust = 1.1))
 ```
 
+The `num_xaxis` argument controls how the x axis is treated when
+column names are numeric:
+
+* `"auto"` (default) — uses a log scale if the column names are
+  evenly spaced on a log scale with a range ratio of at least
+  1000; otherwise keeps them as factor levels.
+* `"log"` / `"numeric"` — force the corresponding scale.
+* `"character"` / `"factor"` / `"keep"` / `FALSE` — keep the
+  column names as factor levels.
+
+### The underlying table
+
+`percdata()` returns the same table that `percplot()` draws.
+
+```{r}
+percdata(data1, cols = 3:7, group = 2, part = "top")
+```
+
 ## Combining with `ggplot2`
 
 Both `descplot()` and `percplot()` return `ggplot` objects, so all
@@ -132,6 +169,55 @@ percplot(data1, cols = 3:7, group = 2) +
   ggplot2::labs(title = "Percentile curves by month",
                 x = "Variable", y = "Value")
 ```
+
+## A diagnostic workflow
+
+A typical diagnostic workflow combines `data_report()`,
+`na_diagnose()`, and the two plot families:
+
+```{r eval=FALSE}
+# 1. Overview of the whole table
+data_report(data, cols = 5:65)
+
+# 2. Per-column NA run statistics
+na_diagnose(data, cols = 5:65)
+
+# 3. Descriptive statistics of the raw data
+descplot(data, cols = 5:65)
+
+# 4. Percentile curves of the raw data
+percplot(data, cols = 5:65, group = 4)
+```
+
+After running `dataprep()` you can compare the raw and cleaned
+versions in the same plot by stacking them with a `g` column:
+
+```{r fig.width=7, fig.height=5, eval=FALSE}
+cleaned <- dataprep(data, cols = 5:65, group = 4)
+
+percplot(
+  rbind(
+    transform(data[names(cleaned)], g = "original"),
+    transform(cleaned,              g = "preprocessed")
+  ),
+  cols  = 5:ncol(cleaned),
+  group = ncol(cleaned) + 1
+)
+```
+
+## Where to go next
+
+* **Design philosophy** — `vignette("dataprep-philosophy")`.
+  Why the cleaning pipeline has the shape it does.
+* **Cleaning pipeline walkthrough** — `vignette("dataprep-cleaning")`.
+  Step-by-step execution of the four cleaning steps on `data`.
+* **Performance and cross-engine consistency** —
+  `vignette("dataprep-performance")`. Benchmark tables and
+  8-engine consistency checks.
+* **Upgrading from 0.1.5 to 0.1.6** —
+  `vignette("dataprep-migration")`. Behaviour changes and the
+  migration checklist.
+* **Fast reshaping** — `vignette("dataprep-melt-dcast")`.
 
 ## Session info
 

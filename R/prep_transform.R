@@ -83,12 +83,11 @@ prep_transform <- function(plan, newdata, verbose = FALSE) {
                                     verbose = verbose)
            },
            "scale" = {
-             scale_method <- plan$params$scale_method
              for (j in cols) {
                nm <- names(data)[j]
                center <- plan$params$scale_center[[nm]]
                scale_val <- plan$params$scale_scale[[nm]]
-               if (is.na(center) || is.na(scale_val)) next
+               if (is.na(center) || is.na(scale_val) || scale_val == 0) next
                data[[j]] <- (data[[j]] - center) / scale_val
              }
            },

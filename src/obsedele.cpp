@@ -1,27 +1,19 @@
-// ==================== obsedele.cpp ====================
+// [[Rcpp::plugins(openmp)]]
 #include <Rcpp.h>
 #include <vector>
 #include <algorithm>
 #include <cmath>
-#include <climits>
+#include <limits>
+#include <unordered_map>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
 using namespace Rcpp;
 
-inline bool same_value(double a, double b) {
-    return (R_IsNA(a) && R_IsNA(b)) || (!R_IsNA(a) && !R_IsNA(b) && std::fabs(a - b) < 1e-12);
-}
-
-inline bool time_equal_cpp(double a, double b, double eps = 1e-9) {
-    return std::fabs(a - b) < eps;
-}
-
-// Thread‑local buffers reused across group/period iterations
-static thread_local std::vector<int>    tl_orig_at_row;
-static thread_local std::vector<char>   tl_invalid_rows;   // 1 = row will be removed
-static thread_local std::vector<double> tl_col_vec;
+// Thread-local scratch buffers reused across subsets and across calls.
+static thread_local std::vector<int> tl_anchor_idx;
+static thread_local std::vector<int> tl_sorted_sub;
 
 // [[Rcpp::export]]
 LogicalVector obsedele_cpp(NumericVector time_sec,
@@ -35,157 +27,151 @@ LogicalVector obsedele_cpp(NumericVector time_sec,
     if (n_threads > 0) omp_set_num_threads(n_threads);
 #endif
 
-    int n = x.nrow();
-    int p = x.ncol();
+    const int n = x.nrow();
+    const int p = x.ncol();
+
+    if (n == 0) return LogicalVector(0);
+    if (p == 0) return LogicalVector(n, true);
+    if (!std::isfinite(step_sec) || step_sec <= 0.0) {
+        Rf_error("obsedele_cpp: step_sec must be positive and finite");
+    }
+    if (!std::isfinite(half) || half < 0.0) {
+        Rf_error("obsedele_cpp: half must be non-negative and finite");
+    }
+    if (!std::isfinite(threshold_sec) || threshold_sec <= 0.0) {
+        Rf_error("obsedele_cpp: threshold_sec must be positive and finite");
+    }
+    if (time_sec.size() != n || group_int.size() != n) {
+        Rf_error("obsedele_cpp: time_sec and group_int must have length nrow(x)");
+    }
+    for (int i = 0; i < n; ++i) {
+        if (ISNAN(time_sec[i])) {
+            Rf_error("obsedele_cpp: time_sec contains NA/NaN at index %d", i + 1);
+        }
+        if (group_int[i] < 0) {
+            Rf_error("obsedele_cpp: group_int must be non-negative at index %d",
+                     i + 1);
+        }
+    }
+
+    // Start from "delete all"; each subset explicitly keeps its own rows.
     std::vector<int> keep(n, 0);
 
-    // Group mapping using an array (faster than unordered_map)
-    int max_gid = 0;
-    for (int i = 0; i < n; ++i) if (group_int[i] > max_gid) max_gid = group_int[i];
-    std::vector<int> gid2idx(max_gid + 1, -1);
-    std::vector<int> remap(n);
+    // ---- group mapping ----
     int G = 0;
+    std::unordered_map<int, int> gid2idx;
+    gid2idx.reserve((size_t)std::min(n, 1024));
+    std::vector<int> remap(n, -1);
     for (int i = 0; i < n; ++i) {
         int g = group_int[i];
         if (g == 0) {
-            remap[i] = -1;   // no group
+            remap[i] = -1;
         } else {
-            if (gid2idx[g] == -1) gid2idx[g] = G++;
-            remap[i] = gid2idx[g];
+            auto it = gid2idx.find(g);
+            if (it == gid2idx.end()) {
+                gid2idx.emplace(g, G);
+                remap[i] = G;
+                ++G;
+            } else {
+                remap[i] = it->second;
+            }
         }
     }
 
     std::vector<std::vector<int>> group_rows(G);
     if (G > 0) {
         std::vector<int> counts(G, 0);
-        for (int i = 0; i < n; ++i) if (remap[i] >= 0) ++counts[remap[i]];
+        for (int i = 0; i < n; ++i)
+            if (remap[i] >= 0) ++counts[remap[i]];
         for (int g = 0; g < G; ++g) group_rows[g].reserve(counts[g]);
-        for (int i = 0; i < n; ++i) if (remap[i] >= 0) group_rows[remap[i]].push_back(i);
+        for (int i = 0; i < n; ++i)
+            if (remap[i] >= 0) group_rows[remap[i]].push_back(i);
     }
 
+    // 'half' is in minutes. Convert to seconds once.
+    const double half_seconds = half * 60.0;
+
+    // Anchor-based scan. For every NA observation and every column we
+    // compute the time distance to the nearest non-NA anchor on each
+    // side, and mark the observation as invalid only when BOTH distances
+    // exceed half_seconds. If a side has no anchor at all (the run
+    // touches the series boundary) that distance is +Inf, which is the
+    // fix for the boundary under-deletion bug in 0.1.5.
+    //
+    // This replaces the previous grid-expansion algorithm. It avoids
+    // allocating an O(L) grid per subset, where L is the number of
+    // grid points rather than observations. For 10-minute sampling with
+    // a 1-minute grid, L is ~10x the observation count.
     auto process_subset = [&](const std::vector<int>& sub_idx) -> void {
-        int m = sub_idx.size();
+        int m = (int)sub_idx.size();
         if (m == 0) return;
 
-        // Determine time range
-        double t_min = time_sec[sub_idx[0]];
-        double t_max = time_sec[sub_idx[0]];
-        for (int idx : sub_idx) {
-            double t = time_sec[idx];
-            if (t < t_min) t_min = t;
-            if (t > t_max) t_max = t;
+        // Guarantee chronological order. Most inputs are already sorted,
+        // so only allocate a copy when necessary.
+        const std::vector<int>* sp = &sub_idx;
+        bool already_sorted = true;
+        for (int k = 1; k < m; ++k) {
+            if (time_sec[sub_idx[k]] < time_sec[sub_idx[k - 1]]) {
+                already_sorted = false;
+                break;
+            }
         }
-
-        long long L_ll = (long long)std::llround((t_max - t_min) / step_sec) + 1;
-        int L = (int)L_ll;
-        if (L <= 0 || L_ll > INT_MAX) return;
-
-        // Allocate thread‑local buffers (reused across calls)
-        std::vector<int>&    orig_at_row = tl_orig_at_row;
-        std::vector<char>&   invalid_rows = tl_invalid_rows;
-        std::vector<double>& col_vec      = tl_col_vec;
-
-        orig_at_row.assign(L, -1);
-        invalid_rows.assign(L, 0);
-
-        // Map observed time points to grid rows
-        for (int k = 0; k < m; ++k) {
-            int orig_idx = sub_idx[k];
-            double t_obs = time_sec[orig_idx];
-            long long row_ll = (long long)std::llround((t_obs - t_min) / step_sec);
-            if (row_ll < 0 || row_ll >= L) continue;
-            int row = (int)row_ll;
-            double t_grid = t_min + (double)row * step_sec;
-            if (!time_equal_cpp(t_grid, t_obs)) continue;
-            orig_at_row[row] = orig_idx;
+        if (!already_sorted) {
+            tl_sorted_sub.assign(sub_idx.begin(), sub_idx.end());
+            std::sort(tl_sorted_sub.begin(), tl_sorted_sub.end(),
+                      [&](int a, int b) {
+                          return time_sec[a] < time_sec[b];
+                      });
+            sp = &tl_sorted_sub;
         }
+        const std::vector<int>& sidx = *sp;
 
-        // Determine global start_row and end_row by examining each column
-        int start_row = 0;
-        int end_row   = L;
-        bool any_col_with_na = false;
+        // Default: keep every observation in this subset.
+        for (int k = 0; k < m; ++k) keep[sidx[k]] = 1;
 
+        std::vector<int>& anchor_idx = tl_anchor_idx;
         for (int j = 0; j < p; ++j) {
-            // Fill column vector with observed values (NA elsewhere)
-            col_vec.assign(L, NA_REAL);
-            const double* x_col = x.begin() + j * n;
-            for (int i = 0; i < L; ++i) {
-                int orig = orig_at_row[i];
-                if (orig >= 0) col_vec[i] = x_col[orig];
-            }
+            const double* x_col = x.begin() + (R_xlen_t)j * n;
 
-            // Find first and last non‑NA positions
-            int first = -1, last = -1;
-            for (int i = 0; i < L; ++i) {
-                if (!R_IsNA(col_vec[i])) {
-                    if (first < 0) first = i;
-                    last = i;
+            // Positions (inside sidx) of non-NA values in this column.
+            anchor_idx.clear();
+            anchor_idx.reserve(m);
+            for (int k = 0; k < m; ++k) {
+                if (!R_IsNA(x_col[sidx[k]])) {
+                    anchor_idx.push_back(k);
                 }
             }
-            if (first < 0) return;   // all NA in this column -> discard whole group
+            if (anchor_idx.empty()) continue;   // no rule applies
 
-            // Adjust start_row if leading NAs exceed half
-            if (first >= (int)half) {
-                int candidate = first - (int)half;
-                if (candidate > start_row) start_row = candidate;
-            }
-            // Adjust end_row if trailing NAs exceed half
-            if (last < L - (int)half) {
-                int candidate = last + (int)half;
-                if (candidate < end_row) end_row = candidate;
-            }
-        }
+            size_t a = 0;  // number of anchors encountered so far
+            for (int k = 0; k < m; ++k) {
+                int orig = sidx[k];
+                if (!R_IsNA(x_col[orig])) { ++a; continue; }
+                if (keep[orig] == 0) continue;  // already invalid
 
-        if (end_row <= start_row) return;
+                double t_obs = time_sec[orig];
+                double dl = (a == 0)
+                    ? std::numeric_limits<double>::infinity()
+                    : (t_obs - time_sec[sidx[anchor_idx[a - 1]]]);
+                double dr = (a == anchor_idx.size())
+                    ? std::numeric_limits<double>::infinity()
+                    : (time_sec[sidx[anchor_idx[a]]] - t_obs);
 
-        // Now process each column within [start_row, end_row) to mark invalid rows
-        for (int j = 0; j < p; ++j) {
-            col_vec.assign(L, NA_REAL);
-            const double* x_col = x.begin() + j * n;
-            for (int i = start_row; i < end_row; ++i) {
-                int orig = orig_at_row[i];
-                if (orig >= 0) col_vec[i] = x_col[orig];
-            }
-
-            // Scan NA runs inside the trimmed interval
-            int i = start_row;
-            while (i < end_row) {
-                if (!R_IsNA(col_vec[i])) {
-                    ++i;
-                    continue;
+                if (dl > half_seconds && dr > half_seconds) {
+                    keep[orig] = 0;
                 }
-                // Found an NA run
-                int run_start = i;
-                while (i < end_row && R_IsNA(col_vec[i])) ++i;
-                int run_end = i - 1;          // inclusive
-                int run_len = run_end - run_start + 1;
-
-                // Mark positions that are farther than 'half' from both ends
-                for (int pos = run_start; pos <= run_end; ++pos) {
-                    int dist_left  = pos - run_start + 1;
-                    int dist_right = run_end - pos + 1;
-                    if (dist_left > half && dist_right > half) {
-                        invalid_rows[pos] = 1;
-                    }
-                }
-            }
-        }
-
-        // Keep rows that are not invalid and have an actual observation
-        for (int i = start_row; i < end_row; ++i) {
-            if (invalid_rows[i] == 0 && orig_at_row[i] >= 0) {
-                keep[orig_at_row[i]] = 1;
             }
         }
     };
 
     if (G == 0) {
-        // No group: split by time gaps
+        // No groups: split into periods by time gaps larger than
+        // threshold_sec. Repeated timestamps stay in the same period.
         std::vector<int> period(n);
         period[0] = 0;
         for (int i = 1; i < n; ++i) {
             double diff = time_sec[i] - time_sec[i - 1];
-            if (diff > threshold_sec || time_equal_cpp(diff, 0.0))
+            if (diff > threshold_sec)
                 period[i] = period[i - 1] + 1;
             else
                 period[i] = period[i - 1];

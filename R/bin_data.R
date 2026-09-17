@@ -20,7 +20,7 @@ bin_data <- function(data, cols = NULL, method = "equal_width",
     x <- as.numeric(data)
     if (method == "custom") {
       if (is.null(breaks)) stop("breaks must be provided for custom method")
-      b <- sort(unique(breaks))
+      b <- unique(sort(breaks))
     } else {
       x_clean <- x[!is.na(x)]
       if (length(x_clean) == 0) stop("No non-NA values")
@@ -32,25 +32,27 @@ bin_data <- function(data, cols = NULL, method = "equal_width",
         b <- unique(b)
       }
     }
+    if (length(b) < 2) stop("Not enough distinct break points to form bins")
     out <- bin_data_cpp(x, b, include_lowest)
     if (!is.null(labels)) {
-      if (length(labels) != length(b)-1) stop("labels length must equal number of bins")
-      out <- factor(out, levels = 1:(length(b)-1), labels = labels)
+      if (length(labels) != length(b) - 1)
+        stop("labels length must equal number of bins")
+      out <- factor(out, levels = 1:(length(b) - 1), labels = labels)
     } else {
-      out <- factor(out, levels = 1:(length(b)-1))
+      out <- factor(out, levels = 1:(length(b) - 1))
     }
     if (verbose) cat("Time used by bin_data:", format(Sys.time() - t0, digits = 3), "\n")
     return(out)
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
   check_numeric_cols(data, idx)
 
   result <- data
   for (j in idx) {
     x <- data[[j]]
     if (method == "custom") {
-      b <- sort(unique(breaks))
+      b <- unique(sort(breaks))
     } else {
       x_clean <- x[!is.na(x)]
       if (length(x_clean) == 0) next
@@ -62,12 +64,14 @@ bin_data <- function(data, cols = NULL, method = "equal_width",
         b <- unique(b)
       }
     }
+    if (length(b) < 2) next
     out <- bin_data_cpp(x, b, include_lowest)
     if (!is.null(labels)) {
-      if (length(labels) != length(b)-1) stop("labels length must equal number of bins")
-      result[[j]] <- factor(out, levels = 1:(length(b)-1), labels = labels)
+      if (length(labels) != length(b) - 1)
+        stop("labels length must equal number of bins")
+      result[[j]] <- factor(out, levels = 1:(length(b) - 1), labels = labels)
     } else {
-      result[[j]] <- factor(out, levels = 1:(length(b)-1))
+      result[[j]] <- factor(out, levels = 1:(length(b) - 1))
     }
   }
 

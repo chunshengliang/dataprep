@@ -1,28 +1,30 @@
 #' Rolling window statistics
 #' @param data A data frame, matrix, or numeric vector.
-#' @param cols Columns to process.
+#' @param cols Columns to process. If \code{NULL}, all numeric columns are used.
 #' @param window Window size.
-#' @param method \code{"mean"}, \code{"sd"}, \code{"var"}, \code{"median"}, \code{"sum"}, \code{"min"}, \code{"max"}.
-#' @param align \code{"right"}, \code{"left"}, or \code{"center"}.
+#' @param method "mean", "sd", "var", "median", "sum", "min", "max".
+#' @param align "right", "left", or "center".
 #' @param group Optional grouping column.
 #' @param date_col Time column.
 #' @param verbose Logical.
 #' @return A data frame or vector.
 #' @export
-#' @noRd
 roll_apply <- function(data, cols = NULL, window = 3, method = "mean",
                        align = "right", group = NULL, date_col = NULL,
                        verbose = FALSE) {
   t0 <- Sys.time()
-  method <- match.arg(method, c("mean", "sd", "var", "median", "sum", "min", "max"))
+  method <- match.arg(method,
+                      c("mean", "sd", "var", "median", "sum", "min", "max"))
   align <- match.arg(align, c("right", "left", "center"))
 
   apply_align <- function(x) {
     if (align == "left") {
-      c(x[-1], NA)
+      if (window <= 1) return(x)
+      c(x[-(1:(window - 1))], rep(NA, window - 1))
     } else if (align == "center") {
       half <- floor(window / 2)
-      c(x[(half+1):length(x)], rep(NA, half))
+      if (half <= 0) return(x)
+      c(x[(half + 1):length(x)], rep(NA, half))
     } else {
       x
     }
@@ -41,7 +43,8 @@ roll_apply <- function(data, cols = NULL, window = 3, method = "mean",
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
   check_numeric_cols(data, idx)
 
   if (is.null(group)) {
@@ -54,7 +57,8 @@ roll_apply <- function(data, cols = NULL, window = 3, method = "mean",
     for (g in ug) {
       rows <- which(data[[group_col]] == g)
       for (j in idx) {
-        data[rows, j] <- apply_align(roll_stats_cpp(data[rows, j], window, method))
+        data[rows, j] <- apply_align(
+          roll_stats_cpp(data[rows, j], window, method))
       }
     }
   }

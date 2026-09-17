@@ -5,28 +5,13 @@
 #   R     : dataprep, data.table, reshape2, tidyr
 #   Python: pandas, polars, dask, duckdb
 #
-# Design:
-#   - The input is constructed DIRECTLY as a canonical long table
-#     (id1, ..., idN, variable, value), not by melting a wide one.
-#     This matches the typical real-world dcast use case.
-#   - `n_long` (long-table row count) is the primary dimension.
-#   - Sequences:
-#       S1: vary n_long, 1 id + 10 levels
-#       S2: 1e6 rows, 1 id + varying levels
-#       S3: 1e6 rows, varying n_id + 10 levels
-#       S4: vary n_long, 1 id + 100 levels
-#   - A tool that exceeds `max_first_sec` on its first attempt is
-#     disabled for the remainder of the current sequence.
+# Timing semantics: identical to melt_benchmark.R. Python
+# functions read their inputs from __main__ globals registered
+# by the R side; no argument or return-value marshalling is
+# timed.
 #
-# Notes:
-#   - dask's distributed pivot_table does not support a vector
-#     `index`; we compute() then use pandas pivot_table with
-#     aggfunc='first', matching duckdb PIVOT ... USING FIRST.
-#   - All Python engines are called as DataFrame instance methods.
-#
-# CRAN safety: the driver block is wrapped in
-# `if (nzchar(Sys.getenv("DATAPREP_RUN_BENCHMARK")))` so it is
-# never executed by R CMD check.
+# CRAN safety: the driver block is gated on
+# DATAPREP_RUN_BENCHMARK so it is never executed by R CMD check.
 # ============================================================
 
 source(system.file("benchmark_helpers.R", package = "dataprep"))
@@ -38,22 +23,19 @@ source(system.file("benchmark_helpers.R", package = "dataprep"))
 #   n_id      : number of id columns
 #   n_levels  : number of distinct `variable` values
 #
-# The table is generated so that every (id_combination, variable)
-# pair appears exactly once. Hence:
-#   n_comb = n_long %/% n_levels   unique id combinations
+# Every (id_combination, variable) pair appears exactly once:
+#   n_comb = n_long %/% n_levels
 #   n_long is rounded down to n_comb * n_levels
 # ------------------------------------------------------------
 make_long <- function(n_long, n_id, n_levels) {
   n_comb <- max(1L, as.integer(n_long %/% n_levels))
   n_long <- n_comb * n_levels
 
-  # Unique id combinations: each column is a random permutation of 1..n_comb
   ids <- lapply(seq_len(n_id), function(k)
     sample.int(n_comb, n_comb, replace = FALSE))
   names(ids) <- paste0("id", seq_len(n_id))
 
-  # Expand: each id appears once per level
-  idx <- rep(seq_len(n_comb), each = n_levels)
+  idx  <- rep(seq_len(n_comb), each = n_levels)
   long <- as.data.frame(lapply(ids, `[`, idx))
   colnames(long) <- paste0("id", seq_len(n_id))
 
@@ -79,12 +61,13 @@ run_dcast_bench <- function(n_long, n_id, n_levels,
               n_id, n_levels, strrep("=", 100)))
 
   # ---- build a canonical long table ----
-  long <- make_long(n_long, n_id, n_levels)
+  long   <- make_long(n_long, n_id, n_levels)
   n_long <- nrow(long)
 
-  # ---- pre-materialize inputs (NOT timed) ----
+  # ---- pre-materialise inputs (NOT timed) ----
   long_dt <- as.data.table(long)
-  long_pd <- r_to_py(long)
+
+  long_pd <- reticulate::r_to_py(long)
   long_pl <- polars$DataFrame(long)
   ddf     <- dask_dataframe$from_pandas(long, npartitions = 4L)
 
@@ -96,47 +79,51 @@ run_dcast_bench <- function(n_long, n_id, n_levels,
     paste(id_cols, collapse = ", ")
   )
 
-  # polars pivot: try new API first, fall back to old
-  pl_pivot <- function() {
-    tryCatch(
-      long_pl$pivot(index = id_cols, on = "variable", values = "value"),
-      error = function(e)
-        long_pl$pivot(index = id_cols, columns = "variable", values = "value")
-    )
-  }
+  # ---- pre-convert strings/vectors once ----
+  id_cols_py   <- reticulate::r_to_py(id_cols)
+  sql_pivot_py <- reticulate::r_to_py(sql_pivot)
 
-  fml <- as.formula(paste(paste(id_cols, collapse = "+"), "~ variable"))
+  # ---- register Python globals used by bench_dcast_* ----
+  main$bench_long_pd <- long_pd
+  main$bench_long_pl <- long_pl
+  main$bench_ddf     <- ddf
+  main$bench_con     <- con
+  main$bench_id_cols <- id_cols_py
+  main$bench_sql     <- sql_pivot_py
 
   # ---- per-tool closures ----
   tools <- list(
-    reshape2   = function()
-      reshape2::dcast(long, fml, value.var = "value"),
-    data.table = function()
-      data.table::dcast(long_dt, fml, value.var = "value"),
+    reshape2   = function() {
+      fml <- as.formula(paste(paste(id_cols, collapse = "+"), "~ variable"))
+      reshape2::dcast(long, fml, value.var = "value")
+    },
+
+    data.table = function() {
+      fml <- as.formula(paste(paste(id_cols, collapse = "+"), "~ variable"))
+      data.table::dcast(long_dt, fml, value.var = "value")
+    },
+
     tidyr      = function()
       tidyr::pivot_wider(long,
                          id_cols     = dplyr::all_of(id_cols),
                          names_from  = variable,
                          values_from = value),
+
     dataprep   = function()
       dataprep::dcast(long, id = id_cols,
                       variable = "variable", value = "value"),
+
     pandas     = function()
-      long_pd$pivot(index   = id_cols,
-                    columns = "variable",
-                    values  = "value")$reset_index(),
-    polars     = function() pl_pivot()$to_pandas(),
-    dask       = function() {
-      # Distributed pivot_table does not support vector `index`.
-      # Compute to pandas first, then pivot with aggfunc='first'
-      # to match duckdb PIVOT ... USING FIRST(value).
-      pdf <- ddf$compute()
-      pdf$pivot_table(index   = id_cols,
-                      columns = "variable",
-                      values  = "value",
-                      aggfunc = "first")$reset_index()
-    },
-    duckdb     = function() con$sql(sql_pivot)$df()
+      py_nc("bench_dcast_pandas()"),
+
+    polars     = function()
+      py_nc("bench_dcast_polars()"),
+
+    dask       = function()
+      py_nc("bench_dcast_dask()"),
+
+    duckdb     = function()
+      py_nc("bench_dcast_duckdb()")
   )
 
   cat("\n  Per-tool first-run timing and chosen `times`:\n")
@@ -168,6 +155,15 @@ run_dcast_bench <- function(n_long, n_id, n_levels,
   print(sm, digits = 4, row.names = FALSE)
 
   append_result(sm, csv_path)
+
+  # ---- drop Python-side references ----
+  main$bench_long_pd <- NULL
+  main$bench_long_pl <- NULL
+  main$bench_ddf     <- NULL
+  main$bench_con     <- NULL
+  main$bench_id_cols <- NULL
+  main$bench_sql     <- NULL
+
   rm(long, long_dt, long_pd, long_pl, ddf, con, sm_list, sm)
   gc()
   invisible(NULL)
@@ -175,11 +171,8 @@ run_dcast_bench <- function(n_long, n_id, n_levels,
 
 # ============================================================
 # Driver
-#
-# Each gradient sequence starts with bench_reset_disabled("dcast")
-# so that small data always gets a fresh chance for every tool.
 # ============================================================
-if (nzchar(Sys.getenv("DATAPREP_RUN_BENCHMARK"))) {
+if (.run_bench) {
   set.seed(123)
 
   # ---- Sequence 1: vary n_long, 1 id + 10 levels ----
@@ -206,7 +199,7 @@ if (nzchar(Sys.getenv("DATAPREP_RUN_BENCHMARK"))) {
 
   # ---- Sequence 4: vary n_long, 1 id + 100 levels ----
   bench_reset_disabled("dcast")
-  for (nl in 10^(4:7)) {
+  for (nl in 10^(4:8)) {
     run_dcast_bench(nl, n_id = 1L, n_levels = 100L,
                     label = sprintf("Dcast: n_long=%s, 1 id + 100 lvl",
                                     format(nl, big.mark = ",")))

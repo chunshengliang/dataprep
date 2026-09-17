@@ -20,46 +20,95 @@ dry_run <- function(data, steps = c("varidele", "obsedele", "outlier"),
                     verbose = FALSE) {
   t0 <- Sys.time()
   if (!is.data.frame(data)) stop("data must be a data frame")
-  if (is.null(cols)) cols <- which(sapply(data, is.numeric))
-  else cols <- resolve_cols(data, cols)
+
+  if (is.null(cols)) {
+    cols <- which(sapply(data, is.numeric))
+  } else {
+    cols <- resolve_cols(data, cols)
+  }
 
   report <- list()
-  original_n <- nrow(data)
+  original_n    <- nrow(data)
   original_cols <- ncol(data)
 
   for (step in steps) {
-    switch(step,
-           "varidele" = {
-             mat <- as.matrix(data[, cols, drop = FALSE])
-             frac <- colMeans(is.na(mat))
-             removed_cols <- names(data)[cols][frac >= fraction]
-             report$varidele <- list(
-               removed_columns = removed_cols,
-               removed_count = length(removed_cols)
-             )
-             keep_cols <- cols[frac < fraction]
-             data <- data[, keep_cols, drop = FALSE]
-             cols <- seq_along(keep_cols)
-           },
-           "obsedele" = {
-             n_before <- nrow(data)
-             report$obsedele <- list(
-               rows_before = n_before,
-               note = "Observation deletion would be applied"
-             )
-           },
-           "outlier" = {
-             report$outlier <- list(
-               note = "Outlier detection would be applied"
-             )
-           }
+    switch(
+      step,
+      "varidele" = {
+        # Operate on column NAMES, not integer indices. This guarantees
+        # that every column not in `cols` (including the time column and
+        # any grouping/character columns) is preserved automatically.
+        col_names   <- names(data)[cols]
+        mat         <- as.matrix(data[, cols, drop = FALSE])
+        frac        <- colMeans(is.na(mat))
+        keep_mask   <- frac < fraction
+        kept_names  <- col_names[keep_mask]
+        drop_names  <- col_names[!keep_mask]
+
+        report$varidele <- list(
+          removed_columns = drop_names,
+          removed_count   = length(drop_names)
+        )
+
+        # Drop by name; keep everything else.
+        keep_all <- setdiff(names(data), drop_names)
+        data     <- data[, keep_all, drop = FALSE]
+
+        # Remap `cols` to the new positions.
+        cols <- match(kept_names, names(data))
+        cols <- cols[!is.na(cols)]
+      },
+      "obsedele" = {
+        if (length(cols) == 0) {
+          report$obsedele <- list(
+            rows_before = nrow(data),
+            rows_after  = nrow(data),
+            removed     = 0L,
+            note        = "Skipped: no numeric columns remain."
+          )
+        } else {
+          a <- obsedele(data, cols = cols, group = group,
+                        by = by, half = half, date_col = date_col,
+                        verbose = FALSE)
+          report$obsedele <- list(
+            rows_before = nrow(data),
+            rows_after  = nrow(a),
+            removed     = nrow(data) - nrow(a)
+          )
+          data <- a
+        }
+      },
+      "outlier" = {
+        if (length(cols) == 0) {
+          report$outlier <- list(
+            na_before = 0L,
+            na_after  = 0L,
+            added     = 0L,
+            note      = "Skipped: no numeric columns remain."
+          )
+        } else {
+          a <- detect_outliers(data, cols = cols, method = method_outlier,
+                               top = top, bottom = bottom, coef = coef,
+                               group = group, mask_only = FALSE,
+                               verbose = FALSE)
+          na_before <- sum(is.na(data[, cols, drop = FALSE]))
+          na_after  <- sum(is.na(a   [, cols, drop = FALSE]))
+          report$outlier <- list(
+            na_before = na_before,
+            na_after  = na_after,
+            added     = na_after - na_before
+          )
+          data <- a
+        }
+      },
+      stop("Unknown step: ", step)
     )
   }
 
-  report$original_n <- original_n
+  report$original_n    <- original_n
   report$original_ncol <- original_cols
-  report$final_n <- nrow(data)
-  report$final_ncol <- ncol(data)
+  report$final_n       <- nrow(data)
+  report$final_ncol    <- ncol(data)
 
   if (verbose) cat("Dry run completed.\n")
   report

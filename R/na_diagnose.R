@@ -1,11 +1,10 @@
 #' Diagnose missing-value patterns
 #' @param data A data frame or matrix.
-#' @param cols Columns to diagnose.
-#' @param date_col Time column.
+#' @param cols Columns to diagnose. If \code{NULL}, all numeric columns are used.
+#' @param date_col Reserved for future use; currently ignored.
 #' @param verbose Logical.
 #' @return A data frame of NA statistics.
 #' @export
-#' @noRd
 na_diagnose <- function(data, cols = NULL, date_col = NULL, verbose = FALSE) {
   if (is.vector(data) && !is.list(data)) {
     data <- data.frame(value = data, stringsAsFactors = FALSE)
@@ -14,7 +13,8 @@ na_diagnose <- function(data, cols = NULL, date_col = NULL, verbose = FALSE) {
     data <- as.data.frame(data)
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
   check_numeric_cols(data, idx)
   mat <- to_numeric_matrix(data, idx)
 

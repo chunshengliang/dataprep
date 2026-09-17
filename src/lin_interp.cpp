@@ -1,8 +1,8 @@
 // File: src/lin_interp.cpp
+// [[Rcpp::plugins(openmp)]]
 #include <Rcpp.h>
 using namespace Rcpp;
 
-// 原有向量接口
 // [[Rcpp::export]]
 NumericVector lin_interp_cpp(NumericVector x) {
   int n = x.size();
@@ -32,8 +32,8 @@ NumericVector lin_interp_cpp(NumericVector x) {
   return y;
 }
 
-// 新增矩阵批量版本
-// [[Rcpp::plugins(openmp)]]
+// Matrix version. The OpenMP plugin declaration is inherited from the
+// top of the file; no need to repeat it here.
 // [[Rcpp::export]]
 NumericMatrix lin_interp_matrix_cpp(NumericMatrix x) {
   int n = x.nrow(), p = x.ncol();
@@ -72,4 +72,3 @@ NumericMatrix lin_interp_matrix_cpp(NumericMatrix x) {
   }
   return y;
 }
-

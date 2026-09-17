@@ -1,11 +1,11 @@
 // File: src/impute.cpp
+// [[Rcpp::plugins(openmp)]]
 #include <Rcpp.h>
 #include <vector>
 #include <algorithm>
 #include <cmath>
 using namespace Rcpp;
 
-// 原有向量接口（完全兼容）
 // [[Rcpp::export]]
 NumericVector impute_cpp(NumericVector x, std::string method) {
   int n = x.size();
@@ -71,8 +71,8 @@ NumericVector impute_cpp(NumericVector x, std::string method) {
   return y;
 }
 
-// 新增矩阵批量版本
-// [[Rcpp::plugins(openmp)]]
+// Matrix version. The OpenMP plugin declaration is inherited from the
+// top of the file; no need to repeat it here.
 // [[Rcpp::export]]
 NumericMatrix impute_matrix_cpp(NumericMatrix x, std::string method) {
   int n = x.nrow(), p = x.ncol();
@@ -146,4 +146,3 @@ NumericMatrix impute_matrix_cpp(NumericMatrix x, std::string method) {
   }
   return y;
 }
-

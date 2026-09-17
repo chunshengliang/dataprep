@@ -5,8 +5,8 @@ bin_data_cpp <- function(x, breaks, include_lowest = TRUE) {
     .Call(`_dataprep_bin_data_cpp`, x, breaks, include_lowest)
 }
 
-condextr_all_cpp <- function(time_sec, group_int, x, step_sec, half, threshold_sec, top, toperr, topmag, bottom, boterr, botmag, interval, times, n_threads = 0L) {
-    .Call(`_dataprep_condextr_all_cpp`, time_sec, group_int, x, step_sec, half, threshold_sec, top, toperr, topmag, bottom, boterr, botmag, interval, times, n_threads)
+condextr_cpp <- function(time_sec, group_int, x, step_sec, half, threshold_sec, top, toperr, topmag, bottom, boterr, botmag, interval, times, n_threads = 0L) {
+    .Call(`_dataprep_condextr_cpp`, time_sec, group_int, x, step_sec, half, threshold_sec, top, toperr, topmag, bottom, boterr, botmag, interval, times, n_threads)
 }
 
 create_lags_cpp <- function(x, group, lags, fill_na = TRUE) {
@@ -65,8 +65,8 @@ mark_outliers_matrix_cpp <- function(mat, top, toperr, topmag, bottom, boterr, b
     .Call(`_dataprep_mark_outliers_matrix_cpp`, mat, top, toperr, topmag, bottom, boterr, botmag, use_threshold_error, n_threads)
 }
 
-melt_cpp <- function(df, id = NULL, variable_name = NULL, value_name = NULL, major = NULL, n_threads = 0L) {
-    .Call(`_dataprep_melt_cpp`, df, id, variable_name, value_name, major, n_threads)
+melt_cpp <- function(df, id = NULL, variable_name = NULL, value_name = NULL, major = NULL, n_threads = 0L, na_rm = FALSE) {
+    .Call(`_dataprep_melt_cpp`, df, id, variable_name, value_name, major, n_threads, na_rm)
 }
 
 na_frac_cpp <- function(x) {

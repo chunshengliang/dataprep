@@ -1,4 +1,4 @@
-url: https://liangchunsheng.github.io/dataprep/
+url: https://chunshengliang.github.io/dataprep/
 
 template:
   bootstrap: 5
@@ -17,7 +17,7 @@ navbar:
   components:
     github:
       icon: fa-github
-      href: https://github.com/liangchunsheng/dataprep
+      href: https://github.com/chunshengliang/dataprep
 
 reference:
   - title: "Complete preprocessing workflow"
@@ -96,8 +96,8 @@ reference:
 
   - title: "Reshaping"
     desc: >
-      Fast wide-to-long and long-to-wide reshaping, SIMD + OpenMP
-      C++ backends.
+      Fast wide-to-long and long-to-wide reshaping with SIMD +
+      OpenMP C++ backends.
     contents:
       - melt
       - dcast
@@ -126,27 +126,26 @@ reference:
       - data
       - data1
 
-  - title: "Internal C++ backends"
-    desc: >
-      Low-level Rcpp exports. Not intended for direct use; see the
-      corresponding R wrappers instead.
-    contents:
-      - matches("_cpp$")
-
 articles:
   - title: "Getting started"
     navbar: ~
     contents:
-      - dataprep-plots
-
-  - title: "Cleaning and preprocessing"
-    contents:
+      - dataprep-philosophy
       - dataprep-cleaning
-      - dataprep-workflow
+
+  - title: "Performance and behaviour"
+    contents:
+      - dataprep-performance
+      - dataprep-migration
 
   - title: "Reshaping"
     contents:
       - dataprep-melt-dcast
+
+  - title: "Workflow and diagnostics"
+    contents:
+      - dataprep-workflow
+      - dataprep-plots
 
 news:
   one_page: true
@@ -154,7 +153,7 @@ news:
 
 authors:
   Chun-Sheng Liang:
-    href: https://github.com/liangchunsheng
+    href: https://github.com/chunshengliang
   Hao Wu: ~
   Hai-Yan Li: ~
   Qiang Zhang: ~

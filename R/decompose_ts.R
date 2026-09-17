@@ -1,13 +1,12 @@
 #' Simple time series decomposition
 #' @param data A data frame with a time column.
-#' @param cols Columns to decompose.
+#' @param cols Columns to decompose. If \code{NULL}, all numeric columns are used.
 #' @param date_col Time column.
-#' @param period \code{"month"}, \code{"day"}, or \code{"hour"}.
-#' @param method \code{"additive"} or \code{"multiplicative"}.
+#' @param period "month", "day", or "hour".
+#' @param method "additive" or "multiplicative".
 #' @param verbose Logical.
 #' @return A data frame with residual component.
 #' @export
-#' @noRd
 decompose_ts <- function(data, cols = NULL, date_col = NULL,
                          period = "month", method = "additive",
                          verbose = FALSE) {
@@ -41,7 +40,8 @@ decompose_ts <- function(data, cols = NULL, date_col = NULL,
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
   check_numeric_cols(data, idx)
 
   date_info <- resolve_date_col(data, date_col)

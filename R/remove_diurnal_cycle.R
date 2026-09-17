@@ -1,18 +1,20 @@
 #' Remove diurnal (or other periodic) cycle
 #' @param data A data frame or numeric vector.
-#' @param cols Columns to process.
+#' @param cols Columns to process. If \code{NULL}, all numeric columns are used.
 #' @param date_col Time column.
-#' @param by \code{"hour"}, \code{"month"}, or \code{"day"}.
+#' @param by "hour", "month", or "day".
 #' @param verbose Logical.
 #' @return A data frame or vector with cycle removed.
 #' @export
-#' @noRd
 remove_diurnal_cycle <- function(data, cols = NULL, date_col = NULL,
                                  by = "hour", verbose = FALSE) {
   t0 <- Sys.time()
 
   if (is.vector(data) && !is.list(data)) {
     if (is.null(date_col)) {
+      warning("Vector input without date_col assumes equally spaced ",
+              "data at the requested 'by' interval. Provide date_col ",
+              "for irregular series.")
       n <- length(data)
       if (by == "hour") {
         cycle_id <- ((seq_len(n) - 1) %% 24) + 1
@@ -55,12 +57,13 @@ remove_diurnal_cycle <- function(data, cols = NULL, date_col = NULL,
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
   check_numeric_cols(data, idx)
 
   date_info <- resolve_date_col(data, date_col)
   date_name <- date_info$name
-  time_vec <- data[[date_name]]
+  time_vec  <- data[[date_name]]
   if (!inherits(time_vec, c("POSIXct", "Date"))) {
     stop("A valid time column is required for diurnal cycle removal")
   }

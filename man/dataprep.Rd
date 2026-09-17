@@ -37,5 +37,5 @@ A preprocessed data frame.
 Chun-Sheng Liang <liangchunsheng@lzu.edu.cn>
 }
 \examples{
-dataprep(data[1:60, c(1, 4, 18:19)], cols = 3:4, group = 2, interval = 2, times = 1)
+dataprep(data[1:60, c(1, 4, 18:19)], cols = 3:4, group = 2, interval = 2, times = 1, cores = 1)
 }

@@ -5,18 +5,24 @@
 #   R     : dataprep, data.table, reshape2, tidyr
 #   Python: pandas, polars, dask, duckdb
 #
-# Default cap = 15 seconds. A tool that exceeds the cap on its
-# first attempt is disabled for the remainder of the current
-# gradient sequence. Call bench_reset_disabled("melt") before
-# starting a new sequence.
+# Timing semantics:
+#   * R tools  : native R call -> native R object.
+#   * Py tools : enter Python, run the melt there, return a Python
+#                DataFrame. The return value is kept on the Python
+#                heap via py_eval(..., convert = FALSE); no
+#                py_to_r marshalling is ever timed.
+#   * Inputs are materialised outside the timed region; `id_cols`
+#     and the SQL string are pre-converted to Python once.
 #
-# CRAN safety: the driver block is wrapped in
-# `if (nzchar(Sys.getenv("DATAPREP_RUN_BENCHMARK")))` so it is
-# never executed by R CMD check.
+# CRAN safety: the driver block is gated on
+# DATAPREP_RUN_BENCHMARK so it is never executed by R CMD check.
 # ============================================================
 
 source(system.file("benchmark_helpers.R", package = "dataprep"))
 
+# ------------------------------------------------------------
+# Benchmark one cell
+# ------------------------------------------------------------
 run_melt_bench <- function(n_rows, n_id, n_val,
                            label         = "",
                            csv_path      = "melt_benchmark_result.csv",
@@ -36,9 +42,10 @@ run_melt_bench <- function(n_rows, n_id, n_val,
   df <- as.data.frame(matrix(rnorm(n_rows * n_cols), nrow = n_rows))
   colnames(df) <- c(id_cols, value_cols)
 
-  # ---- pre-materialize inputs (NOT timed) ----
+  # ---- pre-materialise inputs (NOT timed) ----
   df_dt <- as.data.table(df)
-  pd_df <- r_to_py(df)
+
+  pd_df <- reticulate::r_to_py(df)
   pl_df <- polars$DataFrame(df)
   ddf   <- dask_dataframe$from_pandas(df, npartitions = 4L)
 
@@ -51,22 +58,43 @@ run_melt_bench <- function(n_rows, n_id, n_val,
     paste(sprintf("'%s'", value_cols), collapse = ", ")
   )
 
+  # ---- pre-convert strings/vectors once ----
+  id_cols_py     <- reticulate::r_to_py(id_cols)
+  sql_unpivot_py <- reticulate::r_to_py(sql_unpivot)
+
+  # ---- register Python globals used by bench_melt_* ----
+  main$bench_pd_df   <- pd_df
+  main$bench_pl_df   <- pl_df
+  main$bench_ddf     <- ddf
+  main$bench_con     <- con
+  main$bench_id_cols <- id_cols_py
+  main$bench_sql     <- sql_unpivot_py
+
   # ---- per-tool closures ----
   tools <- list(
-    reshape2   = function() reshape2::melt(df, id.vars = id_cols),
-    data.table = function() data.table::melt(df_dt, id.vars = id_cols),
-    tidyr      = function() tidyr::pivot_longer(df, cols = -seq_along(id_cols)),
-    dataprep   = function() dataprep::melt(df, id.vars = id_cols),
-    pandas     = function() pd_df$melt(id_vars    = id_cols,
-                                       var_name    = "variable",
-                                       value_name  = "value"),
-    polars     = function() pl_df$unpivot(index         = id_cols,
-                                          variable_name = "variable",
-                                          value_name    = "value"),
-    dask       = function() ddf$melt(id_vars   = id_cols,
-                                     var_name   = "variable",
-                                     value_name = "value")$compute(),
-    duckdb     = function() con$sql(sql_unpivot)$df()
+    reshape2   = function()
+      reshape2::melt(df, id.vars = id_cols),
+
+    data.table = function()
+      data.table::melt(df_dt, id.vars = id_cols),
+
+    tidyr      = function()
+      tidyr::pivot_longer(df, cols = -seq_along(id_cols)),
+
+    dataprep   = function()
+      dataprep::melt(df, id.vars = id_cols),
+
+    pandas     = function()
+      py_nc("bench_melt_pandas()"),
+
+    polars     = function()
+      py_nc("bench_melt_polars()"),
+
+    dask       = function()
+      py_nc("bench_melt_dask()"),
+
+    duckdb     = function()
+      py_nc("bench_melt_duckdb()")
   )
 
   cat("\n  Per-tool first-run timing and chosen `times`:\n")
@@ -99,6 +127,15 @@ run_melt_bench <- function(n_rows, n_id, n_val,
   print(sm, digits = 4, row.names = FALSE)
 
   append_result(sm, csv_path)
+
+  # ---- drop Python-side references so GC can reclaim ----
+  main$bench_pd_df   <- NULL
+  main$bench_pl_df   <- NULL
+  main$bench_ddf     <- NULL
+  main$bench_con     <- NULL
+  main$bench_id_cols <- NULL
+  main$bench_sql     <- NULL
+
   rm(df, df_dt, pd_df, pl_df, ddf, con, sm_list, sm)
   gc()
   invisible(NULL)
@@ -106,11 +143,8 @@ run_melt_bench <- function(n_rows, n_id, n_val,
 
 # ============================================================
 # Driver
-#
-# Each gradient sequence starts with bench_reset_disabled("melt")
-# so that small data always gets a fresh chance for every tool.
 # ============================================================
-if (nzchar(Sys.getenv("DATAPREP_RUN_BENCHMARK"))) {
+if (.run_bench) {
   set.seed(123)
 
   # ---- Sequence 1: vary rows, 1 id + 9 value cols ----

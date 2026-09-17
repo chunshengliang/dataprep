@@ -1,3 +1,4 @@
+// [[Rcpp::plugins(openmp)]]
 #include <Rcpp.h>
 #include <vector>
 #include <cmath>
@@ -6,66 +7,93 @@
 #endif
 using namespace Rcpp;
 
+// FIX: pairwise-complete Pearson correlation.
+// The previous version used mean()/sd() which skip NA, but the
+// sum_xy loop did not skip NA. Any column pair containing at least
+// one NA was therefore silently mis-evaluated. This version computes
+// each correlation on the subset of rows where both columns are
+// non-missing and non-NaN.
 // [[Rcpp::export]]
-LogicalVector filter_high_cor_cpp(NumericMatrix x, double cutoff, 
+LogicalVector filter_high_cor_cpp(NumericMatrix x, double cutoff,
                                   bool keep_first = true) {
-    int n = x.nrow();
-    int p = x.ncol();
+    const int n = x.nrow();
+    const int p = x.ncol();
     LogicalVector keep(p, true);
     if (p < 2) return keep;
-    
-    // Compute correlation matrix (Pearson only; Spearman could be added later)
-    // Use symmetric, compute upper triangle only
+
     std::vector<std::vector<double>> cor(p, std::vector<double>(p, 0.0));
-    
+    std::vector<char> sd_zero(p, 0);
+
     #pragma omp parallel for schedule(dynamic) if(p > 50)
     for (int i = 0; i < p; ++i) {
-        NumericVector col_i = x(_, i);
-        double mean_i = mean(col_i);
-        double sd_i = sd(col_i);
-        if (sd_i == 0) { // constant column, mark for removal
-            keep[i] = false;
-            continue;
+        const double* xi = x.begin() + (R_xlen_t)i * n;
+
+        int ci = 0;
+        double si = 0.0;
+        for (int k = 0; k < n; ++k) {
+            double v = xi[k];
+            if (!R_IsNA(v) && !R_IsNaN(v)) { si += v; ++ci; }
         }
-        for (int j = i+1; j < p; ++j) {
-            NumericVector col_j = x(_, j);
-            double mean_j = mean(col_j);
-            double sd_j = sd(col_j);
-            if (sd_j == 0) {
-                keep[j] = false;
-                continue;
-            }
-            // Compute Pearson correlation
-            double sum_xy = 0.0;
+        if (ci < 2) { sd_zero[i] = 1; continue; }
+
+        for (int j = i + 1; j < p; ++j) {
+            const double* xj = x.begin() + (R_xlen_t)j * n;
+            int cnt = 0;
+            double sxi = 0.0, sxj = 0.0;
+            double sxixi = 0.0, sxjxj = 0.0, sxixj = 0.0;
             for (int k = 0; k < n; ++k) {
-                double a = col_i[k] - mean_i;
-                double b = col_j[k] - mean_j;
-                sum_xy += a * b;
+                double a = xi[k];
+                double b = xj[k];
+                if (R_IsNA(a) || R_IsNA(b) || R_IsNaN(a) || R_IsNaN(b)) continue;
+                sxi += a; sxj += b;
+                sxixi += a * a;
+                sxjxj += b * b;
+                sxixj += a * b;
+                ++cnt;
             }
-            double cor_val = sum_xy / ((n-1) * sd_i * sd_j);
-            cor[i][j] = cor_val;
+            if (cnt < 2) continue;
+            double mi = sxi / cnt;
+            double mj = sxj / cnt;
+            double vi = (sxixi - cnt * mi * mi) / (cnt - 1);
+            double vj = (sxjxj - cnt * mj * mj) / (cnt - 1);
+            if (vi < 0) vi = 0;
+            if (vj < 0) vj = 0;
+            double sdi = std::sqrt(vi);
+            double sdj = std::sqrt(vj);
+            if (sdi == 0 || sdj == 0) continue;
+            double cov = (sxixj - cnt * mi * mj) / (cnt - 1);
+            cor[i][j] = cov / (sdi * sdj);
         }
     }
-    
-    // Now decide which to remove based on correlation > cutoff
+
+    for (int i = 0; i < p; ++i) if (sd_zero[i]) keep[i] = false;
+
+    auto var_of = [&](const double* v) -> double {
+        double s = 0.0, s2 = 0.0;
+        int c = 0;
+        for (int k = 0; k < n; ++k) {
+            double a = v[k];
+            if (R_IsNA(a) || R_IsNaN(a)) continue;
+            s += a; s2 += a * a; ++c;
+        }
+        if (c < 2) return 0.0;
+        double m = s / c;
+        double vv = (s2 - c * m * m) / (c - 1);
+        return vv < 0 ? 0.0 : vv;
+    };
+
     for (int i = 0; i < p; ++i) {
         if (!keep[i]) continue;
-        for (int j = i+1; j < p; ++j) {
+        for (int j = i + 1; j < p; ++j) {
             if (!keep[j]) continue;
             if (std::fabs(cor[i][j]) > cutoff) {
                 if (keep_first) {
                     keep[j] = false;
                 } else {
-                    // keep the one with higher variance (or keep first? we'll implement keep_first only for now)
-                    // Simple: if keep_first is false, we keep the one with larger sd (or keep j if variance of j > variance of i)
-                    // But to keep simple, we'll just remove the one with smaller variance
-                    double var_i = var(x(_, i));
-                    double var_j = var(x(_, j));
-                    if (var_i >= var_j) {
-                        keep[j] = false;
-                    } else {
-                        keep[i] = false;
-                    }
+                    const double* xi = x.begin() + (R_xlen_t)i * n;
+                    const double* xj = x.begin() + (R_xlen_t)j * n;
+                    if (var_of(xi) >= var_of(xj)) keep[j] = false;
+                    else                          keep[i] = false;
                 }
             }
         }

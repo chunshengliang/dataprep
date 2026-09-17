@@ -1,6 +1,6 @@
 #' Create lagged variables
 #' @param data A data frame, matrix, or numeric vector.
-#' @param cols Columns to lag.
+#' @param cols Columns to lag. If \code{NULL}, all numeric columns are used.
 #' @param lags Vector of lag orders.
 #' @param prefix Prefix for new columns.
 #' @param group Optional grouping column.
@@ -8,7 +8,6 @@
 #' @param verbose Logical.
 #' @return A data frame or matrix with lag columns.
 #' @export
-#' @noRd
 create_lags <- function(data, cols = NULL, lags = 1, prefix = "lag_",
                         group = NULL, date_col = NULL, verbose = FALSE) {
   t0 <- Sys.time()
@@ -21,9 +20,11 @@ create_lags <- function(data, cols = NULL, lags = 1, prefix = "lag_",
     for (k in seq_along(lags)) {
       lg <- lags[k]
       if (lg > 0) {
-        mat[(lg+1):n, k] <- x[1:(n-lg)]
+        if (lg >= n) next           # all-NA column
+        mat[(lg + 1):n, k] <- x[1:(n - lg)]
       } else if (lg < 0) {
-        mat[1:(n+lg), k] <- x[(1-lg):n]
+        if (-lg >= n) next          # all-NA column
+        mat[1:(n + lg), k] <- x[(1 - lg):n]
       } else {
         mat[, k] <- x
       }
@@ -37,7 +38,8 @@ create_lags <- function(data, cols = NULL, lags = 1, prefix = "lag_",
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
   check_numeric_cols(data, idx)
 
   if (!is.null(group)) {
@@ -54,7 +56,8 @@ create_lags <- function(data, cols = NULL, lags = 1, prefix = "lag_",
   new_names <- character()
   for (j in seq_along(idx)) {
     for (k in seq_along(lags)) {
-      new_names <- c(new_names, paste0(prefix, names(data)[idx[j]], "_", lags[k]))
+      new_names <- c(new_names,
+                     paste0(prefix, names(data)[idx[j]], "_", lags[k]))
     }
   }
   colnames(out_mat) <- new_names

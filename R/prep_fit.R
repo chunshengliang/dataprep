@@ -126,7 +126,7 @@ prep_fit <- function(data, steps = c("varidele", "obsedele", "outlier", "impute"
                vals <- x[!is.na(x)]
                if (length(vals) == 0) {
                  plan$params$scale_center[[names(data)[j]]] <- NA_real_
-                 plan$params$scale_scale[[names(data)[j]]] <- NA_real_
+                 plan$params$scale_scale[[names(data)[j]]] <- 1
                  next
                }
                if (scale_method == "zscore") {
@@ -142,6 +142,11 @@ prep_fit <- function(data, steps = c("varidele", "obsedele", "outlier", "impute"
                  center <- 0
                  scale_val <- 1
                }
+               # Guard: a constant training column has sd = 0, IQR = 0,
+               # or max - min = 0. Storing 0 as `scale_val` would make
+               # prep_transform() divide by zero. Store 1 instead, so
+               # the transform becomes `x - center`.
+               if (is.na(scale_val) || scale_val == 0) scale_val <- 1
                plan$params$scale_center[[names(data)[j]]] <- center
                plan$params$scale_scale[[names(data)[j]]] <- scale_val
              }

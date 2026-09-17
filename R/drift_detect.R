@@ -1,15 +1,14 @@
 #' Rolling drift detection
 #' @param data A data frame, matrix, or numeric vector.
-#' @param cols Columns to process.
+#' @param cols Columns to process. If \code{NULL}, all numeric columns are used.
 #' @param window Window size.
 #' @param threshold Threshold in standard deviation units.
-#' @param method \code{"mean"} or \code{"sd"}.
+#' @param method "mean" or "sd".
 #' @param group Optional grouping column.
 #' @param date_col Time column.
 #' @param verbose Logical.
 #' @return A logical matrix.
 #' @export
-#' @noRd
 drift_detect <- function(data, cols = NULL, window = 30, threshold = 3,
                          method = c("mean", "sd"), group = NULL,
                          date_col = NULL, verbose = FALSE) {
@@ -30,7 +29,8 @@ drift_detect <- function(data, cols = NULL, window = 30, threshold = 3,
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
   check_numeric_cols(data, idx)
 
   mask_mat <- matrix(FALSE, nrow = nrow(data), ncol = length(idx))
@@ -58,5 +58,5 @@ drift_detect <- function(data, cols = NULL, window = 30, threshold = 3,
   }
 
   if (verbose) cat("Drift detection completed.\n")
-  return(mask_mat)
+  mask_mat
 }

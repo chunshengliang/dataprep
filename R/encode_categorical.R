@@ -1,13 +1,12 @@
 #' Encode categorical variables
 #' @param data A data frame.
 #' @param cols Columns to encode.
-#' @param method \code{"label"}, \code{"frequency"}, or \code{"onehot"}.
+#' @param method "label", "frequency", or "onehot".
 #' @param group Optional grouping column.
 #' @param prefix Prefix for one-hot column names.
 #' @param verbose Logical.
 #' @return A data frame with encoded variables.
 #' @export
-#' @noRd
 encode_categorical <- function(data, cols = NULL, method = "label",
                                group = NULL, prefix = "enc_",
                                verbose = FALSE) {
@@ -53,7 +52,8 @@ encode_categorical <- function(data, cols = NULL, method = "label",
         freq <- table(data[[j]])
         data[[j]] <- as.numeric(freq[as.character(data[[j]])])
       } else {
-        group_col <- if (is.character(group)) group else names(data)[group]
+        group_col <- if (is.character(group)) group
+                     else names(data)[group]
         ug <- unique(data[[group_col]])
         for (g in ug) {
           rows <- which(data[[group_col]] == g)
@@ -71,7 +71,11 @@ encode_categorical <- function(data, cols = NULL, method = "label",
         new_cols[[new_name]] <- as.integer(data[[j]] == cat)
       }
     }
-    data <- data[, -idx, drop = FALSE]
+    # Guard against idx covering all columns; data[, -idx] would
+    # produce an empty data frame otherwise.
+    if (length(idx) > 0) {
+      data <- data[, -idx, drop = FALSE]
+    }
     new_df <- as.data.frame(new_cols)
     data <- cbind(data, new_df)
   }

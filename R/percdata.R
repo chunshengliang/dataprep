@@ -13,7 +13,7 @@ percdata <- function(data, cols = NULL, group = NULL, diff = 0.1,
                      part = "both", na.rm = TRUE, verbose = FALSE) {
   t0 <- Sys.time()
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
 
   group_idx <- NULL
   if (!is.null(group)) {

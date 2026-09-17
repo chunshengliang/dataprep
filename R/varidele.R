@@ -1,11 +1,10 @@
 #' Delete variables with excessive missing values
 #' @param data A data frame or matrix.
-#' @param cols Columns to consider.
+#' @param cols Columns to consider. If \code{NULL}, all numeric columns are used.
 #' @param fraction Missing fraction threshold.
 #' @param verbose Logical.
 #' @return A data frame with low-quality variables removed.
 #' @export
-#' @noRd
 varidele <- function(data, cols = NULL, fraction = .25, verbose = FALSE) {
   t0 <- Sys.time()
 
@@ -19,10 +18,8 @@ varidele <- function(data, cols = NULL, fraction = .25, verbose = FALSE) {
     }
   }
 
-  idx <- resolve_cols(data, cols)
-  if (length(idx) < 1) {
-    stop("No columns selected")
-  }
+  idx <- resolve_numeric_cols(data, cols)
+  if (length(idx) < 1) stop("No numeric columns selected")
 
   mat <- to_numeric_matrix(data, idx)
 
@@ -46,10 +43,13 @@ varidele <- function(data, cols = NULL, fraction = .25, verbose = FALSE) {
     result <- data[, keep_cols, drop = FALSE]
     deleted <- colnames(data)[high_na_cols]
     if (verbose) {
-      cat(length(deleted), "variables are deleted:", paste(deleted, collapse = ", "), "\n")
+      cat(length(deleted), "variables are deleted:",
+          paste(deleted, collapse = ", "), "\n")
     }
   }
 
-  if (verbose) cat("Time used by varidele:", format(Sys.time() - t0, digits = 3), "\n")
+  if (verbose)
+    cat("Time used by varidele:",
+        format(Sys.time() - t0, digits = 3), "\n")
   result
 }

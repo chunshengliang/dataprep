@@ -1,25 +1,23 @@
 #' Melt a data.frame (wide to long)
 #'
-#' Fast reshape using a SIMD + OpenMP C++ backend (`melt_cpp`).
-#' All input sizes are routed to the C++ backend. A pure-R "small-input
-#' fast path" was measured to be 5-7x slower than C++ for tables below
-#' 1e5 rows, because R's `t()` and manual data.frame assembly are not
-#' cache-friendly.
+#' Fast reshape using a SIMD + OpenMP C++ backend (\code{melt_cpp}).
 #'
 #' @param data               data.frame
 #' @param id                 id columns (character names, integer indices,
-#'                           logical mask, or NULL). Primary argument.
-#' @param measure.vars       measure columns (character, integer, logical,
-#'                           or NULL).
+#'                           logical mask, or NULL).
+#' @param measure.vars       measure columns.
 #' @param variable.name      name of the output "variable" column.
 #' @param value.name         name of the output "value" column.
-#' @param na.rm              drop rows where value is NA.
+#' @param na.rm              drop rows where value is NA. Handled inside
+#'                           the C++ backend via a two-pass count + prefix
+#'                           offsets, so no intermediate full table is
+#'                           constructed.
 #' @param cores              number of OpenMP threads; NULL = auto.
-#' @param major              "row" (tidyr-style) or "col" (reshape2-style).
+#' @param major              "col" (reshape2-style) or "row" (tidyr-style);
+#'                           NULL = auto-select based on shape.
 #' @param verbose            print timing/messages.
-#' @param parallel_threshold minimum output size (elements) before auto
-#'                           parallelism is enabled.
-#' @param id.vars            alias of `id` (reshape2 / data.table compat).
+#' @param parallel_threshold minimum output size before auto parallelism.
+#' @param id.vars            alias of \code{id}.
 #'
 #' @return data.frame in long format.
 #' @export
@@ -30,19 +28,20 @@ melt <- function(data,
                  value.name          = "value",
                  na.rm               = FALSE,
                  cores               = NULL,
-                 major               = c("row", "col"),
+                 major               = NULL,
                  verbose             = FALSE,
                  parallel_threshold  = 5e6,
                  id.vars             = NULL) {
 
-  # ---- basic checks ----
   if (!is.data.frame(data)) stop("melt is only supported for data frames")
   if (ncol(data) < 1L)      stop("data has no columns")
   if (nrow(data) == 0L)     stop("data has no rows")
 
-  major <- match.arg(major)
+  # major = NULL means "let C++ decide"
+  if (!is.null(major)) {
+    major <- match.arg(major, c("col", "row"))
+  }
 
-  # ---- alias: id / id.vars ----
   if (!is.null(id) && !is.null(id.vars))
     stop("Specify only one of `id` or `id.vars` (they are aliases).")
   if (is.null(id)) id <- id.vars
@@ -55,12 +54,6 @@ melt <- function(data,
   id_arg         <- NULL
   n_measure_cols <- NULL
 
-  # ---- resolve id / measure.vars for the C++ backend ----
-  #   Convention:
-  #     NULL              -> C++ infers (numeric columns as measures)
-  #     positive ints     -> id columns
-  #     negative ints     -> measure columns (C++ takes complement as id)
-  #     character         -> id names
   if (!is.null(id)) {
     if (is.character(id)) {
       bad <- !(id %in% cnames)
@@ -78,6 +71,7 @@ melt <- function(data,
     } else stop("id must be character, numeric, or logical")
 
     n_measure_cols <- ncols - length(unique(id_arg))
+
   } else if (!is.null(measure.vars)) {
     if (is.character(measure.vars)) {
       bad <- !(measure.vars %in% cnames)
@@ -95,8 +89,9 @@ melt <- function(data,
     if (anyNA(midx) || any(midx < 1L | midx > ncols))
       stop("measure.vars contains invalid column indices")
 
-    id_arg         <- -unique(midx)
+    id_arg         <- setdiff(seq_len(ncols), unique(midx))
     n_measure_cols <- length(unique(midx))
+
   } else {
     id_arg         <- NULL
     n_measure_cols <- max(1L, ncols - 1L)
@@ -104,8 +99,7 @@ melt <- function(data,
 
   total_elements <- as.double(nrow(data)) * as.double(n_measure_cols)
 
-  # ---- thread count: explicit > global option > automatic ----
-  MAX_THREADS_CAP <- 64L
+  MAX_THREADS_CAP <- 128L
 
   if (is.null(cores)) {
     opt <- getOption("dataprep.cores", NULL)
@@ -122,30 +116,25 @@ melt <- function(data,
   if (cores > MAX_THREADS_CAP)    cores <- MAX_THREADS_CAP
 
   if (verbose) {
-    cat(sprintf("[melt] rows=%d  cols=%d  measure_cols=%d  major=%s  threads=%d\n",
-                nrow(data), ncols, n_measure_cols, major, cores))
+    cat(sprintf(
+      "[melt] rows=%d  cols=%d  measure_cols=%d  major=%s  threads=%d  na.rm=%s\n",
+      nrow(data), ncols, n_measure_cols,
+      if (is.null(major)) "auto" else major,
+      cores,
+      if (isTRUE(na.rm)) "TRUE" else "FALSE"))
   }
 
-  # ---- call the C++ backend ----
-  result <- melt_cpp(
+  # Pass major through unchanged when NULL — the C++ side then
+  # auto-selects based on (n_id, n, n_meas).
+  major_arg <- if (is.null(major)) NULL else major
+
+  melt_cpp(
     df            = data,
     id            = id_arg,
     variable_name = variable.name,
     value_name    = value.name,
-    major         = major,
-    n_threads     = cores
+    major         = major_arg,
+    n_threads     = cores,
+    na_rm         = isTRUE(na.rm)
   )
-
-  # ---- na.rm ----
-  if (isTRUE(na.rm)) {
-    vcol <- result[[length(result)]]
-    if (is.factor(vcol)) vcol <- as.character(vcol)
-    keep <- !is.na(vcol)
-    if (any(!keep)) {
-      result <- result[keep, , drop = FALSE]
-      rownames(result) <- NULL
-    }
-  }
-
-  result
 }

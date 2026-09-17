@@ -29,7 +29,7 @@ phys_filter <- function(data, cols = NULL, min_val = NULL, max_val = NULL,
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
-  idx <- resolve_cols(data, cols)
+  idx <- resolve_numeric_cols(data, cols)
   check_numeric_cols(data, idx)
 
   if (length(min_val) == 1) min_val <- rep(min_val, length(idx))

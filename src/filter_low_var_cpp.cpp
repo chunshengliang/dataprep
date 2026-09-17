@@ -1,3 +1,4 @@
+// [[Rcpp::plugins(openmp)]]
 #include <Rcpp.h>
 #include <vector>
 #include <cmath>
