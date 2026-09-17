@@ -1,17 +1,46 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 4 notes
+0 errors | 0 warnings | 5 notes
 
-All four notes are documented below. Three are intentional choices
-specific to the C++ backends of this package; one is a host
-environment issue that does not appear on CRAN's own infrastructure.
+All five notes are documented below. Four are intentional choices
+specific to the C++ backends of this package or to the local
+check host; one is a one-time notice about a maintainer email
+change and a local network timeout.
 
-## Note 1: future file timestamps — `unable to verify current time`
+## Note 1: CRAN incoming feasibility
 
-This is an environment issue on the test host, whose NTP
-synchronisation is periodically disabled. The check queries an
-external time service that the host cannot reach. This note does not
-appear on CRAN's own check machines and does not affect the package.
+Two items are reported:
+
+### 1a. Maintainer email change
+
+This is a routine version update. The maintainer email has been
+updated from `liangchunsheng@lzu.edu.cn` (used in the 0.1.5
+submission) to `chun-shengliang@qq.com` (current affiliation). No
+change in the actual maintainer. This part of the note will not
+appear on subsequent submissions.
+
+### 1b. URL check timed out on the local check host
+
+```
+Found the following (possibly) invalid URLs:
+  URL: https://github.com/chunshengliang/dataprep
+    From: DESCRIPTION
+          inst/CITATION
+    Status: Error
+    Message: libcurl error code 28:
+      Connection timed out after 60001 milliseconds
+```
+
+The URL is valid. Verified independently with `curl`:
+
+```
+$ curl -I https://github.com/chunshengliang/dataprep
+HTTP/2 200
+```
+
+The timeout is caused by the local check host's network
+configuration, not by the URL. On CRAN's own check machines the
+URL resolves normally.
 
 ## Note 2 and Note 3: non-portable compilation flags
 
@@ -49,10 +78,10 @@ trade-off as follows.
 * The package targets compute-intensive reshaping of tables in the
   10^6-10^8 row range, where a 3-8% throughput difference matters to
   users.
-* The published 0.1.6 benchmark numbers (up to 2664x relative to the
-  fastest alternative engine) were measured with `-march=native`
-  active. Removing it would change the package's headline
-  performance on the very benchmarks advertised in the
+* The published 0.1.6 benchmark numbers (up to 2664x speedup over
+  the fastest alternative engine) were measured with
+  `-march=native` active. Removing it would change the package's
+  headline performance on the very benchmarks advertised in the
   documentation.
 * The runtime AVX-512 dispatch in `melt.cpp` and `dcast.cpp` uses
   `__builtin_cpu_supports("avx512f")` to select the code path at
@@ -107,10 +136,17 @@ writes. The migration is deferred for the following reasons:
    of GC behaviour under stress. It is planned for the 0.1.7
    release rather than the 0.1.6 CRAN submission.
 
-## CRAN incoming feasibility
+## Note 5: HTML version of manual — missing `tidy` and `V8`
 
-This is the initial CRAN submission of `dataprep`. Downstream
-dependencies: none.
+```
+Skipping checking HTML validation: no command 'tidy' found.
+Skipping checking math rendering: package 'V8' unavailable
+```
+
+This note is specific to the local check host, which does not have
+the `tidy` HTML validator or the `V8` JavaScript engine installed.
+CRAN's own check machines have both, so this note will not appear
+on CRAN.
 
 ## Test environments
 
