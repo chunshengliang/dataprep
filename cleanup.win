@@ -1,0 +1,5 @@
+#!/bin/sh
+# Windows cleanup script. The Windows build does not generate any files
+# that need to be removed before packaging; src/Makevars.win is a tracked
+# source file. Nothing to do.
+exit 0

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Windows build script. All Windows-specific compiler flags live in
+# src/Makevars.win; there is nothing to configure here. This file exists
+# only to suppress the "package has a configure script" warning that
+# R CMD INSTALL emits on Windows when a Unix configure is present without
+# a Windows counterpart.
+exit 0

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Remove configure-generated files only. src/Makevars.win is a hand-written
+# source file and must stay in the tarball.
+rm -f src/Makevars
