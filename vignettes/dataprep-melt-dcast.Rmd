@@ -76,10 +76,7 @@ Reproducing the benchmarks:
 
 ```{r, eval = FALSE}
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
-source(system.file("melt_benchmark.R",        package = "dataprep"))
-source(system.file("dcast_benchmark.R",       package = "dataprep"))
-# or, for the full integrated run:
-source(system.file("benchmark_melt_dcast.R",  package = "dataprep"))
+source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ```
 
 ## Wide to long with `melt()`
@@ -358,8 +355,7 @@ The consistency scripts are shipped under `inst/`:
 
 ```{r, eval = FALSE}
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
-source(system.file("melt_consistency.R",  package = "dataprep"))
-source(system.file("dcast_consistency.R", package = "dataprep"))
+source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 melt_all_engines(10000L, n_id = 1L, n_val = 9L)
 dcast_all_engines(1000L, n_id = 2L, n_val = 5L)
 ```

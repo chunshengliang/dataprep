@@ -396,12 +396,13 @@ every tested shape, within `tol = 1e-12`:
 | `dcast` | 4 shapes | 8 | all consistent |
 
 Reproducible scripts ship under `inst/` and are disabled by
-default so that `R CMD check` does not run them:
+default so that `R CMD check` does not run them. A single script,
+`benchmark_melt_dcast.R`, runs both the per-tool benchmarks and the
+8-engine consistency checks:
 
 ```r
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
-source(system.file("melt_benchmark.R",  package = "dataprep"))
-source(system.file("dcast_benchmark.R", package = "dataprep"))
+source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ```
 
 ## When not to preprocess

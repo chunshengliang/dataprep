@@ -336,22 +336,16 @@ The full runner is shipped under `inst/`:
 
 * `benchmark_helpers.R` — adaptive per-tool runner with a 15 s
   first-call cap
-* `melt_benchmark.R` — `melt` benchmark driver
-* `dcast_benchmark.R` — `dcast` benchmark driver
-* `melt_consistency.R` — 8-engine consistency check
-* `dcast_consistency.R` — 8-engine consistency check
-* `benchmark_melt_dcast.R` — integrated driver used for the
-  tables above
+* `benchmark_melt_dcast.R` — integrated driver. It runs both the
+  per-tool benchmarks for `melt()` / `dcast()` and the 8-engine
+  consistency checks, and prints the tables shown above.
 
 Scripts are disabled by default so that `R CMD check` does not run
 them. To enable:
 
 ```{r, eval = FALSE}
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
-source(system.file("melt_benchmark.R",        package = "dataprep"))
-source(system.file("dcast_benchmark.R",       package = "dataprep"))
-# or, for the full integrated run:
-source(system.file("benchmark_melt_dcast.R",  package = "dataprep"))
+source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ```
 
 ## Session info
