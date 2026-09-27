@@ -1,5 +1,7 @@
 # dataprep
 
+*Logo by Chun-Sheng Liang*
+
 > Fast, efficient, and versatile data preprocessing tools for R, with
 > C++ / OpenMP / SIMD backends.
 
