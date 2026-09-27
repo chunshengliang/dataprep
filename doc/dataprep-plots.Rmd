@@ -1,0 +1,272 @@
+---
+title: "dataprep: descriptive statistics and diagnostic plots"
+output: rmarkdown::html_vignette
+vignette: >
+  %\documentclass{article}
+  %\VignetteIndexEntry{dataprep: descriptive statistics and diagnostic plots}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.align = "center",
+  fig.width = 7,
+  fig.height = 4.5,
+  out.width = "95%"
+)
+```
+
+```{r}
+library(dataprep)
+library(ggplot2)
+```
+
+## Overview
+
+`dataprep` provides two plotting helpers, both built on top of the
+C++ descriptive backends:
+
+* **`descplot()`** — descriptive statistics (`n`, `na`, `mean`, `sd`,
+  `median`, `trimmed`, `min`, `max`, `IQR`) computed in C++ and
+  displayed as a line or bar chart.
+
+* **`percplot()`** — top and bottom percentiles, useful for detecting
+  heavy tails and for comparing with percentile-based outlier cutoffs.
+
+Both functions share a common calling style: a data frame, a numeric
+column range, and optional faceting. They differ in their extra
+arguments — `descplot()` takes `stats` and `first`; `percplot()`
+takes `group`, `diff`, and `part`.
+
+Both also choose the geometry from the **column names** of the
+selected variables:
+
+* numeric names (e.g. particle diameters `3.16`, `3.55`, ...)
+  → line chart, optionally on a log-scaled x axis;
+* character names (e.g. `Nucleation`, `Aitken`, `Accumulation`)
+  → bar chart.
+
+The examples below use two bundled data sets:
+
+* `data` — 7,640 rows × 65 columns; columns 5–65 are named by
+  particle diameter (numeric names). Missingness is uneven: a few
+  channels (`1` to `2.51`, `794`, `891`, `1000`) are entirely `NA`,
+  while several others (e.g. `2.82`, `3.16`) are missing for whole
+  months.
+* `data1` — 7,640 rows × 7 columns; columns 3–7 are `Nucleation`,
+  `Aitken`, `Accumulation`, `tconc`, `TPNC` (character names).
+
+## Descriptive statistics with `descplot()`
+
+### Numeric variable names: line chart
+
+When the selected columns have numeric names, `descplot()` draws a
+line chart with a log-scaled x axis by default.
+
+```{r}
+descplot(data, cols = 5:65)
+```
+
+### Character variable names: bar chart
+
+When the selected columns have character names, `descplot()` falls
+back to a bar chart.
+
+```{r}
+descplot(data1, cols = 3:7) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
+```
+
+### Selecting statistics
+
+Pass a subset of statistics by index or by name.
+
+```{r}
+descplot(data, cols = 5:65,
+         stats = c("na", "min", "max", "IQR"))
+```
+
+`stats` accepts both numeric indices (`1:9`) and character names
+(`"na"`, `"min"`, `"max"`, `"IQR"`), and can mix the two.
+
+### Controlling the facet layout
+
+Use `ncol` to control how many facets are placed per row.
+
+```{r}
+descplot(data1, cols = 3:7, stats = c("min", "max", "IQR"),
+         ncol = 2) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
+```
+
+### The underlying table
+
+If only the numbers are needed, call `descdata()` directly. It
+returns one row per variable and one column per statistic.
+
+```{r}
+descdata(data1, cols = 3:7, stats = c(2, 3, 4, 7:9))
+```
+
+## Percentiles with `percplot()`
+
+### Numeric variable names: line chart
+
+With numeric column names and `part = "both"` (the default),
+`percplot()` draws a line chart. Because bottom and top percentiles
+span a wide dynamic range, the y axis is automatically placed on a
+log10 scale.
+
+```{r}
+percplot(data, cols = 5:65, group = 4)
+```
+
+### Missing values in the long table
+
+Internally, `percplot()` reshapes the wide output of `percdata()`
+into a long table whose rows are `(group, percentile, variable)`
+triples. If a variable has no non-missing observation inside a
+given group, `quantile(na.rm = TRUE)` returns `NA` for every
+requested probability, so all the rows for that `(group, variable)`
+pair have `value = NA`. `ggplot2` drops those rows and prints a
+warning similar to
+
+```
+Removed 288 rows containing missing values (`geom_line()`).
+```
+
+Here `288` is the count of such rows in the **long** table, not a
+count of dropped columns. Because the default `part = "both"`
+returns 12 percentiles, 288 rows correspond to `288 / 12 = 24`
+`(group, variable)` pairs that are entirely missing within their
+group. Two mechanisms produce them:
+
+1. a few channels (`1`–`2.51`, `794`–`1000`) are entirely `NA`
+   throughout the record, and
+2. several channels (`2.82`, `3.16`, `3.55`, …) are missing for
+   whole months, so within that month they have no value at all.
+
+The visible lines are still correct. To count the `NA` cells
+directly:
+
+```{r}
+pct <- percdata(data, cols = 5:65, group = 4)
+sum(is.na(pct[, -(1:2), drop = FALSE]))
+```
+
+Restricting to a contiguous range of channels that are present in
+every month removes the warning:
+
+```{r}
+percplot(data, cols = 27:61, group = 4)
+```
+
+### Top or bottom percentiles only
+
+Use `part = "top"` or `part = "bottom"` to keep only one tail.
+
+```{r}
+percplot(data, cols = 27:61, group = 4, part = "top")
+```
+
+```{r}
+percplot(data, cols = 27:61, group = 4, part = "bottom")
+```
+
+### Character variable names: bar chart
+
+When the column names are character, `percplot()` draws grouped bar
+charts instead of line charts.
+
+```{r}
+percplot(data1, cols = 3:7, group = 2) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
+```
+
+### Numeric axis control
+
+For numeric column names, `num_xaxis` controls the x axis:
+
+* `"auto"` (default for `percplot()`) — log scale if the column
+  names are evenly spaced on a log scale with a range ratio of at
+  least 1000, otherwise linear scale.
+* `"log"` / `"numeric"` — force the corresponding scale.
+* `"character"` / `"factor"` / `"keep"` / `FALSE` — keep the column
+  names as factor levels and draw a bar chart even if the names look
+  numeric.
+
+Note that `descplot()` defaults to `num_xaxis = "log"`, while
+`percplot()` defaults to `"auto"`.
+
+```{r}
+percplot(data, cols = 27:61, group = 4, num_xaxis = "numeric")
+```
+
+### The underlying table
+
+`percdata()` returns the same table that `percplot()` draws.
+
+```{r}
+percdata(data1, cols = 3:7, group = 2, part = "top")
+```
+
+## A diagnostic workflow
+
+A typical diagnostic workflow combines `data_report()`,
+`na_diagnose()`, and the two plot families:
+
+```{r, eval = FALSE}
+# 1. Overview of the whole table
+data_report(data, cols = 5:65)
+
+# 2. Per-column NA run statistics
+na_diagnose(data, cols = 5:65)
+
+# 3. Descriptive statistics of the raw data
+descplot(data, cols = 5:65)
+
+# 4. Percentile plots of the raw data
+percplot(data, cols = 5:65, group = 4)
+```
+
+After running `dataprep()` you can compare the raw and cleaned
+versions in the same plot by stacking them with a `g` column:
+
+```{r, eval = FALSE}
+cleaned <- dataprep(data, cols = 5:65, group = 4)
+
+percplot(
+  rbind(
+    transform(data[names(cleaned)], g = "original"),
+    transform(cleaned,               g = "preprocessed")
+  ),
+  cols  = 5:ncol(cleaned),
+  group = ncol(cleaned) + 1
+)
+```
+
+## Where to go next
+
+* **Design philosophy** — `vignette("dataprep-philosophy")`.
+* **Cleaning pipeline walkthrough** —
+  `vignette("dataprep-cleaning")`.
+* **Performance and cross-engine consistency** —
+  `vignette("dataprep-performance")`.
+* **Upgrading from 0.1.5 to 0.1.7** —
+  `vignette("dataprep-migration")`.
+* **Fast reshaping** — `vignette("dataprep-melt-dcast")`.
+
+## Session info
+
+```{r}
+sessionInfo()
+```

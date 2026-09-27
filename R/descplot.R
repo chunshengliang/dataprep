@@ -8,7 +8,6 @@
 #' @param verbose Logical.
 #' @return A \code{ggplot} object.
 #' @export
-#' @noRd
 descplot <- function(data, cols = NULL, stats = 1:9, first = "variables",
                      ncol = NULL, num_xaxis = "log", verbose = FALSE) {
   t0 <- Sys.time()

@@ -8,7 +8,6 @@
 #' @param verbose Logical.
 #' @return A vector of flags.
 #' @export
-#' @noRd
 day_night_flag <- function(data, date_col = NULL, lat = NULL, lon = NULL,
                            threshold = 6, type = c("binary", "sun", "shade"),
                            local_tz = "UTC", verbose = FALSE) {

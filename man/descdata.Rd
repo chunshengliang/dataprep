@@ -23,7 +23,7 @@ descdata(data, cols = NULL, stats = 1:9, first = "variables",
     numeric vector or a character vector of statistic names.}
   \item{first}{Name for the first column of the output, which contains
     the variable identifiers.}
-  \item{cores}{Number of CPU cores (passed to C++).}
+  \item{cores}{Number of CPU cores. \code{NULL} (default) means single-threaded execution; pass an integer > 0 to enable OpenMP when \code{nrow(x) * ncol(x) > 1e5}.}
   \item{verbose}{Logical; if \code{TRUE}, prints timing message.}
 }
 \details{

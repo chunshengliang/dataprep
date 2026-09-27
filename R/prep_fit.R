@@ -16,7 +16,6 @@
 #' @param verbose Logical.
 #' @return A \code{prep_plan} list.
 #' @export
-#' @noRd
 prep_fit <- function(data, steps = c("varidele", "obsedele", "outlier", "impute", "scale"),
                      cols = NULL, group = NULL, date_col = NULL,
                      fraction = 0.25, top = 0.995, bottom = 0.0025,

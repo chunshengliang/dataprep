@@ -12,7 +12,10 @@ vignette: >
 knitr::opts_chunk$set(
   collapse  = TRUE,
   comment   = "#>",
-  fig.align = "center"
+  fig.align = "center",
+  fig.width = 7,
+  fig.height = 4.5,
+  out.width = "95%"
 )
 ```
 
@@ -32,7 +35,7 @@ size_bin_cols <- function(x) {
 ## Quick start
 
 The full `data` table has 7,640 rows and 65 columns: a time column,
-a grouping column, and 61 particle size bins. Running the full
+a grouping column, and 60 particle size bins. Running the full
 pipeline on it takes a few seconds and returns a smaller, cleaner
 table.
 

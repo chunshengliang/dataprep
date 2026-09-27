@@ -8,7 +8,6 @@
 #' @param verbose Logical.
 #' @return A data frame or vector with out-of-range values set to NA.
 #' @export
-#' @noRd
 phys_filter <- function(data, cols = NULL, min_val = NULL, max_val = NULL,
                         group = NULL, date_col = NULL, verbose = FALSE) {
   t0 <- Sys.time()

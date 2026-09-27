@@ -7,7 +7,7 @@ Varrio forest)
 }
 \description{
 An already-aggregated seven-column version of \code{\link{data}}.
-The 60 size bins of the raw size distribution have been collapsed
+The 61 size bins of the raw size distribution have been collapsed
 into three log-normal modes (nucleation, Aitken, accumulation) plus
 two total concentrations (\code{tconc}, \code{TPNC}). The dataset
 covers the same two-month window as \code{data} (January and July
@@ -20,11 +20,11 @@ A data frame with 7,640 observations on the following 7 variables.
   \item{\code{date}}{a POSIXct vector, sampling time (10-minute resolution).}
   \item{\code{monthyear}}{a character vector, e.g. \code{"January 2020"}.}
   \item{\code{Nucleation}}{a numeric vector, number concentration in the
-        nucleation mode (approximately 3--25 nm).}
+        nucleation mode (nominally 3--25 nm).}
   \item{\code{Aitken}}{a numeric vector, number concentration in the
-        Aitken mode (approximately 25--100 nm).}
+        Aitken mode (nominally 25--100 nm).}
   \item{\code{Accumulation}}{a numeric vector, number concentration in
-        the accumulation mode (approximately 100--1000 nm).}
+        the accumulation mode (nominally 100--1000 nm).}
   \item{\code{tconc}}{a numeric vector, total number concentration.}
   \item{\code{TPNC}}{a numeric vector, total particle number
         concentration.}
@@ -32,7 +32,10 @@ A data frame with 7,640 observations on the following 7 variables.
 }
 \details{
 Unlike \code{\link{data}}, which is the raw size-resolved table,
-\code{data1} contains only mode-integrated values. It has:
+\code{data1} contains only mode-integrated values. The three
+integrated values can remain non-zero even when the smallest raw size
+bins (\code{1} through \code{2}) are entirely \code{NA} in the
+two-month subset. It has:
 
 \itemize{
   \item very few missing values,

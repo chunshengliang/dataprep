@@ -8,7 +8,6 @@
 #' @param verbose Logical.
 #' @return A data frame with duplicates removed.
 #' @export
-#' @noRd
 deduplicate <- function(data, cols = NULL, method = "exact",
                         key_cols = NULL, tol = 1e-8, max_dist = 1,
                         verbose = FALSE) {

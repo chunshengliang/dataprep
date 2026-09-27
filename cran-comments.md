@@ -6,14 +6,23 @@ On Windows 11 Pro for Workstations (R 4.6.1 ucrt, GCC 14.3.0):
 
 On Ubuntu 25.10 (R 4.5.1, g++ 15.2.0):
 
-    0 errors | 0 warnings | 1 note
+    0 errors | 0 warnings | 3 notes
 
-The single note on Ubuntu 25.10 is the "non-portable compilation
-flag" note for `-mno-omit-leaf-frame-pointer`, which is **not**
-set by this package. It is injected by g++ 15.2.0 on Ubuntu 25.10,
-whose default C++17 flags include it. CRAN's own check machines
-(Debian, Ubuntu LTS) do not produce this note. Details are in
-Note 1 below.
+All three notes are specific to this Ubuntu 25.10 host and do not
+appear on CRAN's own check machines:
+
+* **CRAN incoming feasibility** flags URLs that timed out from this
+  host's network. All of them return HTTP 200 from other networks
+  and are reachable from CRAN's check machines.
+
+* **Non-portable compilation flag `-mno-omit-leaf-frame-pointer`**
+  is injected by g++ 15.2.0 on Ubuntu 25.10 itself. The package
+  does not set this flag. Details are in Note 1 below.
+
+* **Skipping HTML validation / math rendering**: `tidy` (HTML Tidy)
+  and the `V8` R package are not installed on this host. Both are
+  optional and are present on CRAN's check machines, so this note
+  does not appear there.
 
 ## Note 1: non-portable compilation flag `-mno-omit-leaf-frame-pointer`
 

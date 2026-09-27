@@ -4,7 +4,6 @@
 #' @param verbose Logical.
 #' @return A data frame with rule results.
 #' @export
-#' @noRd
 validate_data <- function(data, rules, verbose = FALSE) {
   t0 <- Sys.time()
   if (!is.data.frame(data)) stop("data must be a data frame")

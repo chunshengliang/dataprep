@@ -9,7 +9,6 @@
 #' @param verbose Logical.
 #' @return A \code{ggplot} object.
 #' @export
-#' @noRd
 percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
                      part = "both", ncol = NULL, num_xaxis = "auto",
                      verbose = FALSE) {

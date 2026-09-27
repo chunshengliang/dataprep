@@ -9,7 +9,6 @@
 #' @param verbose Logical.
 #' @return A data frame or factor.
 #' @export
-#' @noRd
 bin_data <- function(data, cols = NULL, method = "equal_width",
                      bins = 10, breaks = NULL, include_lowest = TRUE,
                      labels = NULL, verbose = FALSE) {

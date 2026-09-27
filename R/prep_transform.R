@@ -4,7 +4,6 @@
 #' @param verbose Logical.
 #' @return A data frame with the plan applied.
 #' @export
-#' @noRd
 prep_transform <- function(plan, newdata, verbose = FALSE) {
   t0 <- Sys.time()
   if (!is.data.frame(newdata)) stop("newdata must be a data frame")

@@ -16,7 +16,7 @@ create_lags(data, cols = NULL, lags = 1, prefix = "lag_",
   \item{lags}{Vector of lag orders (positive for past, negative for future).}
   \item{prefix}{Prefix for new column names.}
   \item{group}{Optional grouping column for group-specific lags.}
-  \item{date_col}{Time column (used to ensure order if provided).}
+  \item{date_col}{Currently ignored. Data are assumed to be in the correct time order.}
   \item{verbose}{Logical; if \code{TRUE}, prints number of lag columns created.}
 }
 \value{

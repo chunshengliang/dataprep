@@ -8,7 +8,6 @@
 #' @param verbose Logical.
 #' @return A data frame with aggregated values.
 #' @export
-#' @noRd
 resample_time <- function(data, cols = NULL, date_col = NULL,
                           period = "hour", fun = "mean", na.rm = TRUE,
                           verbose = FALSE) {

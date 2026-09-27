@@ -15,7 +15,6 @@
 #'   \code{detect_outliers} on a copy of the input and never
 #'   modifies the caller's data frame.
 #' @export
-#' @noRd
 dry_run <- function(data, steps = c("varidele", "obsedele", "outlier"),
                     cols = NULL, group = NULL, date_col = NULL,
                     fraction = 0.25, top = 0.995, bottom = 0.0025,

@@ -5,7 +5,6 @@
 #' @param verbose Logical.
 #' @return A vector of flags.
 #' @export
-#' @noRd
 season_flag <- function(data, date_col = NULL, type = c("season", "month", "quarter"),
                         verbose = FALSE) {
   t0 <- Sys.time()

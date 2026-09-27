@@ -417,7 +417,7 @@ instrument data with intermittent gaps and occasional outliers.
 Three cases where you should not run the full pipeline:
 
 1. **Already-aggregated data.** `data1` in this package is the
-   result of aggregating the 60 size bins of `data` into three
+   result of aggregating the 61 size bins of `data` into three
    modes. It has no long gaps and no obvious outliers, so
    `varidele`, `obsedele`, `condextr`, and `shorvalu` have nothing
    to do.

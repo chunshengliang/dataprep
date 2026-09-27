@@ -37,8 +37,7 @@ dcast(data, id = NULL, formula = NULL,
     \code{NULL}, a column named \code{"value"}, \code{"values"},
     \code{"Value"}, \code{"Values"}, \code{"VALUE"}, or
     \code{"VALUES"} is used when exactly one such column exists.}
-  \item{value.var}{Alias for \code{value}. Supplying both is an
-    error.}
+  \item{value.var}{Alias for \code{value}. Used only when \code{value} is \code{NULL}; if both are supplied, \code{value} takes precedence.}
   \item{fill}{Value used to fill cells for \code{(id, variable)}
     pairs that do not appear in the input. Cells that appear in the
     input with value \code{NA} keep \code{NA} unless \code{na.rm =

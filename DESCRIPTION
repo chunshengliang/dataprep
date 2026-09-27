@@ -70,7 +70,7 @@ License: GPL (>= 2)
 Encoding: UTF-8
 NeedsCompilation: yes
 URL: https://github.com/chunshengliang/dataprep,
-     https://chunshengliang.github.io/dataprep
+     https://chunshengliang.github.io/dataprep/
 BugReports: https://github.com/chunshengliang/dataprep/issues
 Config/testthat/edition: 3
 LazyData: true

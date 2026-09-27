@@ -97,9 +97,8 @@ obsedele(df, cols = "x", half = 30)
 
 The three interior rows are each 10, 20, or 30 minutes from the
 nearest valid anchor. Under 0.1.5 the third row was deleted because
-the delete condition was inclusive (`dl >= half`); under 0.1.7 it is
-retained because the delete condition is strict (`dl > half &&
-dr > half`), so `dl == half` satisfies "within `half` minutes".
+the comparison was strict (`dl > half`); under 0.1.7 it is retained
+because `dl == half` satisfies "within `half` minutes".
 
 ## Minimal reproduction of the multi-column change
 
@@ -167,8 +166,8 @@ The six differing rows fall into two groups:
 
 * **Rows kept by 0.1.7, deleted by 0.1.5 (3 rows).** These are rows
   whose nearest anchor is exactly `half` minutes away. Under the
-  0.1.5 delete condition (`dl >= half`) they were deleted; under the
-  0.1.7 condition (`dl > half && dr > half`) they are retained. Each
+  0.1.5 strict comparison (`dl > half`) they were deleted; under the
+  0.1.7 inclusive comparison (`dl >= half`) they are retained. Each
   of these rows has a valid anchor within one sampling interval of
   `half`, so retaining them is consistent with the physical
   constraint described in `vignette("dataprep-philosophy")`.

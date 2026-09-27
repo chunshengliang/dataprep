@@ -7,3 +7,7 @@
 ^\.github$
 ^cran-comments\.md$
 ^src/Makevars$
+^doc$
+^Meta$
+^dataprep\.Rcheck$
+^dataprep_.*\.tar\.gz$

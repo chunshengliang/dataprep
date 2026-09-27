@@ -10,7 +10,6 @@
 #' @param verbose Logical; if \code{TRUE}, prints progress message.
 #' @return A balanced data frame.
 #' @export
-#' @noRd
 balance_panel <- function(data, unit_col = NULL, time_col = NULL,
                           fill = NA_real_, method = c("fill", "complete"),
                           verbose = FALSE) {

@@ -23,8 +23,7 @@ are used.}
 
 \item{group}{Optional grouping column.}
 
-\item{by}{Time unit (e.g. \code{"min"}, \code{"5 min"},
-\code{"hour"}).}
+\item{by}{Time unit used only to validate the internal \code{step_sec}. The 0.1.7 anchor-based scan does not use a regular grid, so this argument does not affect the result.}
 
 \item{half}{Half window size in minutes.}
 

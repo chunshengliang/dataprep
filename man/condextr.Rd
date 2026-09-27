@@ -22,7 +22,7 @@ times = 10, date_col = NULL, cores = NULL, verbose = FALSE)
   \item{by, half}{Time parameters for observation deletion.}
   \item{times}{Number of observation deletions.}
   \item{date_col}{Time column index or name.}
-  \item{cores}{Number of CPU cores (currently not used).}
+  \item{cores}{Number of CPU cores passed to the C++ backend. \code{NULL} (default) lets the backend choose based on data size.}
   \item{verbose}{Logical; if \code{TRUE}, prints timing and deletion counts.}
 }
 \details{

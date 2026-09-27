@@ -5,7 +5,6 @@
 #' @param verbose Logical.
 #' @return Invisibly, a list with dimensions, types, missing diagnosis, and descriptive statistics.
 #' @export
-#' @noRd
 data_report <- function(data, cols = NULL, date_col = NULL, verbose = FALSE) {
   t0 <- Sys.time()
   if (verbose) {

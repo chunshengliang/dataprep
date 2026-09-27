@@ -10,7 +10,7 @@
 #'   \item{tconc}{a numeric vector}
 #'   \item{TPNC}{a numeric vector}
 #'   \item{monthyear}{a character vector}
-#'   \item{...}{60 numeric columns named by particle diameter in nm}
+#'   \item{...}{61 numeric columns named by particle diameter in nm}
 #' }
 #' @source \url{https://smear.avaa.csc.fi/download}
 #' @keywords datasets

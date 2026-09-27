@@ -32,7 +32,7 @@ bin_data(data, cols = NULL, method = "equal_width",
   Missing values are preserved as \code{NA} in the output.
 }
 \value{
-  A data frame with the selected columns replaced by factors representing the bins.
+  If \code{data} is a data frame, a data frame with the selected columns replaced by factors. If \code{data} is a numeric vector, a factor vector.
 }
 \examples{
 data <- data.frame(x = rnorm(100), y = runif(100))

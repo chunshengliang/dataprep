@@ -8,7 +8,6 @@
 #' @param verbose Logical.
 #' @return A data frame with percentile values.
 #' @export
-#' @noRd
 percdata <- function(data, cols = NULL, group = NULL, diff = 0.1,
                      part = "both", na.rm = TRUE, verbose = FALSE) {
   t0 <- Sys.time()
