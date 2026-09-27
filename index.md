@@ -14,6 +14,7 @@ checks](https://badges.cranchecks.info/worst/dataprep.svg)](https://cran.r-proje
 month](https://cranlogs.r-pkg.org/badges/dataprep?color=brightgreen)](https://cran.r-project.org/package=dataprep)
 [![Downloads
 total](https://cranlogs.r-pkg.org/badges/grand-total/dataprep)](https://cran.r-project.org/package=dataprep)
+[![StackOverflow](https://img.shields.io/stackexchange/stackoverflow/t/dataprep?logo=stackoverflow&label=Questions)](https://stackoverflow.com/questions/tagged/dataprep)
 [![Ask
 DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/chunshengliang/dataprep)
 
