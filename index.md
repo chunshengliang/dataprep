@@ -1,7 +1,7 @@
 # dataprep
 
-> Efficient and flexible data preprocessing tools for R, with C++ /
-> OpenMP / SIMD backends.
+> Fast, efficient, and versatile data preprocessing tools for R, with
+> C++ / OpenMP / SIMD backends.
 
 ## In one paragraph
 
