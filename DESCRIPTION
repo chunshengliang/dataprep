@@ -1,6 +1,6 @@
 Package: dataprep
 Type: Package
-Title: Efficient and Flexible Data Preprocessing Tools
+Title: Fast, Efficient, and Versatile Data Preprocessing and Reshaping with C++, OpenMP & SIMD
 Version: 0.1.7
 Authors@R: c(
     person("Chun-Sheng", "Liang", role = c("aut", "cre"),
@@ -13,7 +13,7 @@ Authors@R: c(
     person("Ke-Bin", "He", role = "aut")
   )
 Description:
-    Efficient and flexible preprocessing of tabular and time-series
+    Fast, efficient, and versatile preprocessing of tabular and time-series
     data. Most heavy routines are implemented in C++ via 'Rcpp', with
     optional OpenMP parallelization and SIMD acceleration (AVX2 /
     AVX-512) on supported hardware. The 0.1.7 release rewrites the

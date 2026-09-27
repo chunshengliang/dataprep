@@ -1,6 +1,6 @@
 # dataprep <img src="man/figures/logo.png" align="right" height="120" alt="" />
 
-> Efficient and flexible data preprocessing tools for R,
+> Fast, efficient, and versatile data preprocessing tools for R,
 > with C++ / OpenMP / SIMD backends.
 
 <!-- badges: start -->
