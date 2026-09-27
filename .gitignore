@@ -17,3 +17,4 @@ src/*.dll
 src/Makevars
 dataprep.Rcheck/
 *.tar.gz
+docs
