@@ -105,6 +105,22 @@ remotes::install_github("chunshengliang/dataprep")
 The package requires a C++17 compiler (Rtools on Windows,
 Xcode / clang on macOS, gcc on Linux).
 
+**Note for Windows users**
+
+When installing from GitHub with `remotes::install_github()`, Windows
+users may see:
+
+> Warning: file 'dataprep/configure' did not have execute permissions: corrected
+> Warning: file 'dataprep/cleanup' did not have execute permissions: corrected
+
+This is expected and harmless. Windows NTFS does not preserve Unix
+execute bits, so `R CMD build` corrects them automatically. The
+`configure.win` and `cleanup.win` scripts still run, and the package
+installs and works normally — **the warning does not affect any
+functionality in any way**. Linux, macOS, and CRAN checks do not emit
+this warning, and Windows users installing the CRAN binary package
+with `install.packages("dataprep")` are not affected either.
+
 ## Quick start
 
 ```r
