@@ -1,8 +1,7 @@
 # Generate a simple data quality report
 
-Prints a summary of data dimensions, variable types, missing value
-patterns, and basic descriptive statistics for numeric columns. The
-report is printed to the console and also returned invisibly as a list.
+Computes a data quality summary and returns it invisibly as a list. When
+`verbose = TRUE`, the summary is also printed to the console.
 
 ## Usage
 

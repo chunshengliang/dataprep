@@ -1,6 +1,7 @@
 # dataprep: upgrading from 0.1.5 to 0.1.7
 
 ``` r
+
 library(dataprep)
 ```
 
@@ -77,6 +78,7 @@ Consider five observations sampled every 10 minutes, with a valid value
 only at the two ends:
 
 ``` r
+
 df <- data.frame(
   date = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:4 * 600,
   x    = c(1, NA, NA, NA, 5)
@@ -92,8 +94,9 @@ obsedele(df, cols = "x", half = 30)
 ```
 
 The three interior rows are each 10, 20, or 30 minutes from the nearest
-valid anchor. Under 0.1.5 the third row was deleted because the
-comparison was strict (`dl > half`); under 0.1.7 it is retained because
+valid anchor. Under 0.1.5 the third row was deleted because the delete
+condition was inclusive (`dl >= half`); under 0.1.7 it is retained
+because the delete condition is strict (`dl > half && dr > half`), so
 `dl == half` satisfies “within `half` minutes”.
 
 ## Minimal reproduction of the multi-column change
@@ -101,6 +104,7 @@ comparison was strict (`dl > half`); under 0.1.7 it is retained because
 Consider two channels with mutually exclusive missing runs:
 
 ``` r
+
 df <- data.frame(
   date = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:9 * 600,
   x    = c(1, NA, NA, NA, NA, NA, NA, NA, NA, 5),
@@ -162,8 +166,8 @@ The six differing rows fall into two groups:
 
 - **Rows kept by 0.1.7, deleted by 0.1.5 (3 rows).** These are rows
   whose nearest anchor is exactly `half` minutes away. Under the 0.1.5
-  strict comparison (`dl > half`) they were deleted; under the 0.1.7
-  inclusive comparison (`dl >= half`) they are retained. Each of these
+  delete condition (`dl >= half`) they were deleted; under the 0.1.7
+  condition (`dl > half && dr > half`) they are retained. Each of these
   rows has a valid anchor within one sampling interval of `half`, so
   retaining them is consistent with the physical constraint described in
   [`vignette("dataprep-philosophy")`](https://chunshengliang.github.io/dataprep/articles/dataprep-philosophy.md).
@@ -209,6 +213,7 @@ difference with
 between the 0.1.5 and 0.1.7 outputs. The example below shows how.
 
 ``` r
+
 result_015 <- dataprep::dataprep(data, cols = 5:65, group = 4)
 result_017 <- dataprep(data, cols = 5:65, group = 4)
 
@@ -271,7 +276,8 @@ configuration is listed here; full details are in
 [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
 
 - **Ubuntu 25.10** — R 4.5.1, g++ 15.2.0; 2× AMD EPYC 9965 192-Core (384
-  physical / 768 logical cores), 1.0 TiB DDR5, full AVX-512.
+  physical / 768 logical cores), 1.0 TiB (16 × 64 GiB Micron, DDR5-5600,
+  Multi-bit ECC), full AVX-512.
 
 - **Windows 11 Pro for Workstations** — R 4.6.1 (ucrt), GCC 14.3.0; 2×
   AMD EPYC 7B12 64-Core (128 physical / 128 logical cores), about 224
@@ -297,24 +303,23 @@ configuration is listed here; full details are in
 ## Session info
 
 ``` r
+
 sessionInfo()
-#> R version 4.5.1 (2025-06-13)
+#> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 25.10
+#> Running under: Ubuntu 24.04.5 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-openmp/libblas.so.3 
-#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.30.so;  LAPACK version 3.12.0
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
 #> 
 #> locale:
-#>  [1] LC_CTYPE=zh_CN.UTF-8       LC_NUMERIC=C              
-#>  [3] LC_TIME=zh_CN.UTF-8        LC_COLLATE=zh_CN.UTF-8    
-#>  [5] LC_MONETARY=zh_CN.UTF-8    LC_MESSAGES=zh_CN.UTF-8   
-#>  [7] LC_PAPER=zh_CN.UTF-8       LC_NAME=C                 
-#>  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-#> [11] LC_MEASUREMENT=zh_CN.UTF-8 LC_IDENTIFICATION=C       
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
 #> 
-#> time zone: Asia/Shanghai
+#> time zone: UTC
 #> tzcode source: system (glibc)
 #> 
 #> attached base packages:
@@ -329,9 +334,9 @@ sessionInfo()
 #>  [9] jsonlite_2.0.0    glue_1.8.1        htmltools_0.5.9   ragg_1.5.2       
 #> [13] sass_0.4.10       rmarkdown_2.32    tibble_3.3.1      evaluate_1.0.5   
 #> [17] jquerylib_0.1.4   fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5  
-#> [21] compiler_4.5.1    dplyr_1.2.1       fs_2.1.0          pkgconfig_2.0.3  
-#> [25] htmlwidgets_1.6.4 Rcpp_1.1.2        rstudioapi_0.19.0 systemfonts_1.3.2
-#> [29] digest_0.6.39     R6_2.6.1          tidyselect_1.2.1  pillar_1.11.1    
-#> [33] parallel_4.5.1    magrittr_2.0.5    bslib_0.12.0      tools_4.5.1      
-#> [37] pkgdown_2.2.1     cachem_1.1.0      desc_1.4.3
+#> [21] compiler_4.6.1    dplyr_1.2.1       fs_2.1.0          pkgconfig_2.0.3  
+#> [25] Rcpp_1.1.2        systemfonts_1.3.2 digest_0.6.39     R6_2.6.1         
+#> [29] tidyselect_1.2.1  pillar_1.11.1     parallel_4.6.1    magrittr_2.0.5   
+#> [33] bslib_0.12.0      tools_4.6.1       pkgdown_2.2.1     cachem_1.1.0     
+#> [37] desc_1.4.3
 ```

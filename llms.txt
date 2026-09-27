@@ -97,6 +97,7 @@ pipeline.
 ## Installation
 
 ``` r
+
 # from GitHub
 # install.packages("remotes")
 remotes::install_github("chunshengliang/dataprep")
@@ -108,6 +109,7 @@ on macOS, gcc on Linux).
 ## Quick start
 
 ``` r
+
 library(dataprep)
 
 # The size-bin columns are the ones whose names are numeric
@@ -149,7 +151,7 @@ used.
 | L2 | 384 MiB |
 | L3 | 768 MiB |
 | NUMA nodes | 2 |
-| RAM | 1.0 TiB DDR5 5600 MT/s, Multi-bit ECC |
+| RAM | 1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC) |
 | Max frequency | 3.70 GHz |
 | AVX-512 | Full (f, dq, ifma, cd, bw, vl, vbmi, vbmi2, vnni, bitalg, vpopcntdq, bf16) |
 | R | 4.5.1 (2025-06-13) |
@@ -426,6 +428,7 @@ that `R CMD check` does not run them. A single script,
 8-engine consistency checks:
 
 ``` r
+
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
 source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ```
@@ -437,7 +440,7 @@ data with intermittent gaps and occasional outliers. Three cases where
 you should not run the full pipeline:
 
 1.  **Already-aggregated data.** `data1` in this package is the result
-    of aggregating the 60 size bins of `data` into three modes. It has
+    of aggregating the 61 size bins of `data` into three modes. It has
     no long gaps and no obvious outliers, so `varidele`, `obsedele`,
     `condextr`, and `shorvalu` have nothing to do.
 2.  **Models that tolerate missing values.** Gradient boosting, random

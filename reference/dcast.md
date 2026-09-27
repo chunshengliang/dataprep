@@ -53,7 +53,8 @@ dcast(data, id = NULL, formula = NULL,
 
 - value.var:
 
-  Alias for `value`. Supplying both is an error.
+  Alias for `value`. Used only when `value` is `NULL`; if both are
+  supplied, `value` takes precedence.
 
 - fill:
 

@@ -1,6 +1,7 @@
 # dataprep: cleaning pipeline
 
 ``` r
+
 library(dataprep)
 set.seed(1)
 
@@ -16,7 +17,7 @@ size_bin_cols <- function(x) {
 ## Quick start
 
 The full `data` table has 7,640 rows and 65 columns: a time column, a
-grouping column, and 60 particle size bins. Running the full pipeline on
+grouping column, and 61 particle size bins. Running the full pipeline on
 it takes a few seconds and returns a smaller, cleaner table.
 
 The cleaning pipeline is organised around four sequential steps, each
@@ -51,6 +52,7 @@ data:
     segments keeps the interpolation local.
 
 ``` r
+
 cleaned <- dataprep(data,
                     cols       = size_bin_cols(data),
                     group      = 4,
@@ -58,7 +60,7 @@ cleaned <- dataprep(data,
                     times      = 10,
                     intervals  = 30)
 dim(cleaned)
-#> [1] 7118   39
+#> [1] 6942   39
 ```
 
 The figure below compares the top and bottom percentile curves of every
@@ -67,6 +69,7 @@ reports the number of observations (`n`) and the number of missing
 values (`na`) in that group.
 
 ``` r
+
 percplot(
   rbind(
     transform(data[names(cleaned)],      g = "original"),
@@ -141,6 +144,7 @@ for the full upgrade guide and a minimal reproduction of both changes.
 The example below shows the new behaviour on a small synthetic dataset.
 
 ``` r
+
 df <- data.frame(
   date  = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:19 * 600,
   group = rep(1L, 20),
@@ -158,6 +162,7 @@ nrow(obsedele(df, cols = c("x", "y"), group = "group", half = 2))
 ### Boundary behaviour
 
 ``` r
+
 df_boundary <- data.frame(
   date = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:4 * 600,
   x    = c(1, NA, NA, NA, 5)   # anchors at 0 and 40 minutes
@@ -243,6 +248,7 @@ boundary — to keep the vignette fast and to make the group-wise
 behaviour visible.
 
 ``` r
+
 data_slice <- data[3000:4000, ]
 
 # Select the size-bin columns by name pattern: the ones whose
@@ -269,6 +275,7 @@ what removes the all-`NA` columns before they contaminate downstream
 steps.
 
 ``` r
+
 step0 <- varidele(data_slice,
                   cols     = num_cols_raw,
                   fraction = 0.5)
@@ -280,6 +287,7 @@ length(num_cols)          # number of bins that survived
 ### Step 2 — Observation deletion
 
 ``` r
+
 step1 <- obsedele(step0, cols = num_cols, group = 4)
 nrow(step1)
 #> [1] 772
@@ -292,6 +300,7 @@ both sides are removed. Every surviving row has a valid anchor within
 #### Before cleaning
 
 ``` r
+
 percplot(step0, cols = num_cols, group = 4)
 ```
 
@@ -303,6 +312,7 @@ indicate the presence of outliers and long stretches of missing data.
 ### Step 3 — Conditional extremum outlier removal
 
 ``` r
+
 step2 <- condextr(step1, cols = num_cols, group = 4,
                   interval = 10, times = 10)
 nrow(step2)
@@ -322,6 +332,7 @@ introduced by outlier marking alone.
 #### After cleaning
 
 ``` r
+
 percplot(step2, cols = num_cols, group = 4)
 ```
 
@@ -334,6 +345,7 @@ tighter, and the number of missing values (`na`) is much smaller.
 ### Step 4 — Short-period interpolation
 
 ``` r
+
 step3 <- shorvalu(step2, cols = num_cols)
 sum(is.na(step2[, num_cols])) - sum(is.na(step3[, num_cols]))
 #> [1] 2563
@@ -363,6 +375,7 @@ For quick exploration the four steps are wrapped in a single call. We
 use the first 1,000 rows of `data` to keep the example fast.
 
 ``` r
+
 demo <- data[1:1000, ]
 res  <- dataprep(
   demo,
@@ -404,6 +417,7 @@ the caller’s data. It returns a list with per-step before/after counts,
 so it is a safe read-only operation.
 
 ``` r
+
 report <- dry_run(
   data1,
   cols       = c("Nucleation", "Aitken", "Accumulation"),
@@ -438,6 +452,7 @@ read-only and fast.
 is also read-only and works on any numeric table.
 
 ``` r
+
 na_diagnose(data1, cols = 3:7)
 #>       variable    n na na_frac na_runs max_run
 #> 1   Nucleation 7640  0       0       0       0
@@ -463,6 +478,7 @@ na_diagnose(data1, cols = 3:7)
 `winsorize` changes data, so we use a slice of `data`:
 
 ``` r
+
 demo <- data[1:500, ]
 head(winsorize(demo, cols = "7.94")[["7.94"]])
 #> [1]  3.2424      NA 73.8825      NA  3.2418  6.4869
@@ -471,6 +487,7 @@ head(winsorize(demo, cols = "7.94")[["7.94"]])
 `filter_low_var` and `filter_high_cor` operate on any numeric table:
 
 ``` r
+
 df <- data.frame(
   id    = 1:100,
   const = rep(5, 100),
@@ -565,24 +582,23 @@ be read from a nearby observation in the same segment.
 ## Session info
 
 ``` r
+
 sessionInfo()
-#> R version 4.5.1 (2025-06-13)
+#> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 25.10
+#> Running under: Ubuntu 24.04.5 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-openmp/libblas.so.3 
-#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.30.so;  LAPACK version 3.12.0
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
 #> 
 #> locale:
-#>  [1] LC_CTYPE=zh_CN.UTF-8       LC_NUMERIC=C              
-#>  [3] LC_TIME=zh_CN.UTF-8        LC_COLLATE=zh_CN.UTF-8    
-#>  [5] LC_MONETARY=zh_CN.UTF-8    LC_MESSAGES=zh_CN.UTF-8   
-#>  [7] LC_PAPER=zh_CN.UTF-8       LC_NAME=C                 
-#>  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-#> [11] LC_MEASUREMENT=zh_CN.UTF-8 LC_IDENTIFICATION=C       
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
 #> 
-#> time zone: Asia/Shanghai
+#> time zone: UTC
 #> tzcode source: system (glibc)
 #> 
 #> attached base packages:
@@ -592,16 +608,16 @@ sessionInfo()
 #> [1] dataprep_0.1.7
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.5.1    
-#>  [5] tidyselect_1.2.1   Rcpp_1.1.2         parallel_4.5.1     jquerylib_0.1.4   
+#>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    
+#>  [5] tidyselect_1.2.1   Rcpp_1.1.2         parallel_4.6.1     jquerylib_0.1.4   
 #>  [9] systemfonts_1.3.2  scales_1.4.0       textshaping_1.0.5  yaml_2.3.12       
 #> [13] fastmap_1.2.0      ggplot2_4.0.3      R6_2.6.1           generics_0.1.4    
-#> [17] knitr_1.52         htmlwidgets_1.6.4  tibble_3.3.1       desc_1.4.3        
-#> [21] bslib_0.12.0       pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.3.0       
-#> [25] cachem_1.1.0       xfun_0.61          fs_2.1.0           sass_0.4.10       
-#> [29] S7_0.2.2           otel_0.2.0         cli_3.6.6          withr_3.0.3       
-#> [33] pkgdown_2.2.1      magrittr_2.0.5     digest_0.6.39      grid_4.5.1        
-#> [37] rstudioapi_0.19.0  lifecycle_1.0.5    vctrs_0.7.3        evaluate_1.0.5    
-#> [41] glue_1.8.1         farver_2.1.2       ragg_1.5.2         rmarkdown_2.32    
-#> [45] tools_4.5.1        pkgconfig_2.0.3    htmltools_0.5.9
+#> [17] knitr_1.52         tibble_3.3.1       desc_1.4.3         bslib_0.12.0      
+#> [21] pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.3.0        cachem_1.1.0      
+#> [25] xfun_0.61          fs_2.1.0           sass_0.4.10        S7_0.2.2          
+#> [29] otel_0.2.0         cli_3.6.6          withr_3.0.3        pkgdown_2.2.1     
+#> [33] magrittr_2.0.5     digest_0.6.39      grid_4.6.1         lifecycle_1.0.5   
+#> [37] vctrs_0.7.3        evaluate_1.0.5     glue_1.8.1         farver_2.1.2      
+#> [41] ragg_1.5.2         rmarkdown_2.32     tools_4.6.1        pkgconfig_2.0.3   
+#> [45] htmltools_0.5.9
 ```

@@ -1,6 +1,7 @@
 # dataprep: descriptive statistics and diagnostic plots
 
 ``` r
+
 library(dataprep)
 library(ggplot2)
 ```
@@ -45,6 +46,7 @@ such as 3.16, 3.55, …),
 draws a line plot with a log-scaled x axis.
 
 ``` r
+
 descplot(data1, cols = 3:7)
 ```
 
@@ -55,6 +57,7 @@ descplot(data1, cols = 3:7)
 Pass a subset of statistics by index or by name to focus the plot.
 
 ``` r
+
 descplot(data1, cols = 3:7,
          stats = c("na", "min", "max", "IQR"))
 ```
@@ -72,6 +75,7 @@ When variable names are character (e.g. aerosol mode names `Nucleation`,
 falls back to a bar chart.
 
 ``` r
+
 descplot(data1, cols = 3:7) +
   ggplot2::theme(
     axis.text.x = ggplot2::element_text(angle = 30,
@@ -83,6 +87,7 @@ descplot(data1, cols = 3:7) +
 ### Control facet layout
 
 ``` r
+
 descplot(data1, cols = 3:7, stats = c("min", "max", "IQR")) +
   ggplot2::theme(
     axis.text.x = ggplot2::element_text(angle = 30,
@@ -94,6 +99,7 @@ descplot(data1, cols = 3:7, stats = c("min", "max", "IQR")) +
 ### Full-size data
 
 ``` r
+
 descplot(data, cols = 5:65)
 #> Warning: Removed 84 rows containing missing values or values outside the scale range
 #> (`geom_line()`).
@@ -109,6 +115,7 @@ directly. It returns a data frame with one row per variable and one
 column per statistic.
 
 ``` r
+
 descdata(data1, cols = 3:7, stats = c(2, 3, 4, 7:9))
 #>      variables na     mean       sd        min      max      IQR
 #> 1   Nucleation  0 123.8971 240.3190 0.05491765 4137.091  99.1508
@@ -131,6 +138,7 @@ and
 [`percoutl()`](https://chunshengliang.github.io/dataprep/reference/percoutl.md).
 
 ``` r
+
 percplot(data1, cols = 3:7, group = 2)
 ```
 
@@ -139,6 +147,7 @@ percplot(data1, cols = 3:7, group = 2)
 ### Top percentiles only
 
 ``` r
+
 percplot(data1, cols = 3:7, group = 2, part = "top")
 ```
 
@@ -147,6 +156,7 @@ percplot(data1, cols = 3:7, group = 2, part = "top")
 ### Bottom percentiles only
 
 ``` r
+
 percplot(data1, cols = 3:7, group = 2, part = "bottom")
 ```
 
@@ -158,6 +168,7 @@ For numeric variable names, the x axis can be forced to linear scale
 with `num_xaxis = "numeric"`.
 
 ``` r
+
 percplot(data1, cols = 3:7, group = 2, num_xaxis = "numeric") +
   ggplot2::theme(
     axis.text.x = ggplot2::element_text(angle = 30,
@@ -184,6 +195,7 @@ returns the same table that
 draws.
 
 ``` r
+
 percdata(data1, cols = 3:7, group = 2, part = "top")
 #>       monthyear percentile Nucleation   Aitken Accumulation    tconc     TPNC
 #> 1  January 2020     99.5th   1776.874 1177.590     251.2686 2570.553 2564.096
@@ -209,6 +221,7 @@ and
 return `ggplot` objects, so all usual `ggplot2` layers apply.
 
 ``` r
+
 percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme_bw(base_size = 11) +
   ggplot2::labs(title = "Percentile curves by month",
@@ -225,6 +238,7 @@ A typical diagnostic workflow combines
 and the two plot families:
 
 ``` r
+
 # 1. Overview of the whole table
 data_report(data, cols = 5:65)
 
@@ -244,6 +258,7 @@ you can compare the raw and cleaned versions in the same plot by
 stacking them with a `g` column:
 
 ``` r
+
 cleaned <- dataprep(data, cols = 5:65, group = 4)
 
 percplot(
@@ -280,24 +295,23 @@ percplot(
 ## Session info
 
 ``` r
+
 sessionInfo()
-#> R version 4.5.1 (2025-06-13)
+#> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 25.10
+#> Running under: Ubuntu 24.04.5 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-openmp/libblas.so.3 
-#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.30.so;  LAPACK version 3.12.0
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
 #> 
 #> locale:
-#>  [1] LC_CTYPE=zh_CN.UTF-8       LC_NUMERIC=C              
-#>  [3] LC_TIME=zh_CN.UTF-8        LC_COLLATE=zh_CN.UTF-8    
-#>  [5] LC_MONETARY=zh_CN.UTF-8    LC_MESSAGES=zh_CN.UTF-8   
-#>  [7] LC_PAPER=zh_CN.UTF-8       LC_NAME=C                 
-#>  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-#> [11] LC_MEASUREMENT=zh_CN.UTF-8 LC_IDENTIFICATION=C       
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
 #> 
-#> time zone: Asia/Shanghai
+#> time zone: UTC
 #> tzcode source: system (glibc)
 #> 
 #> attached base packages:
@@ -307,16 +321,16 @@ sessionInfo()
 #> [1] ggplot2_4.0.3  dataprep_0.1.7
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.5.1    
-#>  [5] tidyselect_1.2.1   Rcpp_1.1.2         parallel_4.5.1     jquerylib_0.1.4   
+#>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    
+#>  [5] tidyselect_1.2.1   Rcpp_1.1.2         parallel_4.6.1     jquerylib_0.1.4   
 #>  [9] systemfonts_1.3.2  scales_1.4.0       textshaping_1.0.5  yaml_2.3.12       
 #> [13] fastmap_1.2.0      R6_2.6.1           labeling_0.4.3     generics_0.1.4    
-#> [17] knitr_1.52         htmlwidgets_1.6.4  tibble_3.3.1       desc_1.4.3        
-#> [21] bslib_0.12.0       pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.3.0       
-#> [25] cachem_1.1.0       xfun_0.61          fs_2.1.0           sass_0.4.10       
-#> [29] S7_0.2.2           otel_0.2.0         cli_3.6.6          withr_3.0.3       
-#> [33] pkgdown_2.2.1      magrittr_2.0.5     digest_0.6.39      grid_4.5.1        
-#> [37] rstudioapi_0.19.0  lifecycle_1.0.5    vctrs_0.7.3        evaluate_1.0.5    
-#> [41] glue_1.8.1         farver_2.1.2       ragg_1.5.2         rmarkdown_2.32    
-#> [45] tools_4.5.1        pkgconfig_2.0.3    htmltools_0.5.9
+#> [17] knitr_1.52         tibble_3.3.1       desc_1.4.3         bslib_0.12.0      
+#> [21] pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.3.0        cachem_1.1.0      
+#> [25] xfun_0.61          fs_2.1.0           sass_0.4.10        S7_0.2.2          
+#> [29] otel_0.2.0         cli_3.6.6          withr_3.0.3        pkgdown_2.2.1     
+#> [33] magrittr_2.0.5     digest_0.6.39      grid_4.6.1         lifecycle_1.0.5   
+#> [37] vctrs_0.7.3        evaluate_1.0.5     glue_1.8.1         farver_2.1.2      
+#> [41] ragg_1.5.2         rmarkdown_2.32     tools_4.6.1        pkgconfig_2.0.3   
+#> [45] htmltools_0.5.9
 ```

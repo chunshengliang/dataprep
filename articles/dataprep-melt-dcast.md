@@ -1,6 +1,7 @@
 # dataprep: fast reshaping with melt() and dcast()
 
 ``` r
+
 library(dataprep)
 set.seed(1)
 ```
@@ -47,7 +48,8 @@ Benchmarks were run on two reference hosts. Only the core configuration
 is listed here; full hardware details are in `README.md`.
 
 - **Ubuntu 25.10** — 2× AMD EPYC 9965 192-Core (384 physical / 768
-  logical cores), 1.0 TiB DDR5, full AVX-512; R 4.5.1, g++ 15.2.0.
+  logical cores), 1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit
+  ECC), full AVX-512; R 4.5.1, g++ 15.2.0.
 
 - **Windows 11 Pro for Workstations** — 2× AMD EPYC 7B12 64-Core (128
   physical / 128 logical cores), about 224 GiB RAM, no AVX-512; R 4.6.1
@@ -61,6 +63,7 @@ Software versions on both hosts: `data.table` 1.18.6.1, `reshape2`
 Reproducing the benchmarks:
 
 ``` r
+
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
 source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ```
@@ -70,6 +73,7 @@ source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ### Basic usage
 
 ``` r
+
 df <- data.frame(
   id       = 1:3,
   category = factor(c("a", "b", "c")),
@@ -89,6 +93,7 @@ melt(df, id.vars = c("id", "category"))
 ### Measure-side specification
 
 ``` r
+
 melt(df, measure.vars = c("v1", "v2"))
 #>   id category variable value
 #> 1  1        a       v1   1.1
@@ -104,6 +109,7 @@ melt(df, measure.vars = c("v1", "v2"))
 Non-numeric and factor columns are treated as IDs by default.
 
 ``` r
+
 melt(df)
 #>   category variable value
 #> 1        a       id   1.0
@@ -120,6 +126,7 @@ melt(df)
 ### Custom column names and `na.rm`
 
 ``` r
+
 df_na <- data.frame(
   id = 1:3,
   x  = c(1, NA, 3),
@@ -143,6 +150,7 @@ measure columns because bulk copies dominate. Passing `major = NULL`
 (the default) lets the C++ backend choose based on the input shape.
 
 ``` r
+
 wide50 <- data.frame(id = 1:100,
                      matrix(rnorm(100 * 50), ncol = 50))
 res_row <- melt(wide50, id.vars = "id", major = "row")
@@ -157,6 +165,7 @@ identical(as.data.frame(res_row), as.data.frame(res_col))
 for the whole session.
 
 ``` r
+
 options(dataprep.cores = 4L)
 melt(df, id.vars = "id")
 #>   id variable value
@@ -248,6 +257,7 @@ that shows up on the small-input benchmarks.
 ### Basic usage
 
 ``` r
+
 long <- melt(df, id.vars = c("id", "category"))
 dcast(long, id = c("id", "category"),
       variable = "variable", value = "value")
@@ -260,6 +270,7 @@ dcast(long, id = c("id", "category"),
 ### Formula interface
 
 ``` r
+
 dcast(long, formula = id + category ~ variable,
       value.var = "value")
 #>   id category  v1  v2
@@ -271,6 +282,7 @@ dcast(long, formula = id + category ~ variable,
 ### Fill missing cells
 
 ``` r
+
 dcast(long, id = c("id", "category"),
       variable = "variable", value = "value",
       fill = 0)
@@ -288,6 +300,7 @@ The default is “last occurrence wins”, matching
 `fun.aggregate = NULL` behaviour.
 
 ``` r
+
 long_dup <- data.frame(
   id       = c(1, 1, 2),
   variable = c("x", "x", "x"),
@@ -304,6 +317,7 @@ dcast(long_dup, id = "id",
 ### `na.rm`
 
 ``` r
+
 long_na <- data.frame(
   id       = c(1, 1, 2, 2),
   variable = c("x", "y", "x", "y"),
@@ -405,6 +419,7 @@ Engines: `dataprep`, `reshape2`, `data.table`, `tidyr`, `pandas`,
 The consistency scripts are shipped under `inst/`:
 
 ``` r
+
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
 source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 melt_all_engines(10000L, n_id = 1L, n_val = 9L)
@@ -414,6 +429,7 @@ dcast_all_engines(1000L, n_id = 2L, n_val = 5L)
 ## Round-trip example
 
 ``` r
+
 wide  <- data.frame(id = 1:5, a = rnorm(5), b = rnorm(5))
 long  <- melt(wide, id.vars = "id")
 back  <- dcast(long, id = "id",
@@ -451,24 +467,23 @@ on Windows.
 ## Session info
 
 ``` r
+
 sessionInfo()
-#> R version 4.5.1 (2025-06-13)
+#> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 25.10
+#> Running under: Ubuntu 24.04.5 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-openmp/libblas.so.3 
-#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.30.so;  LAPACK version 3.12.0
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
 #> 
 #> locale:
-#>  [1] LC_CTYPE=zh_CN.UTF-8       LC_NUMERIC=C              
-#>  [3] LC_TIME=zh_CN.UTF-8        LC_COLLATE=zh_CN.UTF-8    
-#>  [5] LC_MONETARY=zh_CN.UTF-8    LC_MESSAGES=zh_CN.UTF-8   
-#>  [7] LC_PAPER=zh_CN.UTF-8       LC_NAME=C                 
-#>  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-#> [11] LC_MEASUREMENT=zh_CN.UTF-8 LC_IDENTIFICATION=C       
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
 #> 
-#> time zone: Asia/Shanghai
+#> time zone: UTC
 #> tzcode source: system (glibc)
 #> 
 #> attached base packages:
@@ -478,12 +493,11 @@ sessionInfo()
 #> [1] dataprep_0.1.7
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] cli_3.6.6         knitr_1.52        rlang_1.3.0       xfun_0.61        
-#>  [5] otel_0.2.0        textshaping_1.0.5 jsonlite_2.0.0    htmltools_0.5.9  
-#>  [9] ragg_1.5.2        sass_0.4.10       rmarkdown_2.32    evaluate_1.0.5   
-#> [13] jquerylib_0.1.4   fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5  
-#> [17] compiler_4.5.1    fs_2.1.0          htmlwidgets_1.6.4 Rcpp_1.1.2       
-#> [21] rstudioapi_0.19.0 systemfonts_1.3.2 digest_0.6.39     R6_2.6.1         
-#> [25] parallel_4.5.1    bslib_0.12.0      tools_4.5.1       pkgdown_2.2.1    
-#> [29] cachem_1.1.0      desc_1.4.3
+#>  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    
+#>  [5] xfun_0.61         cachem_1.1.0      parallel_4.6.1    knitr_1.52       
+#>  [9] htmltools_0.5.9   rmarkdown_2.32    lifecycle_1.0.5   cli_3.6.6        
+#> [13] sass_0.4.10       pkgdown_2.2.1     textshaping_1.0.5 jquerylib_0.1.4  
+#> [17] systemfonts_1.3.2 compiler_4.6.1    tools_4.6.1       ragg_1.5.2       
+#> [21] bslib_0.12.0      evaluate_1.0.5    Rcpp_1.1.2        yaml_2.3.12      
+#> [25] otel_0.2.0        jsonlite_2.0.0    rlang_1.3.0       fs_2.1.0
 ```

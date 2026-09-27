@@ -18,7 +18,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/chunshengliang/dataprep/blob/HEAD/inst/CITATION)
+[`inst/CITATION`](https://github.com/chunshengliang/dataprep/blob/main/inst/CITATION)
 
 Liang, C.-S., Wu, H., Li, H.-Y., Zhang, Q., Li, Z. & He, K.-B. (2020).
 Efficient data preprocessing, episode classification, and source

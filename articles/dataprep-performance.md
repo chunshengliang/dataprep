@@ -1,6 +1,7 @@
 # dataprep: performance and cross-engine consistency
 
 ``` r
+
 library(dataprep)
 ```
 
@@ -35,7 +36,8 @@ is listed here; full hardware details are in `README.md`.
 
 - **Ubuntu 25.10** (Questing Quokka, kernel 6.17.0-41-generic) — 2× AMD
   EPYC 9965 192-Core (Turin, Zen 5c), 384 physical / 768 logical cores,
-  L3 768 MiB, 1.0 TiB DDR5 5600 MT/s, full AVX-512; R 4.5.1, g++ 15.2.0.
+  L3 768 MiB, 1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC),
+  full AVX-512; R 4.5.1, g++ 15.2.0.
 
 - **Windows 11 Pro for Workstations** (10.0.26100, Build 26100) — 2× AMD
   EPYC 7B12 64-Core, 128 physical / 128 logical cores, about 224 GiB RAM
@@ -330,6 +332,7 @@ Scripts are disabled by default so that `R CMD check` does not run them.
 To enable:
 
 ``` r
+
 Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
 source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ```
@@ -337,24 +340,23 @@ source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 ## Session info
 
 ``` r
+
 sessionInfo()
-#> R version 4.5.1 (2025-06-13)
+#> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 25.10
+#> Running under: Ubuntu 24.04.5 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-openmp/libblas.so.3 
-#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.30.so;  LAPACK version 3.12.0
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
 #> 
 #> locale:
-#>  [1] LC_CTYPE=zh_CN.UTF-8       LC_NUMERIC=C              
-#>  [3] LC_TIME=zh_CN.UTF-8        LC_COLLATE=zh_CN.UTF-8    
-#>  [5] LC_MONETARY=zh_CN.UTF-8    LC_MESSAGES=zh_CN.UTF-8   
-#>  [7] LC_PAPER=zh_CN.UTF-8       LC_NAME=C                 
-#>  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-#> [11] LC_MEASUREMENT=zh_CN.UTF-8 LC_IDENTIFICATION=C       
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
 #> 
-#> time zone: Asia/Shanghai
+#> time zone: UTC
 #> tzcode source: system (glibc)
 #> 
 #> attached base packages:
@@ -364,12 +366,11 @@ sessionInfo()
 #> [1] dataprep_0.1.7
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] cli_3.6.6         knitr_1.52        rlang_1.3.0       xfun_0.61        
-#>  [5] otel_0.2.0        textshaping_1.0.5 jsonlite_2.0.0    htmltools_0.5.9  
-#>  [9] ragg_1.5.2        sass_0.4.10       rmarkdown_2.32    evaluate_1.0.5   
-#> [13] jquerylib_0.1.4   fastmap_1.2.0     yaml_2.3.12       lifecycle_1.0.5  
-#> [17] compiler_4.5.1    fs_2.1.0          htmlwidgets_1.6.4 Rcpp_1.1.2       
-#> [21] rstudioapi_0.19.0 systemfonts_1.3.2 digest_0.6.39     R6_2.6.1         
-#> [25] parallel_4.5.1    bslib_0.12.0      tools_4.5.1       pkgdown_2.2.1    
-#> [29] cachem_1.1.0      desc_1.4.3
+#>  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    
+#>  [5] xfun_0.61         cachem_1.1.0      parallel_4.6.1    knitr_1.52       
+#>  [9] htmltools_0.5.9   rmarkdown_2.32    lifecycle_1.0.5   cli_3.6.6        
+#> [13] sass_0.4.10       pkgdown_2.2.1     textshaping_1.0.5 jquerylib_0.1.4  
+#> [17] systemfonts_1.3.2 compiler_4.6.1    tools_4.6.1       ragg_1.5.2       
+#> [21] bslib_0.12.0      evaluate_1.0.5    Rcpp_1.1.2        yaml_2.3.12      
+#> [25] otel_0.2.0        jsonlite_2.0.0    rlang_1.3.0       fs_2.1.0
 ```

@@ -36,7 +36,8 @@ descdata(data, cols = NULL, stats = 1:9, first = "variables",
 
 - cores:
 
-  Number of CPU cores (passed to C++).
+  Number of CPU cores. `NULL` (default) means single-threaded execution;
+  pass an integer \> 0 to enable OpenMP when `nrow(x) * ncol(x) > 1e5`.
 
 - verbose:
 

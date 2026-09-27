@@ -1,6 +1,7 @@
 # dataprep: a leakage-free preprocessing workflow
 
 ``` r
+
 library(dataprep)
 set.seed(1)
 
@@ -30,14 +31,9 @@ statistics, which leaks information from the test set into the pipeline.
 - [`prep_transform()`](https://chunshengliang.github.io/dataprep/reference/prep_transform.md)
   applies the plan to new data without re-estimating anything.
 
-The design mirrors
-[`recipes::prep()`](https://recipes.tidymodels.org/reference/prep.html)
-/
-[`recipes::bake()`](https://recipes.tidymodels.org/reference/bake.html)
-and
-[`caret::preProcess()`](https://rdrr.io/pkg/caret/man/preProcess.html) /
-`caret::predict()`, but the underlying operations are the same C++
-backends used by
+The design mirrors `recipes::prep()` / `recipes::bake()` and
+`caret::preProcess()` / `caret::predict()`, but the underlying
+operations are the same C++ backends used by
 [`varidele()`](https://chunshengliang.github.io/dataprep/reference/varidele.md),
 [`obsedele()`](https://chunshengliang.github.io/dataprep/reference/obsedele.md),
 [`detect_outliers()`](https://chunshengliang.github.io/dataprep/reference/detect_outliers.md),
@@ -53,6 +49,7 @@ and
 ## A minimal example
 
 ``` r
+
 train <- data[1:5000, c("date", "monthyear", "7.94", "8.91", "10")]
 test  <- data[5001:6000, c("date", "monthyear", "7.94", "8.91", "10")]
 
@@ -90,7 +87,7 @@ str(plan, max.level = 2)
 #>   ..$ date_col      : NULL
 #>   ..$ group         : num 2
 #>  $ final_data:'data.frame':  5000 obs. of  3 variables:
-#>   ..$ date     : POSIXct[1:5000], format: "2020-01-01 00:00:00" "2020-01-01 00:10:00" ...
+#>   ..$ date     : POSIXct[1:5000], format: "2019-12-31 16:00:00" "2019-12-31 16:10:00" ...
 #>   ..$ monthyear: chr [1:5000] "January 2020" "January 2020" "January 2020" "January 2020" ...
 #>   ..$ 10       : num [1:5000, 1] -0.248 -0.716 -0.215 0.181 -0.248 ...
 #>   .. ..- attr(*, "dimnames")=List of 2
@@ -99,15 +96,16 @@ str(plan, max.level = 2)
 Apply the plan to the test set:
 
 ``` r
+
 test_clean <- prep_transform(plan, test)
 head(test_clean)
 #>                     date monthyear         10
-#> 5001 2020-07-13 14:10:00 July 2020         NA
-#> 5002 2020-07-13 14:20:00 July 2020         NA
-#> 5003 2020-07-13 14:30:00 July 2020 -0.3849741
-#> 5004 2020-07-13 14:40:00 July 2020 -0.4269420
-#> 5005 2020-07-13 14:50:00 July 2020 -0.4689099
-#> 5006 2020-07-13 15:00:00 July 2020 -0.5108778
+#> 5001 2020-07-13 06:10:00 July 2020         NA
+#> 5002 2020-07-13 06:20:00 July 2020         NA
+#> 5003 2020-07-13 06:30:00 July 2020 -0.3849741
+#> 5004 2020-07-13 06:40:00 July 2020 -0.4269420
+#> 5005 2020-07-13 06:50:00 July 2020 -0.4689099
+#> 5006 2020-07-13 07:00:00 July 2020 -0.5108778
 ```
 
 Note that `test_clean` has the same columns as the training data after
@@ -117,6 +115,7 @@ centre / scale — not its own.
 ## What is stored in the plan
 
 ``` r
+
 names(plan)
 #> [1] "steps"      "params"     "data_info"  "final_data"
 names(plan$params)
@@ -156,6 +155,7 @@ accepts an ordered `steps` vector. Any subset of the following is
 allowed, and the order is respected as given:
 
 ``` r
+
 steps = c("varidele", "obsedele", "outlier", "impute", "scale")
 ```
 
@@ -183,6 +183,7 @@ columns in a different order from `train`, the plan still applies
 correctly:
 
 ``` r
+
 test_reordered <- test[, c("date", "10", "8.91", "7.94", "monthyear")]
 test_reordered_clean <- prep_transform(plan, test_reordered)
 identical(names(test_reordered_clean), names(test_clean))
@@ -197,6 +198,7 @@ raises an error listing the missing names, rather than silently
 producing wrong output:
 
 ``` r
+
 test_missing <- test[, c("date", "monthyear", "7.94", "8.91")]
 prep_transform(plan, test_missing)
 #> Error in `prep_transform()`:
@@ -212,6 +214,7 @@ For exploratory analysis where leakage is not a concern, the one-call
 wrapper chains the four standard steps on the full `data` table:
 
 ``` r
+
 res <- dataprep(
   data[1:1000, ],
   cols     = size_bin_cols(data[1:1000, ]),
@@ -243,6 +246,7 @@ is read-only, so it works on either `data` or `data1`. We use `data1`
 here for a compact output.
 
 ``` r
+
 data_report(data1, cols = 3:7, verbose = TRUE)
 #> ========== Data Quality Report ==========
 #> Dimensions: 7640 rows x 7 columns
@@ -274,7 +278,7 @@ data_report(data1, cols = 3:7, verbose = TRUE)
 #> 4 6495.960 926.9235
 #> 5 6474.645 927.0629
 #> 
-#> Time used by data_report: 0.00693 secs
+#> Time used by data_report: 0.00961 secs
 invisible(data_report(data1, cols = 3:7))
 ```
 
@@ -283,6 +287,7 @@ invisible(data_report(data1, cols = 3:7))
 A complete train / test workflow with the full cleaning pipeline:
 
 ``` r
+
 # 1. Inspect the raw data
 data_report(data, cols = size_bin_cols(data), verbose = TRUE)
 
@@ -341,8 +346,8 @@ The examples in this vignette are executed on Windows 11 Pro for
 Workstations (R 4.6.1 ucrt, GCC 14.3.0) with a 2× AMD EPYC 7B12 64-Core
 processor and about 224 GiB RAM, and on Ubuntu 25.10 (R 4.5.1, g++
 15.2.0) with a 2× AMD EPYC 9965 192-Core processor (384 physical / 768
-logical cores), 1.0 TiB DDR5 and full AVX-512. Full hardware details are
-in `README.md`.
+logical cores), 1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC)
+and full AVX-512. Full hardware details are in `README.md`.
 
 ## Where to go next
 
@@ -369,24 +374,23 @@ in `README.md`.
 ## Session info
 
 ``` r
+
 sessionInfo()
-#> R version 4.5.1 (2025-06-13)
+#> R version 4.6.1 (2026-06-24)
 #> Platform: x86_64-pc-linux-gnu
-#> Running under: Ubuntu 25.10
+#> Running under: Ubuntu 24.04.5 LTS
 #> 
 #> Matrix products: default
-#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-openmp/libblas.so.3 
-#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.30.so;  LAPACK version 3.12.0
+#> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+#> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
 #> 
 #> locale:
-#>  [1] LC_CTYPE=zh_CN.UTF-8       LC_NUMERIC=C              
-#>  [3] LC_TIME=zh_CN.UTF-8        LC_COLLATE=zh_CN.UTF-8    
-#>  [5] LC_MONETARY=zh_CN.UTF-8    LC_MESSAGES=zh_CN.UTF-8   
-#>  [7] LC_PAPER=zh_CN.UTF-8       LC_NAME=C                 
-#>  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-#> [11] LC_MEASUREMENT=zh_CN.UTF-8 LC_IDENTIFICATION=C       
+#>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+#>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+#>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+#> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
 #> 
-#> time zone: Asia/Shanghai
+#> time zone: UTC
 #> tzcode source: system (glibc)
 #> 
 #> attached base packages:
@@ -400,9 +404,8 @@ sessionInfo()
 #>  [5] xfun_0.61         otel_0.2.0        textshaping_1.0.5 jsonlite_2.0.0   
 #>  [9] glue_1.8.1        htmltools_0.5.9   ragg_1.5.2        sass_0.4.10      
 #> [13] rmarkdown_2.32    evaluate_1.0.5    jquerylib_0.1.4   fastmap_1.2.0    
-#> [17] yaml_2.3.12       lifecycle_1.0.5   compiler_4.5.1    fs_2.1.0         
-#> [21] htmlwidgets_1.6.4 Rcpp_1.1.2        rstudioapi_0.19.0 systemfonts_1.3.2
-#> [25] digest_0.6.39     R6_2.6.1          pillar_1.11.1     parallel_4.5.1   
-#> [29] bslib_0.12.0      tools_4.5.1       pkgdown_2.2.1     cachem_1.1.0     
-#> [33] desc_1.4.3
+#> [17] yaml_2.3.12       lifecycle_1.0.5   compiler_4.6.1    fs_2.1.0         
+#> [21] Rcpp_1.1.2        systemfonts_1.3.2 digest_0.6.39     R6_2.6.1         
+#> [25] pillar_1.11.1     parallel_4.6.1    bslib_0.12.0      tools_4.6.1      
+#> [29] pkgdown_2.2.1     cachem_1.1.0      desc_1.4.3
 ```

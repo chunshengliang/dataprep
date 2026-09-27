@@ -61,8 +61,8 @@ Missing values are preserved as `NA` in the output.
 
 ## Value
 
-A data frame with the selected columns replaced by factors representing
-the bins.
+If `data` is a data frame, a data frame with the selected columns
+replaced by factors. If `data` is a numeric vector, a factor vector.
 
 ## Examples
 

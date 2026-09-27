@@ -6,11 +6,6 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Efficient and Flexible Data Preprocessing Tools • dataprep</title>
-<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
-<link rel="icon" type="”image/svg+xml”" href="favicon.svg">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="icon" sizes="any" href="favicon.ico">
-<link rel="manifest" href="site.webmanifest">
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/Source_Sans_Pro-0.4.10/font.css" rel="stylesheet">
@@ -127,7 +122,7 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># from GitHub</span></span>
 <span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"chunshengliang/dataprep"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"chunshengliang/dataprep"</span><span class="op">)</span></span></code></pre></div>
 <p>The package requires a C++17 compiler (Rtools on Windows, Xcode / clang on macOS, gcc on Linux).</p>
 </div>
 <div class="section level2">
@@ -203,7 +198,7 @@
 </tr>
 <tr>
 <td>RAM</td>
-<td>1.0 TiB DDR5 5600 MT/s, Multi-bit ECC</td>
+<td>1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC)</td>
 </tr>
 <tr>
 <td>Max frequency</td>
@@ -1743,7 +1738,7 @@
 <p>The pipeline above assumes that the input is high-resolution instrument data with intermittent gaps and occasional outliers. Three cases where you should not run the full pipeline:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Already-aggregated data.</strong> <code>data1</code> in this package is the result of aggregating the 60 size bins of <code>data</code> into three modes. It has no long gaps and no obvious outliers, so <code>varidele</code>, <code>obsedele</code>, <code>condextr</code>, and <code>shorvalu</code> have nothing to do.</li>
+<strong>Already-aggregated data.</strong> <code>data1</code> in this package is the result of aggregating the 61 size bins of <code>data</code> into three modes. It has no long gaps and no obvious outliers, so <code>varidele</code>, <code>obsedele</code>, <code>condextr</code>, and <code>shorvalu</code> have nothing to do.</li>
 <li>
 <strong>Models that tolerate missing values.</strong> Gradient boosting, random forests, and XGBoost handle <code>NA</code> natively.</li>
 <li>
