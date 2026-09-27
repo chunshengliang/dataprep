@@ -1,18 +1,17 @@
-# dataprep <img src="man/figures/logo.png" align="right" height="120" alt="" />
+# dataprep <img src="man/figures/logo.png" align="right" height="180" alt="" />
 
-*Logo by Chun-Sheng Liang*
+<div align="right"><sub>logo by Chun-Sheng Liang</sub></div>
 
 > Fast, efficient, and versatile data preprocessing tools for R,
 > with C++ / OpenMP / SIMD backends.
 
-<!-- badges: start -->
-
 [![R-CMD-check](https://github.com/chunshengliang/dataprep/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/chunshengliang/dataprep/actions/workflows/R-CMD-check.yaml)
 [![CRAN status](https://www.r-pkg.org/badges/version/dataprep)](https://cran.r-project.org/package=dataprep)
-[![CRAN RStudio mirror downloads](https://cranlogs.r-pkg.org/badges/dataprep)](https://www.r-pkg.org/pkg/dataprep)
-[![StackOverflow](https://img.shields.io/stackexchange/stackoverflow/t/dataprep?logo=stackoverflow&label=Questions)](https://stackoverflow.com/questions/tagged/dataprep)
+[![CRAN checks](https://badges.cranchecks.info/worst/dataprep.svg)](https://cran.r-project.org/web/checks/check_results_dataprep.html)
+[![Downloads per month](https://cranlogs.r-pkg.org/badges/dataprep?color=brightgreen)](https://cran.r-project.org/package=dataprep)
+[![Downloads total](https://cranlogs.r-pkg.org/badges/grand-total/dataprep)](https://cran.r-project.org/package=dataprep)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/chunshengliang/dataprep)
 
-<!-- badges: end -->
 
 ## In one paragraph
 
