@@ -1,7 +1,7 @@
 url: https://chunshengliang.github.io/dataprep/
 
 development:
-  mode: release
+  mode: unreleased
 
 template:
   bootstrap: 5
@@ -154,7 +154,7 @@ articles:
 
 news:
   one_page: true
-  cran_dates: true
+  cran_dates: false
 
 authors:
   Chun-Sheng Liang:
