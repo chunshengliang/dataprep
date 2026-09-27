@@ -264,7 +264,7 @@ core configuration is listed here; full details are in
 `vignette("dataprep-performance")`.
 
 * **Ubuntu 25.10** — R 4.5.1, g++ 15.2.0; 2× AMD EPYC 9965
-  192-Core (384 physical / 768 logical cores), 1.0 TiB DDR5,
+  192-Core (384 physical / 768 logical cores), 1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC),
   full AVX-512.
 
 * **Windows 11 Pro for Workstations** — R 4.6.1 (ucrt),

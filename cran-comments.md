@@ -67,7 +67,7 @@ support AVX-512.
 
 * **Ubuntu 25.10** — R 4.5.1 (2025-06-13), g++ 15.2.0;
   2× AMD EPYC 9965 192-Core (384 physical / 768 logical cores),
-  1.0 TiB DDR5, full AVX-512.
+  1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC), full AVX-512.
 * **Windows 11 Pro for Workstations** — R 4.6.1 (2026-06-24 ucrt),
   GCC 14.3.0 (Rtools45); 2× AMD EPYC 7B12 64-Core
   (128 physical / 128 logical cores), about 224 GiB RAM.

@@ -59,7 +59,7 @@ configuration is listed here; full hardware details are in
 `README.md`.
 
 * **Ubuntu 25.10** — 2× AMD EPYC 9965 192-Core (384 physical /
-  768 logical cores), 1.0 TiB DDR5, full AVX-512; R 4.5.1,
+  768 logical cores), 1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC), full AVX-512; R 4.5.1,
   g++ 15.2.0.
 
 * **Windows 11 Pro for Workstations** — 2× AMD EPYC 7B12 64-Core

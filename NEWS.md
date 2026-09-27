@@ -67,7 +67,7 @@ hardware.
 | L2 | 384 MiB |
 | L3 | 768 MiB |
 | NUMA nodes | 2 |
-| RAM | 1.0 TiB DDR5 5600 MT/s, Multi-bit ECC |
+| RAM | 1.0 TiB (16 × 64 GiB Micron, DDR5-5600, Multi-bit ECC) |
 | Max frequency | 3.70 GHz |
 | AVX-512 | Full (f, dq, ifma, cd, bw, vl, vbmi, vbmi2, vnni, bitalg, vpopcntdq, bf16) |
 | R | 4.5.1 (2025-06-13) |
