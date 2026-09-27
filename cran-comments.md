@@ -61,7 +61,7 @@ support AVX-512.
   1.0 TiB DDR5, full AVX-512.
 * **Windows 11 Pro for Workstations** — R 4.6.1 (2026-06-24 ucrt),
   GCC 14.3.0 (Rtools45); 2× AMD EPYC 7B12 64-Core
-  (128 physical / 128 logical cores), 约 224 GiB RAM.
+  (128 physical / 128 logical cores), about 224 GiB RAM.
 
 The two hosts are deliberately different: one is a large
 AVX-512 Linux machine, the other a Windows workstation without

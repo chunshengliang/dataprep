@@ -63,7 +63,7 @@ configuration is listed here; full hardware details are in
   g++ 15.2.0.
 
 * **Windows 11 Pro for Workstations** — 2× AMD EPYC 7B12 64-Core
-  (128 physical / 128 logical cores), 约 224 GiB RAM, no AVX-512;
+  (128 physical / 128 logical cores), about 224 GiB RAM, no AVX-512;
   R 4.6.1 (ucrt), GCC 14.3.0.
 
 Software versions on both hosts: `data.table` 1.18.6.1,

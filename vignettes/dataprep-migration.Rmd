@@ -268,7 +268,7 @@ core configuration is listed here; full details are in
 
 * **Windows 11 Pro for Workstations** — R 4.6.1 (ucrt),
   GCC 14.3.0; 2× AMD EPYC 7B12 64-Core (128 physical / 128 logical
-  cores), 约 224 GiB RAM.
+  cores), about 224 GiB RAM.
 
 ## Where to go next
 

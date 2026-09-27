@@ -266,7 +266,7 @@ behind each of these cases.
 
 The examples in this vignette are executed on Windows 11 Pro for
 Workstations (R 4.6.1 ucrt, GCC 14.3.0) with a 2× AMD EPYC 7B12
-64-Core processor and 约 224 GiB RAM, and on Ubuntu 25.10
+64-Core processor and about 224 GiB RAM, and on Ubuntu 25.10
 (R 4.5.1, g++ 15.2.0) with a 2× AMD EPYC 9965 192-Core processor
 (384 physical / 768 logical cores), 1.0 TiB DDR5 and full AVX-512.
 Full hardware details are in `README.md`.

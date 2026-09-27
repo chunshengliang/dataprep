@@ -58,7 +58,7 @@ configuration is listed here; full hardware details are in
 
 * **Windows 11 Pro for Workstations** (10.0.26100, Build 26100) —
   2× AMD EPYC 7B12 64-Core, 128 physical / 128 logical cores,
-  约 224 GiB RAM (7 × 32 GiB, 2933/3200 MT/s, Micron / Samsung),
+  about 224 GiB RAM (7 × 32 GiB, 2933 MT/s, Micron / Samsung, non-ECC),
   no AVX-512; R 4.6.1 (ucrt), GCC 14.3.0.
 
 Software versions on both hosts: `data.table` 1.18.6.1,

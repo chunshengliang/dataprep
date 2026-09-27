@@ -162,8 +162,13 @@ using an adaptive times rule. Two reference hosts were used.
 | CPU | 2× AMD EPYC 7B12 64-Core Processor |
 | Physical cores | 128 (2 × 64) |
 | Logical cores | 128 (no SMT) |
+| L1d / L1i | 4 MiB / 4 MiB |
+| L2 | 64 MiB |
+| L3 | 512 MiB |
+| NUMA nodes | 2 |
+| RAM | about 224 GiB (7 × 32 GiB, 2933 MT/s, Micron / Samsung, non-ECC) |
 | Max frequency | 2.25 GHz |
-| RAM | 约 224 GiB (7 × 32 GiB, 2933/3200 MT/s, Micron / Samsung) |
+| AVX | AVX, AVX2 (no AVX-512) |
 | R | 4.6.1 (2026-06-24 ucrt) |
 | Compiler | GCC 14.3.0 |
 | reticulate | 1.47.0 |
