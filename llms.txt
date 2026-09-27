@@ -2,8 +2,8 @@
 
 _(logo by Chun-Sheng Liang)
 
-> Fast, efficient, and versatile data preprocessing tools for R, with
-> C++ / OpenMP / SIMD backends.
+> Fast, efficient, and versatile data preprocessing and reshaping tools
+> for R, with C++ / OpenMP / SIMD backends.
 
 [![R-CMD-check](https://github.com/chunshengliang/dataprep/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/chunshengliang/dataprep/actions/workflows/R-CMD-check.yaml)
 [![CRAN
