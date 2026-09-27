@@ -471,8 +471,6 @@ as reported; `Rf_allocVector3` and ALTREP were not evaluated there.
 
 ## dataprep 0.1.5
 
-CRAN release: 2022-01-15
-
 - Initial public release on CRAN.
 - Core cleaning pipeline: `varidele`, `obsedele`, `condextr`,
   `percoutl`, `optisolu`, `shorvalu`, `dataprep`.
