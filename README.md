@@ -1,9 +1,17 @@
 # dataprep <img src="man/figures/logo.png" align="right" height="120" alt="" />
 
+*Logo by Chun-Sheng Liang*
+
 > Fast, efficient, and versatile data preprocessing tools for R,
 > with C++ / OpenMP / SIMD backends.
 
 <!-- badges: start -->
+
+[![R-CMD-check](https://github.com/chunshengliang/dataprep/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/chunshengliang/dataprep/actions/workflows/R-CMD-check.yaml)
+[![CRAN status](https://www.r-pkg.org/badges/version/dataprep)](https://cran.r-project.org/package=dataprep)
+[![CRAN RStudio mirror downloads](https://cranlogs.r-pkg.org/badges/dataprep)](https://www.r-pkg.org/pkg/dataprep)
+[![StackOverflow](https://img.shields.io/stackexchange/stackoverflow/t/dataprep?logo=stackoverflow&label=Questions)](https://stackoverflow.com/questions/tagged/dataprep)
+
 <!-- badges: end -->
 
 ## In one paragraph
