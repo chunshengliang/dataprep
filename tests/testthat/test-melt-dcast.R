@@ -34,14 +34,19 @@ test_that("melt major = 'col' matches major = 'row' in content", {
   m_row <- melt(df, id.vars = "id", major = "row", verbose = FALSE)
   m_col <- melt(df, id.vars = "id", major = "col", verbose = FALSE)
 
+  # Default `as.factor = NULL`: factor for "col", character for "row".
+  expect_s3_class(m_col$variable, "factor")
+  expect_type   (m_row$variable, "character")
+
   m_row <- m_row[order(m_row$id, m_row$variable), ]
   m_col <- m_col[order(m_col$id, m_col$variable), ]
   rownames(m_row) <- NULL
   rownames(m_col) <- NULL
 
-  expect_equal(m_row$id,       m_col$id)
-  expect_equal(m_row$variable, m_col$variable)
-  expect_equal(m_row$value,    m_col$value, tolerance = 1e-12)
+  expect_equal(m_row$id, m_col$id)
+  expect_equal(as.character(m_row$variable),
+               as.character(m_col$variable))
+  expect_equal(m_row$value, m_col$value, tolerance = 1e-12)
 })
 
 test_that("dcast basic functionality works", {
