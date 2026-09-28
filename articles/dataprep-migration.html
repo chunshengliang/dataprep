@@ -195,8 +195,12 @@ and retain rows that should have been deleted. The 0.1.7 implementation
 scans each column independently: a row is deleted when <em>any</em>
 selected column has a missing run longer than <code>half</code> minutes
 on both sides.</p></li>
-<li><p>The <strong><code>half</code>-minute boundary is now
-inclusive.</strong> Rows whose nearest anchor is exactly
+<li><p><strong><code>half</code> is now always in minutes, and the
+boundary is inclusive.</strong> In 0.1.5, <code>half</code> counted grid
+rows in units of <code>by</code>: with
+<code>by = "5 min", half = 30</code> the effective window was 150
+minutes. In 0.1.7, <code>half</code> is always in minutes, independent
+of <code>by</code>. Rows whose nearest anchor is exactly
 <code>half</code> minutes away are retained (“within <code>half</code>
 minutes” is a <code>&lt;=</code> condition).</p></li>
 <li><p><code><a href="../reference/optisolu.html">optisolu()</a></code> <strong>no longer crashes with
@@ -292,9 +296,11 @@ long runs.</td>
 <tr class="even">
 <td>0.1.5</td>
 <td>Run-length encoding: use <code><a href="https://rdrr.io/pkg/data.table/man/rleid.html" class="external-link">data.table::rleid()</a></code> and
-<code>rowid()</code> to collapse consecutive <code>NA</code>s into runs,
-then compare each run length to the number of grid points covered by
-<code>half</code> minutes.</td>
+<code>rowid()</code> to collapse consecutive <code>NA</code>s into runs.
+The retention threshold was <code>half * num</code> grid rows, where
+<code>num</code> is the leading number in the <code>by</code> string:
+with <code>by = "5 min", half = 30</code> this was a 150-minute
+window.</td>
 <td>
 <code>O(n)</code> time, <code>O(n)</code> temporary storage</td>
 </tr>
