@@ -111,6 +111,7 @@ When installing from GitHub with `remotes::install_github()`, Windows
 users may see:
 
 > Warning: file 'dataprep/configure' did not have execute permissions: corrected
+>
 > Warning: file 'dataprep/cleanup' did not have execute permissions: corrected
 
 This is expected and harmless. Windows NTFS does not preserve Unix
