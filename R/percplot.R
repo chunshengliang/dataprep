@@ -88,7 +88,23 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
     pal <- pal[1:n_levels]
   }
 
-  # Pre-compute per-group sample size and missing count for facet labels
+  # When the data are non-numeric AND part == "both" AND grouping is used,
+  # build the "part" column here so it can be shared by the facet_grid call.
+  use_part_facet <- (!is_numeric_names && part %in% c("both", 2) &&
+                     !is.null(group_idx))
+  if (use_part_facet) {
+    n_perc <- nlevels(df_long$percentile)
+    half <- floor(n_perc / 2)
+    bottom_levels <- levels(df_long$percentile)[seq_len(half)]
+    top_levels    <- levels(df_long$percentile)[setdiff(seq_len(n_perc),
+                                                        seq_len(half))]
+    df_long$part <- ifelse(df_long$percentile %in% bottom_levels,
+                           "bottom", "top")
+    df_long$part <- factor(df_long$part, levels = c("top", "bottom"))
+  }
+
+  # Per-group sample size and missing count are shown on the facet strip
+  # as "group: n = .., na = ..". They are not drawn inside the panel.
   if (!is.null(group_idx)) {
     groups <- unique(data[[group_col]])
     n_vec  <- integer(length(groups))
@@ -98,29 +114,9 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
       n_vec[i]  <- length(rows)
       na_vec[i] <- sum(is.na(data[rows, idx, drop = FALSE]))
     }
-    sizes <- data.frame(
-      grp   = groups,
-      n     = n_vec,
-      na    = na_vec,
-      label = paste0("n=", n_vec, "\nna=", na_vec),
-      stringsAsFactors = FALSE
-    )
-    names(sizes)[1] <- group_col
-  }
-
-  if (!is_numeric_names && part %in% c("both", 2) && !is.null(group_idx)) {
-    n_perc <- nlevels(df_long$percentile)
-    if (n_perc %% 2 == 0) {
-      half <- n_perc / 2
-      bottom_levels <- levels(df_long$percentile)[1:half]
-      top_levels <- levels(df_long$percentile)[(half+1):n_perc]
-    } else {
-      half <- floor(n_perc / 2)
-      bottom_levels <- levels(df_long$percentile)[1:half]
-      top_levels <- levels(df_long$percentile)[(half+1):n_perc]
-    }
-    df_long$part <- ifelse(df_long$percentile %in% bottom_levels, "bottom", "top")
-    df_long$part <- factor(df_long$part, levels = c("top", "bottom"))
+    grp_labels <- paste0(groups, ": n = ", n_vec, ", na = ", na_vec)
+    names(grp_labels) <- as.character(groups)
+    grp_labeller <- ggplot2::as_labeller(grp_labels)
   }
 
   if (is_numeric_names) {
@@ -143,9 +139,6 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
     }
 
     if (y_log) {
-      # No custom labels argument: use ggplot2's built-in log10 labelling.
-      # This avoids the ggplot2 v3.5+ length check that some custom
-      # label functions fail.
       p <- p + ggplot2::scale_y_log10(
         sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
     } else {
@@ -154,28 +147,15 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
     }
 
     if (!is.null(group_idx)) {
-      vals_sub <- data[, idx, drop = FALSE]
-      vals_sub[vals_sub == 0] <- NA
-      rng <- range(vals_sub, na.rm = TRUE)
-      if (y_log && all(is.finite(rng)) && rng[1] > 0) {
-        y_pos <- 10^(quantile(log10(rng), 0.1, na.rm = TRUE))
-      } else if (all(is.finite(rng))) {
-        y_pos <- quantile(rng, 0.95, na.rm = TRUE)
-      } else {
-        y_pos <- 1
-      }
-      x_pos <- stats::median(as.numeric(meas_names), na.rm = TRUE)
-      if (!is.finite(x_pos)) x_pos <- mean(seq_along(meas_names))
-      p <- p + ggplot2::geom_text(data = sizes,
-                                  ggplot2::aes(x = x_pos, y = y_pos, label = label),
-                                  inherit.aes = FALSE)
       p <- p + ggplot2::facet_wrap(as.formula(paste("~", group_col)),
-                                   ncol = ncol, scales = "free_y")
+                                   ncol = ncol, scales = "free_y",
+                                   labeller = grp_labeller)
     }
 
   } else {
     df_long$variable <- factor(df_long$variable, levels = meas_names)
-    p <- ggplot2::ggplot(df_long, ggplot2::aes(x = variable, y = value, fill = percentile)) +
+    p <- ggplot2::ggplot(df_long, ggplot2::aes(x = variable, y = value,
+                                               fill = percentile)) +
       ggplot2::geom_col(position = ggplot2::position_stack(reverse = TRUE)) +
       ggplot2::scale_fill_manual(values = pal) +
       ggplot2::labs(fill = paste0("n:", nrow(data),
@@ -186,21 +166,17 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
     p <- p + ggplot2::scale_y_continuous(
       sec.axis = ggplot2::dup_axis(name = NULL, labels = NULL))
 
-    if (!is.null(group_idx)) {
-      vals_sub <- data[, idx, drop = FALSE]
-      vals_sub[vals_sub == 0] <- NA
-      rng <- range(vals_sub, na.rm = TRUE)
-      y_pos <- if (all(is.finite(rng))) quantile(rng, 0.95, na.rm = TRUE) else 1
-      x_pos <- 1
-      p <- p + ggplot2::geom_text(data = sizes,
-                                  ggplot2::aes(x = x_pos, y = y_pos, label = label),
-                                  inherit.aes = FALSE)
-    }
-
-    if (!is.null(group_idx) && part %in% c("both", 2)) {
-      p <- p + ggplot2::facet_grid(part ~ get(group_col), scales = "free_y")
+    if (use_part_facet) {
+      # Only override the column (group) labels; keep default top / bottom
+      # labels for the "part" dimension.
+      p <- p + ggplot2::facet_grid(
+        as.formula(paste("part ~", group_col)),
+        scales = "free_y",
+        labeller = ggplot2::labeller(.cols = grp_labeller)
+      )
     } else if (!is.null(group_idx)) {
-      p <- p + ggplot2::facet_wrap(as.formula(paste("~", group_col)), ncol = ncol)
+      p <- p + ggplot2::facet_wrap(as.formula(paste("~", group_col)),
+                                   ncol = ncol, labeller = grp_labeller)
     }
   }
 
