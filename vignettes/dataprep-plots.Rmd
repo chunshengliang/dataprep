@@ -51,7 +51,10 @@ diameters such as 3.16, 3.55, ...), `descplot()` draws a line
 plot with a log-scaled x axis.
 
 ```{r}
-descplot(data1, cols = 3:7)
+descplot(data1, cols = 3:7) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ### Selected statistics
@@ -60,7 +63,10 @@ Pass a subset of statistics by index or by name to focus the plot.
 
 ```{r}
 descplot(data1, cols = 3:7,
-         stats = c("na", "min", "max", "IQR"))
+         stats = c("na", "min", "max", "IQR")) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 The `stats` argument accepts both forms — numeric indices
@@ -114,19 +120,28 @@ descdata(data1, cols = 3:7, stats = c(2, 3, 4, 7:9))
 the visual companion to `condextr()` and `percoutl()`.
 
 ```{r}
-percplot(data1, cols = 3:7, group = 2)
+percplot(data1, cols = 3:7, group = 2) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ### Top percentiles only
 
 ```{r}
-percplot(data1, cols = 3:7, group = 2, part = "top")
+percplot(data1, cols = 3:7, group = 2, part = "top") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ### Bottom percentiles only
 
 ```{r}
-percplot(data1, cols = 3:7, group = 2, part = "bottom")
+percplot(data1, cols = 3:7, group = 2, part = "bottom") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ### Numeric axis control
@@ -168,7 +183,10 @@ usual `ggplot2` layers apply.
 percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme_bw(base_size = 11) +
   ggplot2::labs(title = "Percentile curves by month",
-                x = "Variable", y = "Value")
+                x = "Variable", y = "Value") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ## A diagnostic workflow
