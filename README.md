@@ -78,22 +78,22 @@ environmental data:
    be a global maximum and still be legitimate, or vice versa.
    `condextr()` judges each candidate in context.
 
-   <p align="center">
+   <div align="center">
      <img src="man/figures/Outlier_Comparison.png"
           alt="Conditional extremum vs. traditional percentile deletion"
           width="50%" />
-   </p>
+   </div>
 
 4. **Short-period grouping interpolation.** After steps 1–3,
    remaining `NA`s sit inside short gaps with a valid anchor
    within `half` minutes. `shorvalu()` interpolates within each
    short segment only.
 
-   <p align="center">
+   <div align="center">
      <img src="man/figures/Time_Series_Interpolation_Final.png"
           alt="Short-period grouping interpolation"
           width="50%" />
-   </p>
+   </div>
 
    Interpolating across a long gap silently mixes two physically
    distinct regimes and can create new outliers at the segment
