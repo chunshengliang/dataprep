@@ -19,3 +19,4 @@ dataprep.Rcheck/
 *.tar.gz
 docs
 *.bak
+src/Makevars.win
