@@ -17,8 +17,9 @@ of the C++ descriptive backends:
   or bar charts.
 
 - **[`percplot()`](https://chunshengliang.github.io/dataprep/reference/percplot.md)**
-  — top and bottom percentile curves, useful for detecting heavy tails
-  and percentile-based outlier cutoffs.
+  — top and bottom percentile summaries, useful for detecting heavy
+  tails and percentile-based outlier cutoffs. The geometry depends on
+  the column names: lines when they are numeric, grouped bars otherwise.
 
 Both share the same interface style: a data frame, a numeric range, and
 optional grouping. Use `data1` (7,640 rows × 7 columns) for quick demos,
@@ -123,7 +124,7 @@ descdata(data1, cols = 3:7, stats = c(2, 3, 4, 7:9))
 #> 5         TPNC  0 783.3057 706.7105 3.11677730 6474.645 927.0629
 ```
 
-## Percentile curves
+## Percentile plots
 
 ### Full percentile range
 
@@ -223,7 +224,7 @@ return `ggplot` objects, so all usual `ggplot2` layers apply.
 
 percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme_bw(base_size = 11) +
-  ggplot2::labs(title = "Percentile curves by month",
+  ggplot2::labs(title = "Percentile plots by month",
                 x = "Variable", y = "Value") +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
