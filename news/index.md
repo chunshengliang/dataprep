@@ -253,13 +253,21 @@ large data this exhausted memory and aborted the R session. The 0.1.7
 implementation shares read-only data across workers and accepts up to 64
 cores safely.
 
-#### `melt()` `major` argument
+#### `melt()` `major` and new `as.factor` arguments
 
-The `major` argument now defaults to `NULL`, which lets the C++ backend
-pick between column-major (`"col"`, reshape2-compatible) and row-major
-(`"row"`, tidyr-compatible) based on the input shape. Specifying
-`major = "row"` or `major = "col"` still works and forces the
-corresponding layout.
+The `major` argument is now honoured strictly. `NULL` (default) is
+equivalent to `"col"`: column-major, identical to
+[`reshape2::melt`](https://rdrr.io/pkg/reshape2/man/melt.html).
+`major = "row"` produces tidyr-compatible row ordering. The earlier
+implementation could switch automatically based on input shape, and the
+tiny fast path silently ignored `major`; both are fixed. There is no
+longer any automatic switching.
+
+A new `as.factor` argument controls the type of the `variable` column.
+`NULL` (default) uses `TRUE` for `major = "col"` and `FALSE` for
+`major = "row"`. Explicit `TRUE` / `FALSE` overrides that default. The
+return value is always a plain `data.frame`; no `tibble` attributes are
+attached.
 
 #### `prep_fit()` / `prep_transform()` degenerate columns
 

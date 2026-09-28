@@ -488,9 +488,10 @@
 <p>The 0.1.5 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path gave each worker a full copy of the input. With <code>cores &gt; 16</code> and large data this exhausted memory and aborted the R session. The 0.1.7 implementation shares read-only data across workers and accepts up to 64 cores safely.</p>
 </div>
 <div class="section level4">
-<h4 id="melt-major-argument-0-1-7">
-<code>melt()</code> <code>major</code> argument<a class="anchor" aria-label="anchor" href="#melt-major-argument-0-1-7"></a></h4>
-<p>The <code>major</code> argument now defaults to <code>NULL</code>, which lets the C++ backend pick between column-major (<code>"col"</code>, reshape2-compatible) and row-major (<code>"row"</code>, tidyr-compatible) based on the input shape. Specifying <code>major = "row"</code> or <code>major = "col"</code> still works and forces the corresponding layout.</p>
+<h4 id="melt-major-and-new-asfactor-arguments-0-1-7">
+<code>melt()</code> <code>major</code> and new <code>as.factor</code> arguments<a class="anchor" aria-label="anchor" href="#melt-major-and-new-asfactor-arguments-0-1-7"></a></h4>
+<p>The <code>major</code> argument is now honoured strictly. <code>NULL</code> (default) is equivalent to <code>"col"</code>: column-major, identical to <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code>. <code>major = "row"</code> produces tidyr-compatible row ordering. The earlier implementation could switch automatically based on input shape, and the tiny fast path silently ignored <code>major</code>; both are fixed. There is no longer any automatic switching.</p>
+<p>A new <code>as.factor</code> argument controls the type of the <code>variable</code> column. <code>NULL</code> (default) uses <code>TRUE</code> for <code>major = "col"</code> and <code>FALSE</code> for <code>major = "row"</code>. Explicit <code>TRUE</code> / <code>FALSE</code> overrides that default. The return value is always a plain <code>data.frame</code>; no <code>tibble</code> attributes are attached.</p>
 </div>
 <div class="section level4">
 <h4 id="prep_fit--prep_transform-degenerate-columns-0-1-7">

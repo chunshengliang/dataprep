@@ -12,6 +12,7 @@ column-major).
 melt(data, id = NULL, measure.vars = NULL,
      variable.name = "variable", value.name = "value",
      na.rm = FALSE, cores = NULL, major = NULL,
+     as.factor = NULL,
      verbose = FALSE, parallel_threshold = 5e6, id.vars = NULL)
 ```
 
@@ -37,8 +38,8 @@ melt(data, id = NULL, measure.vars = NULL,
 
 - variable.name:
 
-  Name of the new factor column that stores the original column names of
-  the measure variables. Default `"variable"`.
+  Name of the new column that stores the original column names of the
+  measure variables. Default `"variable"`. See `as.factor` for its type.
 
 - value.name:
 
@@ -58,11 +59,21 @@ melt(data, id = NULL, measure.vars = NULL,
 
 - major:
 
-  Memory layout. `NULL` (default) lets the C++ backend auto-select based
-  on the input shape: column-major (`"col"`, reshape2-compatible) when
-  the number of value columns is large, row-major (`"row"`,
-  tidyr-compatible) otherwise. Passing `"row"` or `"col"` forces the
-  corresponding layout.
+  Memory layout. `NULL` (default) is equivalent to `"col"`:
+  column-major, identical to
+  [`reshape2::melt`](https://rdrr.io/pkg/reshape2/man/melt.html) (rows
+  grouped by variable). `"row"` produces a row-major result matching the
+  row order of
+  [`tidyr::pivot_longer`](https://tidyr.tidyverse.org/reference/pivot_longer.html)
+  (rows grouped by id). There is no automatic switching based on the
+  input shape.
+
+- as.factor:
+
+  Whether the `variable` column is a factor. `NULL` (default) uses
+  `TRUE` when `major` is `"col"` and `FALSE` when `major` is `"row"`.
+  Explicit `TRUE` / `FALSE` overrides that default. The return value is
+  always a plain `data.frame`; no `tibble` attributes are attached.
 
 - verbose:
 
@@ -117,11 +128,11 @@ host:
 
 The speed-up comes from three design choices:
 
-1.  **Two layout paths chosen automatically.** On the column-major path,
-    each output column is written as one contiguous `memcpy` of the
-    input column — the fastest possible pattern. On the row-major path,
-    tiles of eight rows are transposed in registers with
-    `_mm512_shuffle_f64x2`.
+1.  **Two layout paths, selected by `major`.** The default is
+    column-major. On the column-major path, each output column is
+    written as one contiguous `memcpy` of the input column — the fastest
+    possible pattern. On the row-major path, tiles of eight rows are
+    transposed in registers with `_mm512_shuffle_f64x2`.
 
 2.  **SIMD streaming stores.** For large outputs, `_mm512_stream_pd` and
     `_mm256_stream_si256` write directly to memory, bypassing the CPU
@@ -158,8 +169,9 @@ per-competitor gradient at every tested scale.
 A data frame in long format. When `na.rm = FALSE`, it has
 `nrow(data) * length(measure.vars)` rows. With `na.rm = TRUE`, rows
 whose value is `NA` or `NaN` are dropped, so the row count is smaller
-and not known in advance. Columns are the ID columns, a factor column
-named `variable.name`, and a numeric column named `value.name`.
+and not known in advance. Columns are the ID columns, a column named
+`variable.name` (a factor when `as.factor` resolves to `TRUE`, otherwise
+a character vector), and a numeric column named `value.name`.
 
 ## References
 
@@ -258,17 +270,31 @@ melt(df2, id.vars = "id",
 
 ## --- Two memory layouts ------------------------------------------
 
-# major = NULL (default): auto-select based on shape
+# major = NULL (default): column-major (reshape2-compatible)
 # major = "col" : column-major, reshape2-compatible
 # major = "row" : row-major,    tidyr-compatible
 df_wide <- data.frame(id = 1:100,
                       matrix(rnorm(100 * 50), ncol = 50))
 
-res_auto <- melt(df_wide, id.vars = "id")
-res_col  <- melt(df_wide, id.vars = "id", major = "col")
-res_row  <- melt(df_wide, id.vars = "id", major = "row")
+res_default <- melt(df_wide, id.vars = "id")
+res_col     <- melt(df_wide, id.vars = "id", major = "col")
+res_row     <- melt(df_wide, id.vars = "id", major = "row")
 
 # The two layouts produce the same content in a different order
 identical(sort(res_col$value), sort(res_row$value))
+#> [1] TRUE
+
+## --- as.factor controls the variable column type ------------------
+
+# Default: factor for "col", character for "row"
+is.factor(res_col$variable)                      # TRUE
+#> [1] TRUE
+is.character(res_row$variable)                   # TRUE
+#> [1] TRUE
+
+# Explicit override
+res_row_fac <- melt(df_wide, id.vars = "id", major = "row",
+                    as.factor = TRUE)
+is.factor(res_row_fac$variable)                  # TRUE
 #> [1] TRUE
 ```

@@ -156,7 +156,7 @@ wide50 <- data.frame(id = 1:100,
 res_row <- melt(wide50, id.vars = "id", major = "row")
 res_col <- melt(wide50, id.vars = "id", major = "col")
 identical(as.data.frame(res_row), as.data.frame(res_col))
-#> [1] TRUE
+#> [1] FALSE
 ```
 
 ### Thread control

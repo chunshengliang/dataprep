@@ -57,6 +57,7 @@ column names, and two storage layouts (row-major or column-major).</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">melt</span><span class="op">(</span><span class="va">data</span>, id <span class="op">=</span> <span class="cn">NULL</span>, measure.vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>     variable.name <span class="op">=</span> <span class="st">"variable"</span>, value.name <span class="op">=</span> <span class="st">"value"</span>,</span>
 <span>     na.rm <span class="op">=</span> <span class="cn">FALSE</span>, cores <span class="op">=</span> <span class="cn">NULL</span>, major <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>     as.factor <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>     verbose <span class="op">=</span> <span class="cn">FALSE</span>, parallel_threshold <span class="op">=</span> <span class="fl">5e6</span>, id.vars <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -81,9 +82,9 @@ column names, and two storage layouts (row-major or column-major).</p>
     should be supplied.</p></dd>
 
   <dt id="arg-variable-name">variable.name<a class="anchor" aria-label="anchor" href="#arg-variable-name"></a></dt>
-<dd><p>Name of the new factor column that stores the
+<dd><p>Name of the new column that stores the
     original column names of the measure variables. Default
-    <code>"variable"</code>.</p></dd>
+    <code>"variable"</code>. See <code>as.factor</code> for its type.</p></dd>
 
   <dt id="arg-value-name">value.name<a class="anchor" aria-label="anchor" href="#arg-value-name"></a></dt>
 <dd><p>Name of the new numeric column that stores the
@@ -99,12 +100,20 @@ column names, and two storage layouts (row-major or column-major).</p>
     <code>dataprep.cores</code> overrides the automatic choice.</p></dd>
 
   <dt id="arg-major">major<a class="anchor" aria-label="anchor" href="#arg-major"></a></dt>
-<dd><p>Memory layout. <code>NULL</code> (default) lets the C++
-    backend auto-select based on the input shape: column-major
-    (<code>"col"</code>, reshape2-compatible) when the number of value
-    columns is large, row-major (<code>"row"</code>, tidyr-compatible)
-    otherwise. Passing <code>"row"</code> or <code>"col"</code> forces the
-    corresponding layout.</p></dd>
+<dd><p>Memory layout. <code>NULL</code> (default) is equivalent to
+    <code>"col"</code>: column-major, identical to <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code>
+    (rows grouped by variable). <code>"row"</code> produces a row-major
+    result matching the row order of <code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">tidyr::pivot_longer</a></code>
+    (rows grouped by id). There is no automatic switching based on
+    the input shape.</p></dd>
+
+  <dt id="arg-as-factor">as.factor<a class="anchor" aria-label="anchor" href="#arg-as-factor"></a></dt>
+<dd><p>Whether the <code>variable</code> column is a factor.
+    <code>NULL</code> (default) uses <code>TRUE</code> when <code>major</code> is
+    <code>"col"</code> and <code>FALSE</code> when <code>major</code> is <code>"row"</code>.
+    Explicit <code>TRUE</code> / <code>FALSE</code> overrides that default. The
+    return value is always a plain <code>data.frame</code>; no
+    <code>tibble</code> attributes are attached.</p></dd>
 
   <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, prints timing messages.</p></dd>
@@ -156,10 +165,10 @@ the Ubuntu 25.10 host:</p>
         <code>6.7x</code>), <code>22456 ms</code> (<code>dask</code>,
         <strong><code>891x</code></strong>).</p></li>
 </ul><p>The speed-up comes from three design choices:</p>
-<ol><li><p><strong>Two layout paths chosen automatically.</strong> On the
-        column-major path, each output column is written as one
-        contiguous <code>memcpy</code> of the input column — the fastest
-        possible pattern. On the row-major path, tiles of eight
+<ol><li><p><strong>Two layout paths, selected by <code>major</code>.</strong> The
+        default is column-major. On the column-major path, each output
+        column is written as one contiguous <code>memcpy</code> of the input
+        column — the fastest possible pattern. On the row-major path, tiles of eight
         rows are transposed in registers with
         <code>_mm512_shuffle_f64x2</code>.</p></li>
 <li><p><strong>SIMD streaming stores.</strong> For large outputs,
@@ -198,9 +207,10 @@ gradient at every tested scale.</p>
 <code>nrow(data) * length(measure.vars)</code> rows. With
 <code>na.rm = TRUE</code>, rows whose value is <code>NA</code> or <code>NaN</code>
 are dropped, so the row count is smaller and not known in advance.
-Columns are the ID columns, a factor column named
-<code>variable.name</code>, and a numeric column named
-<code>value.name</code>.</p>
+Columns are the ID columns, a column named
+<code>variable.name</code> (a factor when <code>as.factor</code> resolves to
+<code>TRUE</code>, otherwise a character vector), and a numeric column
+named <code>value.name</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -298,18 +308,32 @@ implementation.
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## --- Two memory layouts ------------------------------------------</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># major = NULL (default): auto-select based on shape</span></span></span>
+<span class="r-in"><span><span class="co"># major = NULL (default): column-major (reshape2-compatible)</span></span></span>
 <span class="r-in"><span><span class="co"># major = "col" : column-major, reshape2-compatible</span></span></span>
 <span class="r-in"><span><span class="co"># major = "row" : row-major,    tidyr-compatible</span></span></span>
 <span class="r-in"><span><span class="va">df_wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">100</span>,</span></span>
 <span class="r-in"><span>                      <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="fl">50</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">50</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">res_auto</span> <span class="op">&lt;-</span> <span class="fu">melt</span><span class="op">(</span><span class="va">df_wide</span>, id.vars <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">res_col</span>  <span class="op">&lt;-</span> <span class="fu">melt</span><span class="op">(</span><span class="va">df_wide</span>, id.vars <span class="op">=</span> <span class="st">"id"</span>, major <span class="op">=</span> <span class="st">"col"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">res_row</span>  <span class="op">&lt;-</span> <span class="fu">melt</span><span class="op">(</span><span class="va">df_wide</span>, id.vars <span class="op">=</span> <span class="st">"id"</span>, major <span class="op">=</span> <span class="st">"row"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">res_default</span> <span class="op">&lt;-</span> <span class="fu">melt</span><span class="op">(</span><span class="va">df_wide</span>, id.vars <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">res_col</span>     <span class="op">&lt;-</span> <span class="fu">melt</span><span class="op">(</span><span class="va">df_wide</span>, id.vars <span class="op">=</span> <span class="st">"id"</span>, major <span class="op">=</span> <span class="st">"col"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">res_row</span>     <span class="op">&lt;-</span> <span class="fu">melt</span><span class="op">(</span><span class="va">df_wide</span>, id.vars <span class="op">=</span> <span class="st">"id"</span>, major <span class="op">=</span> <span class="st">"row"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># The two layouts produce the same content in a different order</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">res_col</span><span class="op">$</span><span class="va">value</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">res_row</span><span class="op">$</span><span class="va">value</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## --- as.factor controls the variable column type ------------------</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Default: factor for "col", character for "row"</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">is.factor</a></span><span class="op">(</span><span class="va">res_col</span><span class="op">$</span><span class="va">variable</span><span class="op">)</span>                      <span class="co"># TRUE</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">is.character</a></span><span class="op">(</span><span class="va">res_row</span><span class="op">$</span><span class="va">variable</span><span class="op">)</span>                   <span class="co"># TRUE</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Explicit override</span></span></span>
+<span class="r-in"><span><span class="va">res_row_fac</span> <span class="op">&lt;-</span> <span class="fu">melt</span><span class="op">(</span><span class="va">df_wide</span>, id.vars <span class="op">=</span> <span class="st">"id"</span>, major <span class="op">=</span> <span class="st">"row"</span>,</span></span>
+<span class="r-in"><span>                    as.factor <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">is.factor</a></span><span class="op">(</span><span class="va">res_row_fac</span><span class="op">$</span><span class="va">variable</span><span class="op">)</span>                  <span class="co"># TRUE</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 </code></pre></div>
     </div>
