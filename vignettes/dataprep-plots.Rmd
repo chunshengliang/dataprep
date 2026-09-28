@@ -52,9 +52,7 @@ plot with a log-scaled x axis.
 
 ```{r}
 descplot(data1, cols = 3:7) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ### Selected statistics
@@ -64,9 +62,7 @@ Pass a subset of statistics by index or by name to focus the plot.
 ```{r}
 descplot(data1, cols = 3:7,
          stats = c("na", "min", "max", "IQR")) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 The `stats` argument accepts both forms — numeric indices
@@ -81,18 +77,14 @@ to a bar chart.
 
 ```{r}
 descplot(data1, cols = 3:7) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ### Control facet layout
 
 ```{r}
 descplot(data1, cols = 3:7, stats = c("min", "max", "IQR")) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ### Full-size data
@@ -121,27 +113,21 @@ the visual companion to `condextr()` and `percoutl()`.
 
 ```{r}
 percplot(data1, cols = 3:7, group = 2) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ### Top percentiles only
 
 ```{r}
 percplot(data1, cols = 3:7, group = 2, part = "top") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ### Bottom percentiles only
 
 ```{r}
 percplot(data1, cols = 3:7, group = 2, part = "bottom") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ### Numeric axis control
@@ -151,9 +137,7 @@ scale with `num_xaxis = "numeric"`.
 
 ```{r}
 percplot(data1, cols = 3:7, group = 2, num_xaxis = "numeric") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 The `num_xaxis` argument controls how the x axis is treated when
@@ -184,9 +168,7 @@ percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme_bw(base_size = 11) +
   ggplot2::labs(title = "Percentile curves by month",
                 x = "Variable", y = "Value") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ## A diagnostic workflow
