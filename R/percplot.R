@@ -156,7 +156,7 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
     df_long$variable <- factor(df_long$variable, levels = meas_names)
     p <- ggplot2::ggplot(df_long, ggplot2::aes(x = variable, y = value,
                                                fill = percentile)) +
-      ggplot2::geom_col(position = ggplot2::position_stack(reverse = TRUE)) +
+      ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.9)) +
       ggplot2::scale_fill_manual(values = pal) +
       ggplot2::labs(fill = paste0("n:", nrow(data),
                                   "\nna:", sum(is.na(data[, idx, drop = FALSE])),
