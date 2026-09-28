@@ -126,6 +126,12 @@
 <span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"chunshengliang/dataprep"</span><span class="op">)</span></span></code></pre></div>
 <p>The package requires a C++17 compiler (Rtools on Windows, Xcode / clang on macOS, gcc on Linux).</p>
+<p><strong>Note for Windows users</strong></p>
+<p>When installing from GitHub with <code>remotes::install_github()</code>, Windows users may see:</p>
+<blockquote>
+<p>Warning: file ‘dataprep/configure’ did not have execute permissions: corrected Warning: file ‘dataprep/cleanup’ did not have execute permissions: corrected</p>
+</blockquote>
+<p>This is expected and harmless. Windows NTFS does not preserve Unix execute bits, so <code>R CMD build</code> corrects them automatically. The <code>configure.win</code> and <code>cleanup.win</code> scripts still run, and the package installs and works normally — <strong>the warning does not affect any functionality in any way</strong>. Linux, macOS, and CRAN checks do not emit this warning, and Windows users installing the CRAN binary package with <code>install.packages("dataprep")</code> are not affected either.</p>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
