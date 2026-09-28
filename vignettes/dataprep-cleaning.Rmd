@@ -211,7 +211,7 @@ and interpolated points. The conditional-extremum rule removes
 only the extreme point of each window and leaves no artificial
 outlier behind.
 
-```{r, echo = FALSE, out.width = "80%"}
+```{r, echo = FALSE, out.width = "70%"}
 knitr::include_graphics("figures/Outlier_Comparison.png")
 ```
 
@@ -302,7 +302,7 @@ missing run.
 
 #### Before cleaning
 
-```{r, fig.height = 4, fig.width = 6.5}
+```{r, fig.height = 4, fig.width = 7.5}
 percplot(step0, cols = num_cols, group = 4)
 ```
 
@@ -330,7 +330,7 @@ alone.
 
 #### After cleaning
 
-```{r, fig.height = 4, fig.width = 6.5}
+```{r, fig.height = 4, fig.width = 7.5}
 percplot(step2, cols = num_cols, group = 4)
 ```
 
@@ -513,7 +513,7 @@ upstream state. This is what "short-period grouping
 interpolation" means: interpolation is applied only where the
 value can be read from a nearby observation in the same segment.
 
-```{r, echo = FALSE, out.width = "70%"}
+```{r, echo = FALSE, out.width = "60%"}
 knitr::include_graphics("figures/Time_Series_Interpolation_Final.png")
 ```
 

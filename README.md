@@ -61,7 +61,11 @@ The cleaning pipeline is organised around four sequential steps,
 each addressing a distinct failure mode of high-resolution
 environmental data:
 
-<img src="man/figures/fig1_pipeline.png" alt="Four-step preprocessing pipeline" width="75%" />
+<p align="center">
+  <img src="man/figures/fig1_pipeline.png"
+       alt="Four-step preprocessing pipeline"
+       width="50%" />
+</p>
 
 1. **Variable deletion.** Drop size bins whose missing fraction
    exceeds a threshold, so downstream interpolation never has to
@@ -74,14 +78,22 @@ environmental data:
    be a global maximum and still be legitimate, or vice versa.
    `condextr()` judges each candidate in context.
 
-   <img src="man/figures/Outlier_Comparison.png" alt="Conditional extremum vs. traditional percentile deletion" width="75%" />
+   <p align="center">
+     <img src="man/figures/Outlier_Comparison.png"
+          alt="Conditional extremum vs. traditional percentile deletion"
+          width="50%" />
+   </p>
 
 4. **Short-period grouping interpolation.** After steps 1–3,
    remaining `NA`s sit inside short gaps with a valid anchor
    within `half` minutes. `shorvalu()` interpolates within each
    short segment only.
 
-   <img src="man/figures/Time_Series_Interpolation_Final.png" alt="Short-period grouping interpolation" width="75%" />
+   <p align="center">
+     <img src="man/figures/Time_Series_Interpolation_Final.png"
+          alt="Short-period grouping interpolation"
+          width="50%" />
+   </p>
 
    Interpolating across a long gap silently mixes two physically
    distinct regimes and can create new outliers at the segment

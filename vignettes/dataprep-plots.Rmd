@@ -115,14 +115,14 @@ descdata(data1, cols = 3:7, stats = c(2, 3, 4, 7:9))
 100 by default) and draws them against the variable axis. This is
 the visual companion to `condextr()` and `percoutl()`.
 
-```{r}
+```{r, fig.height = 6, fig.width = 7}
 percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ### Top percentiles only
 
-```{r, fig.height = 3}
+```{r, fig.height = 3, fig.width = 7}
 percplot(data1, cols = 3:7, group = 2, part = "top") +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
@@ -139,7 +139,7 @@ percplot(data1, cols = 3:7, group = 2, part = "bottom") +
 For numeric variable names, the x axis can be forced to linear
 scale with `num_xaxis = "numeric"`.
 
-```{r, fig.height = 4}
+```{r, fig.height = 4, fig.width = 7}
 percplot(data1, cols = 3:7, group = 2, num_xaxis = "numeric") +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
@@ -167,7 +167,7 @@ percdata(data1, cols = 3:7, group = 2, part = "top")
 Both `descplot()` and `percplot()` return `ggplot` objects, so all
 usual `ggplot2` layers apply.
 
-```{r, fig.height = 4}
+```{r, fig.height = 4, fig.width = 7}
 percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme_bw(base_size = 11) +
   ggplot2::labs(title = "Percentile curves by month",
