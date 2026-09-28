@@ -69,7 +69,6 @@ stopifnot(all_identical(
 stopifnot(all_identical(
   dataprep::melt(data, 1:4, major = "row"),
   tidyr::pivot_longer(data, !1:4, names_to = "variable") %>%
-    mutate(variable = factor(variable, unique(variable))) %>%
     as.data.frame()
 ))
 
