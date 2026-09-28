@@ -340,13 +340,12 @@ bench_one <- function(fn, tool, family = "melt", unit = "ms",
 }
 
 
-# ---- append one cell's results to CSV ---------------------------------------
-append_result <- function(sm, path) {
-  if (file.exists(path))
-    write.table(sm, path, sep = ",", append = TRUE,
-                row.names = FALSE, col.names = FALSE)
-  else
-    write.csv(sm, path, row.names = FALSE)
+# ---- write one cell's results to a fresh CSV --------------------------------
+# Always creates (or overwrites) the target file. This keeps every benchmark
+# run self-contained: each invocation produces its own CSV, so results from
+# different cells never mix in the same table.
+write_result <- function(sm, path) {
+  write.csv(sm, path, row.names = FALSE)
 }
 
 

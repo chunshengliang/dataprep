@@ -20,6 +20,14 @@ library(Rcpp)
 library(dplyr)
 
 
+# Timestamped output filenames. One pair per script invocation, format
+# YYYYMMDDHHMM. Re-running the sweep in the same minute overwrites the
+# previous files; use "%Y%m%d%H%M%S" if you need second-level resolution.
+.BENCH_TS  <- format(Sys.time(), "%Y%m%d%H%M")
+.MELT_CSV  <- sprintf("melt_benchmark_%s.csv",  .BENCH_TS)
+.DCAST_CSV <- sprintf("dcast_benchmark_%s.csv", .BENCH_TS)
+
+
 source(system.file("benchmark_helpers.R", package = "dataprep"))
 
 
@@ -563,7 +571,7 @@ prepare_melt_inputs <- function(n_rows, n_id, n_val) {
 }
 
 run_melt_bench <- function(inputs, label = "",
-                           csv_path = "melt_benchmark_result.csv") {
+                           csv_path = .MELT_CSV) {
 
   df             <- inputs$df
   df_dt          <- inputs$df_dt
@@ -643,13 +651,13 @@ run_melt_bench <- function(inputs, label = "",
   cat("\n  Results (sorted by skipped, then median, ms):\n")
   print(sm, digits = 4, row.names = FALSE)
 
-  append_result(sm, csv_path)
+  write_result(sm, csv_path)
 
   invisible(NULL)
 }
 
 run_melt_cell <- function(n_rows, n_id, n_val, label = "",
-                          csv_path = "melt_benchmark_result.csv") {
+                          csv_path = .MELT_CSV) {
   inputs <- prepare_melt_inputs(n_rows, n_id, n_val)
   on.exit({
     try(inputs$con$close(), silent = TRUE)
@@ -722,7 +730,7 @@ prepare_dcast_inputs <- function(n_long, n_id, n_levels) {
 }
 
 run_dcast_bench <- function(inputs, label = "",
-                            csv_path = "dcast_benchmark_result.csv") {
+                            csv_path = .DCAST_CSV) {
 
   long           <- inputs$long
   long_dt        <- inputs$long_dt
@@ -804,13 +812,13 @@ run_dcast_bench <- function(inputs, label = "",
   cat("\n  Results (sorted by skipped, then median, ms):\n")
   print(sm, digits = 4, row.names = FALSE)
 
-  append_result(sm, csv_path)
+  write_result(sm, csv_path)
 
   invisible(NULL)
 }
 
 run_dcast_cell <- function(n_long, n_id, n_levels, label = "",
-                           csv_path = "dcast_benchmark_result.csv") {
+                           csv_path = .DCAST_CSV) {
   inputs <- prepare_dcast_inputs(n_long, n_id, n_levels)
   on.exit({
     try(inputs$con$close(), silent = TRUE)
