@@ -164,6 +164,24 @@ percplot(data1, cols = 3:7, group = 2, part = "bottom") +
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-11-1.png)
 
+### Percentile curves of the raw data
+
+When the column names are numeric,
+[`percplot()`](https://chunshengliang.github.io/dataprep/reference/percplot.md)
+draws curves instead of bars. The 61 size-bin columns of `data`
+(`cols = 5:65`) have numeric names, so the default `num_xaxis = "auto"`
+selects a log-scaled x axis:
+
+``` r
+
+percplot(data, cols = 5:65, group = 4) +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
+#> Warning: Removed 288 rows containing missing values or values outside the scale range
+#> (`geom_line()`).
+```
+
+![](dataprep-plots_files/figure-html/unnamed-chunk-12-1.png)
+
 ### Numeric axis control
 
 For numeric variable names, the x axis can be forced to linear scale
@@ -171,11 +189,13 @@ with `num_xaxis = "numeric"`.
 
 ``` r
 
-percplot(data1, cols = 3:7, group = 2, num_xaxis = "numeric") +
+percplot(data, cols = 5:65, group = 4, num_xaxis = "numeric") +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
+#> Warning: Removed 288 rows containing missing values or values outside the scale range
+#> (`geom_line()`).
 ```
 
-![](dataprep-plots_files/figure-html/unnamed-chunk-12-1.png)
+![](dataprep-plots_files/figure-html/unnamed-chunk-13-1.png)
 
 The `num_xaxis` argument controls how the x axis is treated when column
 names are numeric:
@@ -229,7 +249,7 @@ percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
-![](dataprep-plots_files/figure-html/unnamed-chunk-14-1.png)
+![](dataprep-plots_files/figure-html/unnamed-chunk-15-1.png)
 
 ## A diagnostic workflow
 

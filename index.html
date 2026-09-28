@@ -109,16 +109,15 @@
 <li><p><strong>Observation deletion.</strong> Drop rows whose selected columns contain a consecutive missing run longer than <code>half</code> minutes on <strong>both</strong> sides. Every remaining point then has a trustworthy anchor within <code>half</code> minutes.</p></li>
 <li>
 <p><strong>Conditional extremum outlier removal.</strong> A single value can be a global maximum and still be legitimate, or vice versa. <code><a href="reference/condextr.html">condextr()</a></code> judges each candidate in context.</p>
-<p align="center">
-</p>
+<div align="center">
 <p><img src="reference/figures/Outlier_Comparison.png" alt="Conditional extremum vs. traditional percentile deletion" width="50%"></p>
+</div>
 </li>
 <li>
 <p><strong>Short-period grouping interpolation.</strong> After steps 1–3, remaining <code>NA</code>s sit inside short gaps with a valid anchor within <code>half</code> minutes. <code><a href="reference/shorvalu.html">shorvalu()</a></code> interpolates within each short segment only.</p>
-<p align="center">
-</p>
+<div align="center">
 <p><img src="reference/figures/Time_Series_Interpolation_Final.png" alt="Short-period grouping interpolation" width="50%"></p>
-
+</div>
 <p>Interpolating across a long gap silently mixes two physically distinct regimes and can create new outliers at the segment boundary. Grouping by short segments keeps the interpolation local.</p>
 </li>
 </ol>
