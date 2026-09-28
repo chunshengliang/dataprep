@@ -47,7 +47,10 @@ draws a line plot with a log-scaled x axis.
 
 ``` r
 
-descplot(data1, cols = 3:7)
+descplot(data1, cols = 3:7) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-3-1.png)
@@ -59,7 +62,10 @@ Pass a subset of statistics by index or by name to focus the plot.
 ``` r
 
 descplot(data1, cols = 3:7,
-         stats = c("na", "min", "max", "IQR"))
+         stats = c("na", "min", "max", "IQR")) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-4-1.png)
@@ -139,7 +145,10 @@ and
 
 ``` r
 
-percplot(data1, cols = 3:7, group = 2)
+percplot(data1, cols = 3:7, group = 2) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-9-1.png)
@@ -148,7 +157,10 @@ percplot(data1, cols = 3:7, group = 2)
 
 ``` r
 
-percplot(data1, cols = 3:7, group = 2, part = "top")
+percplot(data1, cols = 3:7, group = 2, part = "top") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-10-1.png)
@@ -157,7 +169,10 @@ percplot(data1, cols = 3:7, group = 2, part = "top")
 
 ``` r
 
-percplot(data1, cols = 3:7, group = 2, part = "bottom")
+percplot(data1, cols = 3:7, group = 2, part = "bottom") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-11-1.png)
@@ -225,7 +240,10 @@ return `ggplot` objects, so all usual `ggplot2` layers apply.
 percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme_bw(base_size = 11) +
   ggplot2::labs(title = "Percentile curves by month",
-                x = "Variable", y = "Value")
+                x = "Variable", y = "Value") +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 30,
+                                        hjust = 1, vjust = 1.1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-14-1.png)
