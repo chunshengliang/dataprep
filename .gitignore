@@ -18,3 +18,4 @@ src/Makevars
 dataprep.Rcheck/
 *.tar.gz
 docs
+*.bak

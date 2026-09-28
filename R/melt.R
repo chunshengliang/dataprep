@@ -13,8 +13,13 @@
 #'                           offsets, so no intermediate full table is
 #'                           constructed.
 #' @param cores              number of OpenMP threads; NULL = auto.
-#' @param major              "col" (reshape2-style) or "row" (tidyr-style);
-#'                           NULL = auto-select based on shape.
+#' @param major              "col" (reshape2-style, default) or
+#'                           "row" (tidyr-style). NULL is equivalent to "col".
+#' @param as.factor          Whether the \code{variable} column is a factor.
+#'                           \code{NULL} (default) uses \code{TRUE} for
+#'                           \code{major = "col"} and \code{FALSE} for
+#'                           \code{major = "row"}. Explicit \code{TRUE} /
+#'                           \code{FALSE} overrides that default.
 #' @param verbose            print timing/messages.
 #' @param parallel_threshold minimum output size before auto parallelism.
 #' @param id.vars            alias of \code{id}.
@@ -29,6 +34,7 @@ melt <- function(data,
                  na.rm               = FALSE,
                  cores               = NULL,
                  major               = NULL,
+                 as.factor           = NULL,
                  verbose             = FALSE,
                  parallel_threshold  = 5e6,
                  id.vars             = NULL) {
@@ -37,8 +43,18 @@ melt <- function(data,
   if (ncol(data) < 1L)      stop("data has no columns")
   if (nrow(data) == 0L)     stop("data has no rows")
 
-  if (!is.null(major)) {
+  if (is.null(major)) {
+    major <- "col"          # default: reshape2-compatible column-major
+  } else {
     major <- match.arg(major, c("col", "row"))
+  }
+
+  # `variable` column type.  NULL => factor for "col", character for "row".
+  # Explicit TRUE / FALSE overrides that default.
+  if (is.null(as.factor)) {
+    as.factor <- (major == "col")
+  } else {
+    as.factor <- isTRUE(as.factor)
   }
 
   if (!is.null(id) && !is.null(id.vars))
@@ -118,12 +134,12 @@ melt <- function(data,
     cat(sprintf(
       "[melt] rows=%d  cols=%d  measure_cols=%d  major=%s  threads=%d  na.rm=%s\n",
       nrow(data), ncols, n_measure_cols,
-      if (is.null(major)) "auto" else major,
+      major,
       cores,
       if (isTRUE(na.rm)) "TRUE" else "FALSE"))
   }
 
-  major_arg <- if (is.null(major)) NULL else major
+  major_arg <- major
 
   melt_cpp(
     df            = data,
@@ -131,6 +147,7 @@ melt <- function(data,
     variable_name = variable.name,
     value_name    = value.name,
     major         = major_arg,
+    as_factor     = as.factor,
     n_threads     = cores,
     na_rm         = isTRUE(na.rm)
   )

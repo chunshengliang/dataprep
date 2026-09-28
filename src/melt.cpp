@@ -1135,6 +1135,29 @@ static inline const void* readonly_ptr(SEXP x) {
 }
 
 // ============================================================================
+// variable column: factor -> character conversion (post-build)
+// ============================================================================
+static void maybe_make_var_character(SEXP out, int n_id, R_xlen_t total_out) {
+  SEXP var_col = VECTOR_ELT(out, n_id);
+  if (TYPEOF(var_col) != INTSXP) return;
+  SEXP lv = Rf_getAttrib(var_col, R_LevelsSymbol);
+  if (Rf_isNull(lv)) return;
+  const R_xlen_t nl = XLENGTH(lv);
+  SEXP new_var = PROTECT(Rf_allocVector(STRSXP, total_out));
+  const int* pi = INTEGER_RO(var_col);
+  for (R_xlen_t i = 0; i < total_out; ++i) {
+    int v = pi[i];
+    if (v >= 1 && (R_xlen_t)v <= nl) {
+      SET_STRING_ELT(new_var, i, STRING_ELT(lv, v - 1));
+    } else {
+      SET_STRING_ELT(new_var, i, NA_STRING);
+    }
+  }
+  SET_VECTOR_ELT(out, n_id, new_var);
+  UNPROTECT(1);
+}
+
+// ============================================================================
 // Small-shape fast paths
 // ============================================================================
 DATAPREP_HOT
@@ -1142,7 +1165,8 @@ static SEXP melt_tiny_cpp(SEXP df,
                           const std::vector<int>& id_idx,
                           const std::vector<int>& meas_idx,
                           SEXP col_names,
-                          SEXP variable_name, SEXP value_name) {
+                          SEXP variable_name, SEXP value_name,
+                          bool row_major, bool as_factor) {
   int n_id   = (int)id_idx.size();
   int n_meas = (int)meas_idx.size();
   R_xlen_t n = XLENGTH(VECTOR_ELT(df, 0));
@@ -1176,75 +1200,138 @@ static SEXP melt_tiny_cpp(SEXP df,
                  (!Rf_isNull(value_name) && TYPEOF(value_name) == STRSXP) ?
                    STRING_ELT(value_name, 0) : g_val_name("value"));
 
-  int* pvar = INTEGER(var_col);
+  int*    pvar = INTEGER(var_col);
   double* pval = REAL(val_col);
 
-  for (int k = 0; k < n_meas; ++k) {
-    SEXP col = VECTOR_ELT(df, meas_idx[k]);
-    SEXPTYPE t = TYPEOF(col);
-    const int kk = k + 1;
-    double* pd = pval + (R_xlen_t)k * n;
-    int*    pv = pvar + (R_xlen_t)k * n;
-    nt_fill_i32(pv, kk, n);
-    if (t == REALSXP) {
-      nt_copy_pd(pd, (const double*)readonly_ptr(col), n);
-    } else if (t == INTSXP && !Rf_isFactor(col)) {
-      int2double_ptr((const int*)readonly_ptr(col), pd, (size_t)n, false);
-    } else if (t == LGLSXP) {
-      int2double_ptr((const int*)readonly_ptr(col), pd, (size_t)n, true);
-    } else {
-      std::fill(pd, pd + n, NA_REAL);
+  if (row_major) {
+    // ---- Row-major: iterate rows outermost --------------------------------
+    std::vector<const void*>  mp(n_meas);
+    std::vector<SEXPTYPE>     mt(n_meas);
+    std::vector<char>         mfac(n_meas);
+    for (int k = 0; k < n_meas; ++k) {
+      SEXP col = VECTOR_ELT(df, meas_idx[k]);
+      mp[k]    = readonly_ptr(col);
+      mt[k]    = TYPEOF(col);
+      mfac[k]  = (char)(mt[k] == INTSXP && Rf_isFactor(col));
+    }
+    std::vector<const void*>  ip(n_id);
+    std::vector<void*>        idp(n_id);
+    std::vector<SEXPTYPE>     it(n_id);
+    for (int i = 0; i < n_id; ++i) {
+      SEXP s = VECTOR_ELT(df, id_idx[i]);
+      ip[i]  = readonly_ptr(s);
+      idp[i] = writable_ptr(VECTOR_ELT(out, i));
+      it[i]  = TYPEOF(s);
+    }
+
+    for (R_xlen_t r = 0; r < n; ++r) {
+      double* vr = pval + r * n_meas;
+      int*    kr = pvar + r * n_meas;
+      for (int k = 0; k < n_meas; ++k) {
+        SEXPTYPE t = mt[k];
+        const void* src = mp[k];
+        double v = NA_REAL;
+        if (t == REALSXP) {
+          v = ((const double*)src)[r];
+        } else if (t == INTSXP && !mfac[k]) {
+          int x = ((const int*)src)[r];
+          v = (x == NA_INTEGER) ? NA_REAL : (double)x;
+        } else if (t == LGLSXP) {
+          int x = ((const int*)src)[r];
+          v = (x == NA_LOGICAL) ? NA_REAL : (x ? 1.0 : 0.0);
+        }
+        vr[k] = v;
+        kr[k] = k + 1;
+      }
+      for (int i = 0; i < n_id; ++i) {
+        SEXPTYPE t = it[i];
+        const void* src = ip[i];
+        if (t == INTSXP || t == LGLSXP) {
+          int x = ((const int*)src)[r];
+          int* d = (int*)idp[i] + r * n_meas;
+          for (int k = 0; k < n_meas; ++k) d[k] = x;
+        } else if (t == REALSXP) {
+          double x = ((const double*)src)[r];
+          double* d = (double*)idp[i] + r * n_meas;
+          for (int k = 0; k < n_meas; ++k) d[k] = x;
+        } else if (t == STRSXP) {
+          SEXP x = ((const SEXP*)src)[r];
+          SEXP d_col = VECTOR_ELT(out, i);
+          R_xlen_t base = r * n_meas;
+          for (int k = 0; k < n_meas; ++k) SET_STRING_ELT(d_col, base + k, x);
+        }
+      }
+    }
+  } else {
+    // ---- Column-major: iterate measure columns outermost ------------------
+    for (int k = 0; k < n_meas; ++k) {
+      SEXP col = VECTOR_ELT(df, meas_idx[k]);
+      SEXPTYPE t = TYPEOF(col);
+      const int kk = k + 1;
+      double* pd = pval + (R_xlen_t)k * n;
+      int*    pv = pvar + (R_xlen_t)k * n;
+      nt_fill_i32(pv, kk, n);
+      if (t == REALSXP) {
+        nt_copy_pd(pd, (const double*)readonly_ptr(col), n);
+      } else if (t == INTSXP && !Rf_isFactor(col)) {
+        int2double_ptr((const int*)readonly_ptr(col), pd, (size_t)n, false);
+      } else if (t == LGLSXP) {
+        int2double_ptr((const int*)readonly_ptr(col), pd, (size_t)n, true);
+      } else {
+        std::fill(pd, pd + n, NA_REAL);
+      }
+    }
+
+    for (int i = 0; i < n_id; ++i) {
+      SEXP s_col = VECTOR_ELT(df, id_idx[i]);
+      SEXP d_col = VECTOR_ELT(out, i);
+      SEXPTYPE t = TYPEOF(s_col);
+      const char* src = (const char*)readonly_ptr(s_col);
+      char* dst_base = (char*)writable_ptr(d_col);
+      size_t es = sizeof_sexp(t);
+      if (!es) continue;
+
+      if (t == STRSXP) {
+        copy_sexp((SEXP*)dst_base, (const SEXP*)src, n);
+      } else if (t == REALSXP) {
+        copy_pd((double*)dst_base, (const double*)src, n);
+      } else if (t == INTSXP || t == LGLSXP) {
+        copy_i32((int*)dst_base, (const int*)src, n);
+      } else {
+        std::memcpy(dst_base, src, (size_t)n * es);
+      }
+
+      size_t filled = 1;
+      while (filled < (size_t)n_meas) {
+        size_t tc = filled;
+        if (tc > (size_t)n_meas - filled) tc = (size_t)n_meas - filled;
+        char* dst_out = dst_base + filled * (size_t)n * es;
+
+        if (t == STRSXP) {
+          for (size_t b = 0; b < tc; ++b) {
+            nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
+                       (const double*)dst_base, n);
+          }
+        } else if (t == REALSXP) {
+          for (size_t b = 0; b < tc; ++b) {
+            nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
+                       (const double*)dst_base, n);
+          }
+        } else if (t == INTSXP || t == LGLSXP) {
+          for (size_t b = 0; b < tc; ++b) {
+            nt_copy_i32((int*)(dst_out + b * (size_t)n * es),
+                        (const int*)dst_base, n);
+          }
+        } else {
+          std::memcpy(dst_out, dst_base, tc * (size_t)n * es);
+        }
+        filled += tc;
+      }
     }
   }
 
-  // Id columns: blocked doubling for all types
-  for (int i = 0; i < n_id; ++i) {
-    SEXP s_col = VECTOR_ELT(df, id_idx[i]);
-    SEXP d_col = VECTOR_ELT(out, i);
-    SEXPTYPE t = TYPEOF(s_col);
-    const char* src = (const char*)readonly_ptr(s_col);
-    char* dst_base = (char*)writable_ptr(d_col);
-    size_t es = sizeof_sexp(t);
-    if (!es) continue;
-
-    // Copy first segment (normal store, cached)
-    if (t == STRSXP) {
-      copy_sexp((SEXP*)dst_base, (const SEXP*)src, n);
-    } else if (t == REALSXP) {
-      copy_pd((double*)dst_base, (const double*)src, n);
-    } else if (t == INTSXP || t == LGLSXP) {
-      copy_i32((int*)dst_base, (const int*)src, n);
-    } else {
-      std::memcpy(dst_base, src, (size_t)n * es);
-    }
-
-    // Doubling replication (NT stores)
-    size_t filled = 1;
-    while (filled < (size_t)n_meas) {
-      size_t tc = filled;
-      if (tc > (size_t)n_meas - filled) tc = (size_t)n_meas - filled;
-      char* dst_out = dst_base + filled * (size_t)n * es;
-
-      if (t == STRSXP) {
-        for (size_t b = 0; b < tc; ++b) {
-          nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                     (const double*)dst_base, n);
-        }
-      } else if (t == REALSXP) {
-        for (size_t b = 0; b < tc; ++b) {
-          nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                     (const double*)dst_base, n);
-        }
-      } else if (t == INTSXP || t == LGLSXP) {
-        for (size_t b = 0; b < tc; ++b) {
-          nt_copy_i32((int*)(dst_out + b * (size_t)n * es),
-                      (const int*)dst_base, n);
-        }
-      } else {
-        std::memcpy(dst_out, dst_base, tc * (size_t)n * es);
-      }
-      filled += tc;
-    }
+  if (DATAPREP_UNLIKELY(!as_factor)) {
+    maybe_make_var_character(out, n_id, total_out);
   }
 
   Rf_setAttrib(out, R_NamesSymbol, out_names);
@@ -1266,7 +1353,7 @@ static SEXP melt_small_cpp(SEXP df,
                            const std::vector<int>& meas_idx,
                            SEXP col_names,
                            SEXP variable_name, SEXP value_name,
-                           bool row_major) {
+                           bool row_major, bool as_factor) {
   int n_id   = (int)id_idx.size();
   int n_meas = (int)meas_idx.size();
   R_xlen_t n = XLENGTH(VECTOR_ELT(df, 0));
@@ -1428,6 +1515,10 @@ static SEXP melt_small_cpp(SEXP df,
       }
     }
   }
+  if (DATAPREP_UNLIKELY(!as_factor)) {
+    maybe_make_var_character(out, n_id, total_out);
+  }
+
   Rf_setAttrib(out, R_NamesSymbol, out_names);
   {
     SEXP rn = PROTECT(Rf_allocVector(INTSXP, 2));
@@ -1662,8 +1753,8 @@ static inline int compute_num_subs(int n_meas, R_xlen_t n, int threads) {
 // [[Rcpp::export]]
 SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
               SEXP variable_name = R_NilValue, SEXP value_name = R_NilValue,
-              SEXP major = R_NilValue, int n_threads = 0,
-              bool na_rm = false) {
+              SEXP major = R_NilValue, bool as_factor = true,
+              int n_threads = 0, bool na_rm = false) {
   melt_lazy_init();
 
   g_scratch.meas_ptrs.clear();
@@ -1687,24 +1778,25 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
   const R_xlen_t n = XLENGTH(VECTOR_ELT(df, 0));
   const R_xlen_t total = n * n_meas;
 
+  // Layout dispatch: default is column-major (reshape2-compatible).
+  // Only an explicit `major = "row"` triggers the row-major (tidyr-compatible)
+  // path. There is no automatic switching based on input shape.
   bool row_major = false;
   if (!Rf_isNull(major) && TYPEOF(major) == STRSXP && XLENGTH(major) > 0) {
     std::string s = CHAR(STRING_ELT(major, 0));
     std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-    row_major = !(s == "col" || s == "variable");
-  } else {
-    row_major = (n_id <= 2) && (n >= 30000LL) && (n_meas <= 16);
+    row_major = (s == "row");
   }
 
   // Tiny fast path
   if (DATAPREP_LIKELY(!na_rm) && n <= 2048 && n_meas <= 64 && n_id <= 8) {
     return melt_tiny_cpp(df, id_idx, meas_idx, col_names,
-                         variable_name, value_name);
+                         variable_name, value_name, row_major, as_factor);
   }
   // Small fast path
   if (!na_rm && total <= 131072 && n_meas <= 256) {
     return melt_small_cpp(df, id_idx, meas_idx, col_names,
-                          variable_name, value_name, row_major);
+                          variable_name, value_name, row_major, as_factor);
   }
 
   std::vector<const void*>& meas_ptrs      = g_scratch.meas_ptrs;
@@ -2186,6 +2278,10 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
   }
 
   nt_flush();
+
+  if (DATAPREP_UNLIKELY(!as_factor)) {
+    maybe_make_var_character(out, n_id, total_out);
+  }
 
   Rf_setAttrib(out, R_NamesSymbol, out_names);
   {

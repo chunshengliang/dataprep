@@ -11,6 +11,7 @@ column names, and two storage layouts (row-major or column-major).
 melt(data, id = NULL, measure.vars = NULL,
      variable.name = "variable", value.name = "value",
      na.rm = FALSE, cores = NULL, major = NULL,
+     as.factor = NULL,
      verbose = FALSE, parallel_threshold = 5e6, id.vars = NULL)
 }
 \arguments{
@@ -25,9 +26,9 @@ melt(data, id = NULL, measure.vars = NULL,
     indices, a logical mask, or \code{NULL}. If supplied, all other
     columns become IDs. Only one of \code{id} and \code{measure.vars}
     should be supplied.}
-  \item{variable.name}{Name of the new factor column that stores the
+  \item{variable.name}{Name of the new column that stores the
     original column names of the measure variables. Default
-    \code{"variable"}.}
+    \code{"variable"}. See \code{as.factor} for its type.}
   \item{value.name}{Name of the new numeric column that stores the
     melted values. Default \code{"value"}.}
   \item{na.rm}{Logical; if \code{TRUE}, rows where the value column is
@@ -35,12 +36,18 @@ melt(data, id = NULL, measure.vars = NULL,
   \item{cores}{Number of OpenMP threads. \code{NULL} (default) lets the
     C++ backend pick a value based on data size. The global option
     \code{dataprep.cores} overrides the automatic choice.}
-  \item{major}{Memory layout. \code{NULL} (default) lets the C++
-    backend auto-select based on the input shape: column-major
-    (\code{"col"}, reshape2-compatible) when the number of value
-    columns is large, row-major (\code{"row"}, tidyr-compatible)
-    otherwise. Passing \code{"row"} or \code{"col"} forces the
-    corresponding layout.}
+  \item{major}{Memory layout. \code{NULL} (default) is equivalent to
+    \code{"col"}: column-major, identical to \code{reshape2::melt}
+    (rows grouped by variable). \code{"row"} produces a row-major
+    result matching the row order of \code{tidyr::pivot_longer}
+    (rows grouped by id). There is no automatic switching based on
+    the input shape.}
+  \item{as.factor}{Whether the \code{variable} column is a factor.
+    \code{NULL} (default) uses \code{TRUE} when \code{major} is
+    \code{"col"} and \code{FALSE} when \code{major} is \code{"row"}.
+    Explicit \code{TRUE} / \code{FALSE} overrides that default. The
+    return value is always a plain \code{data.frame}; no
+    \code{tibble} attributes are attached.}
   \item{verbose}{Logical; if \code{TRUE}, prints timing messages.}
   \item{parallel_threshold}{Minimum number of output elements before
     automatic parallelism is enabled. Default \code{5e6}.}
@@ -92,10 +99,10 @@ the Ubuntu 25.10 host:
 The speed-up comes from three design choices:
 
 \enumerate{
-  \item \strong{Two layout paths chosen automatically.} On the
-        column-major path, each output column is written as one
-        contiguous \code{memcpy} of the input column --- the fastest
-        possible pattern. On the row-major path, tiles of eight
+  \item \strong{Two layout paths, selected by \code{major}.} The
+        default is column-major. On the column-major path, each output
+        column is written as one contiguous \code{memcpy} of the input
+        column --- the fastest possible pattern. On the row-major path, tiles of eight
         rows are transposed in registers with
         \code{_mm512_shuffle_f64x2}.
   \item \strong{SIMD streaming stores.} For large outputs,
@@ -136,9 +143,10 @@ A data frame in long format. When \code{na.rm = FALSE}, it has
 \code{nrow(data) * length(measure.vars)} rows. With
 \code{na.rm = TRUE}, rows whose value is \code{NA} or \code{NaN}
 are dropped, so the row count is smaller and not known in advance.
-Columns are the ID columns, a factor column named
-\code{variable.name}, and a numeric column named
-\code{value.name}.
+Columns are the ID columns, a column named
+\code{variable.name} (a factor when \code{as.factor} resolves to
+\code{TRUE}, otherwise a character vector), and a numeric column
+named \code{value.name}.
 }
 \references{
 1. Example data is from \url{https://smear.avaa.csc.fi/download}.
@@ -188,17 +196,28 @@ melt(df2, id.vars = "id",
 
 ## --- Two memory layouts ------------------------------------------
 
-# major = NULL (default): auto-select based on shape
+# major = NULL (default): column-major (reshape2-compatible)
 # major = "col" : column-major, reshape2-compatible
 # major = "row" : row-major,    tidyr-compatible
 df_wide <- data.frame(id = 1:100,
                       matrix(rnorm(100 * 50), ncol = 50))
 
-res_auto <- melt(df_wide, id.vars = "id")
-res_col  <- melt(df_wide, id.vars = "id", major = "col")
-res_row  <- melt(df_wide, id.vars = "id", major = "row")
+res_default <- melt(df_wide, id.vars = "id")
+res_col     <- melt(df_wide, id.vars = "id", major = "col")
+res_row     <- melt(df_wide, id.vars = "id", major = "row")
 
 # The two layouts produce the same content in a different order
 identical(sort(res_col$value), sort(res_row$value))
+
+## --- as.factor controls the variable column type ------------------
+
+# Default: factor for "col", character for "row"
+is.factor(res_col$variable)                      # TRUE
+is.character(res_row$variable)                   # TRUE
+
+# Explicit override
+res_row_fac <- melt(df_wide, id.vars = "id", major = "row",
+                    as.factor = TRUE)
+is.factor(res_row_fac$variable)                  # TRUE
 }
 \keyword{manip}

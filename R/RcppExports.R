@@ -65,8 +65,8 @@ mark_outliers_matrix_cpp <- function(mat, top, toperr, topmag, bottom, boterr, b
     .Call(`_dataprep_mark_outliers_matrix_cpp`, mat, top, toperr, topmag, bottom, boterr, botmag, use_threshold_error, n_threads)
 }
 
-melt_cpp <- function(df, id = NULL, variable_name = NULL, value_name = NULL, major = NULL, n_threads = 0L, na_rm = FALSE) {
-    .Call(`_dataprep_melt_cpp`, df, id, variable_name, value_name, major, n_threads, na_rm)
+melt_cpp <- function(df, id = NULL, variable_name = NULL, value_name = NULL, major = NULL, as_factor = TRUE, n_threads = 0L, na_rm = FALSE) {
+    .Call(`_dataprep_melt_cpp`, df, id, variable_name, value_name, major, as_factor, n_threads, na_rm)
 }
 
 na_frac_cpp <- function(x) {

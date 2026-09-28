@@ -244,8 +244,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // melt_cpp
-SEXP melt_cpp(SEXP df, SEXP id, SEXP variable_name, SEXP value_name, SEXP major, int n_threads, bool na_rm);
-RcppExport SEXP _dataprep_melt_cpp(SEXP dfSEXP, SEXP idSEXP, SEXP variable_nameSEXP, SEXP value_nameSEXP, SEXP majorSEXP, SEXP n_threadsSEXP, SEXP na_rmSEXP) {
+SEXP melt_cpp(SEXP df, SEXP id, SEXP variable_name, SEXP value_name, SEXP major, bool as_factor, int n_threads, bool na_rm);
+RcppExport SEXP _dataprep_melt_cpp(SEXP dfSEXP, SEXP idSEXP, SEXP variable_nameSEXP, SEXP value_nameSEXP, SEXP majorSEXP, SEXP as_factorSEXP, SEXP n_threadsSEXP, SEXP na_rmSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -254,9 +254,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type variable_name(variable_nameSEXP);
     Rcpp::traits::input_parameter< SEXP >::type value_name(value_nameSEXP);
     Rcpp::traits::input_parameter< SEXP >::type major(majorSEXP);
+    Rcpp::traits::input_parameter< bool >::type as_factor(as_factorSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< bool >::type na_rm(na_rmSEXP);
-    rcpp_result_gen = Rcpp::wrap(melt_cpp(df, id, variable_name, value_name, major, n_threads, na_rm));
+    rcpp_result_gen = Rcpp::wrap(melt_cpp(df, id, variable_name, value_name, major, as_factor, n_threads, na_rm));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -430,7 +431,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dataprep_log_returns_cpp", (DL_FUNC) &_dataprep_log_returns_cpp, 1},
     {"_dataprep_mark_outliers_cpp", (DL_FUNC) &_dataprep_mark_outliers_cpp, 8},
     {"_dataprep_mark_outliers_matrix_cpp", (DL_FUNC) &_dataprep_mark_outliers_matrix_cpp, 9},
-    {"_dataprep_melt_cpp", (DL_FUNC) &_dataprep_melt_cpp, 7},
+    {"_dataprep_melt_cpp", (DL_FUNC) &_dataprep_melt_cpp, 8},
     {"_dataprep_na_frac_cpp", (DL_FUNC) &_dataprep_na_frac_cpp, 1},
     {"_dataprep_na_runs_cpp", (DL_FUNC) &_dataprep_na_runs_cpp, 1},
     {"_dataprep_obsedele_cpp", (DL_FUNC) &_dataprep_obsedele_cpp, 7},
