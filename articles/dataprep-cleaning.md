@@ -113,7 +113,7 @@ The 0.1.7 cleaning pipeline consists of four sequential steps:
 4.  **Short-period interpolation** (`shorvalu`): fill remaining short
     gaps from nearby valid values.
 
-Steps 1–3 are wrapped by
+Steps 1–4 are wrapped by
 [`dataprep()`](https://chunshengliang.github.io/dataprep/reference/dataprep.md)
 for one-call use. Every step is designed around the same physical
 constraint: a valid substitute for a missing value only exists if there

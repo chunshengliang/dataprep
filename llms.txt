@@ -101,7 +101,7 @@ data:
     distinct regimes and can create new outliers at the segment
     boundary. Grouping by short segments keeps the interpolation local.
 
-Steps 1–3 are wrapped by
+Steps 1–4 are wrapped by
 [`dataprep()`](https://chunshengliang.github.io/dataprep/reference/dataprep.md)
 for one-call use. The design reasoning is documented in full in
 [`vignette("dataprep-philosophy")`](https://chunshengliang.github.io/dataprep/articles/dataprep-philosophy.md).
