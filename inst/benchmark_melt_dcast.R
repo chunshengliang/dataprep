@@ -639,9 +639,10 @@ run_melt_bench <- function(inputs, label = "",
   sm$n_val  <- n_val
 
   sm <- add_relative_cols(sm)
+  sm$label <- label
 
   sm <- sm[order(sm$skipped, sm$median, na.last = TRUE), ]
-  sm <- sm[, c("tool", "n_rows", "n_cols", "n_id", "n_val",
+  sm <- sm[, c("label", "tool", "n_rows", "n_cols", "n_id", "n_val",
                "times", "first_run_sec", "skipped",
                "min", "lq", "mean", "median", "uq", "max", "neval",
                "gc_sec",
@@ -800,9 +801,10 @@ run_dcast_bench <- function(inputs, label = "",
   sm$n_levels <- n_levels
 
   sm <- add_relative_cols(sm)
+  sm$label <- label
 
   sm <- sm[order(sm$skipped, sm$median, na.last = TRUE), ]
-  sm <- sm[, c("tool", "n_long", "n_id", "n_levels",
+  sm <- sm[, c("label", "tool", "n_long", "n_id", "n_levels",
                "times", "first_run_sec", "skipped",
                "min", "lq", "mean", "median", "uq", "max", "neval",
                "gc_sec",
@@ -831,6 +833,9 @@ run_dcast_cell <- function(n_long, n_id, n_levels, label = "",
 # Driver -- run the full sweep when DATAPREP_RUN_BENCHMARK=1
 # ============================================================================
 if (.run_bench) {
+
+  # Fresh CSV for this invocation: every cell appends to it.
+  unlink(c(.MELT_CSV, .DCAST_CSV))
 
   # ---- melt sweep ---------------------------------------------------------
   set.seed(123)

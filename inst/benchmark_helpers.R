@@ -340,12 +340,30 @@ bench_one <- function(fn, tool, family = "melt", unit = "ms",
 }
 
 
-# ---- write one cell's results to a fresh CSV --------------------------------
-# Always creates (or overwrites) the target file. This keeps every benchmark
-# run self-contained: each invocation produces its own CSV, so results from
-# different cells never mix in the same table.
-write_result <- function(sm, path) {
-  write.csv(sm, path, row.names = FALSE)
+# ---- write one cell's results to a CSV --------------------------------------
+# Appends to `path` when it already exists, so every cell in a sweep lands in
+# the same table instead of overwriting the previous cell's rows. Callers add
+# a per-cell `label` column so results can be grouped / filtered afterwards.
+# Pass overwrite = TRUE (or delete the file beforehand) to truncate.
+write_result <- function(sm, path, overwrite = FALSE) {
+  if (overwrite || !file.exists(path)) {
+    write.csv(sm, path, row.names = FALSE)
+    return(invisible(NULL))
+  }
+
+  header <- names(read.csv(path, nrows = 0L, check.names = FALSE,
+                           stringsAsFactors = FALSE))
+  if (!identical(names(sm), header)) {
+    missing <- setdiff(header, names(sm))
+    if (length(missing) > 0L)
+      stop("Cannot append to ", path, ": missing column(s) ",
+           paste(missing, collapse = ", "), call. = FALSE)
+    sm <- sm[, header, drop = FALSE]
+  }
+
+  write.table(sm, path, sep = ",", row.names = FALSE, col.names = FALSE,
+              append = TRUE, qmethod = "double", na = "NA", eol = "\n")
+  invisible(NULL)
 }
 
 
