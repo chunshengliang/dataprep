@@ -39,6 +39,11 @@ condextr <- function(data, cols = NULL, group = NULL, top = .995,
   date_name <- date_info$name
 
   group_idx <- NULL
+  if (is.null(group)) {
+    warning("Without a group column, the deleted values may congregate ",
+            "in a minority of periods. Consider supplying `group`.",
+            call. = FALSE)
+  }
   if (!is.null(group)) {
     group_idx <- if (is.character(group)) which(names(data) == group)
                  else as.integer(group)

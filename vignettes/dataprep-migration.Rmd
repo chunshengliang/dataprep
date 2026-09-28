@@ -62,9 +62,12 @@ every function in the table.
   *any* selected column has a missing run longer than `half`
   minutes on both sides.
 
-* The **`half`-minute boundary is now inclusive.** Rows whose
-  nearest anchor is exactly `half` minutes away are retained
-  ("within `half` minutes" is a `<=` condition).
+* **`half` is now always in minutes, and the boundary is
+  inclusive.** In 0.1.5, `half` counted grid rows in units of
+  `by`: with `by = "5 min", half = 30` the effective window was
+  150 minutes. In 0.1.7, `half` is always in minutes, independent
+  of `by`. Rows whose nearest anchor is exactly `half` minutes
+  away are retained ("within `half` minutes" is a `<=` condition).
 
 * `optisolu()` **no longer crashes with `cores > 16`.** The 0.1.5
   `parallel::makeCluster()` path exhausted memory when the
@@ -132,7 +135,7 @@ the three generations:
 | Release | Strategy | Complexity |
 |---|---|---|
 | 0.1.0 | Borrowed running mean: expand the series onto a regular grid with `tidyr::complete()`, compute a 59-minute centred moving average on a temporary column, and use its emptiness pattern to flag long runs. | `O(grid length)` per subset |
-| 0.1.5 | Run-length encoding: use `data.table::rleid()` and `rowid()` to collapse consecutive `NA`s into runs, then compare each run length to the number of grid points covered by `half` minutes. | `O(n)` time, `O(n)` temporary storage |
+| 0.1.5 | Run-length encoding: use `data.table::rleid()` and `rowid()` to collapse consecutive `NA`s into runs. The retention threshold was `half * num` grid rows, where `num` is the leading number in the `by` string: with `by = "5 min", half = 30` this was a 150-minute window. | `O(n)` time, `O(n)` temporary storage |
 | 0.1.7 | Anchor scan: for each missing value, look up the nearest non-missing anchor on each side and compare the two time distances directly. No grid, no run-length state. | `O(n)` time, `O(1)` extra allocation per column |
 
 Each generation produces the same deletion decision on the same

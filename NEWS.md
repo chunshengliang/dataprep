@@ -16,9 +16,12 @@ quantified comparison below before upgrading.
    *any* selected column has a missing run longer than `half`
    minutes on both sides.
 
-2. **The `half`-minute boundary is now inclusive.** Rows whose
-   nearest anchor is exactly `half` minutes away are retained
-   (`within half minutes` is a `<=` condition).
+2. **`half` is now always in minutes, and the boundary is
+   inclusive.** In 0.1.5, `half` counted grid rows in units of
+   `by`: with `by = "5 min", half = 30` the effective window was
+   150 minutes. In 0.1.7, `half` is always in minutes, independent
+   of `by`. Rows whose nearest anchor is exactly `half` minutes
+   away are retained (`within half minutes` is a `<=` condition).
 
 3. **`optisolu()` no longer crashes with `cores > 16`.** The 0.1.5
    `parallel::makeCluster()` path exhausted memory when the worker
@@ -248,7 +251,7 @@ copy of the input. With `cores > 16` and large data this exhausted
 memory and aborted the R session. The 0.1.7 implementation shares
 read-only data across workers and accepts up to 64 cores safely.
 
-### `melt()` `major` and new `as.factor` arguments
+### `melt()` new `major` and `as.factor` arguments
 
 The `major` argument is now honoured strictly.  `NULL` (default) is
 equivalent to `"col"`: column-major, identical to `reshape2::melt`.
@@ -351,22 +354,37 @@ in case a plan is edited by hand.
 
 * Argument `cols` now consistently accepts names, integer
   indices, or logical masks across the package.
+* All exported functions gain a `verbose = FALSE` argument
+  that controls progress and timing messages.
+* Functions that operate on a time column accept `date_col =
+  NULL`; when `NULL`, the first column matching `date`, `Date`,
+  or `DATE` is used.
 * [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.html) gains `id.vars`,
   `measure.vars`, `variable.name`, `value.name`, `na.rm`,
-  `cores`, `major`, `verbose`. `id.vars` is an alias of `id` for
-  reshape2 / data.table compatibility.
-* [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html) gains `formula`, `value.var`,
-  `fill`, `fun.aggregate`, `na.rm`, `cores`, `verbose`.
-* [`obsedele()`](https://chunshengliang.github.io/dataprep/reference/obsedele.html) and
-  [`condextr()`](https://chunshengliang.github.io/dataprep/reference/condextr.html) gain a `cores` argument
-  for OpenMP control. `options(dataprep.cores = ...)` is also
-  respected by [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.html) and
-  [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html).
-* [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.html) gains `cores`; `stats`
-  accepts both numeric and character stat names.
+  `cores`, `major`, `as.factor`, `verbose`, `parallel_threshold`.
+  `id.vars` is an alias of `id` for reshape2 / data.table
+  compatibility.
+* [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html) ships a `formula`
+  interface (\code{id1 + id2 ~ variable}), `value.var` as an alias
+  of `value`, and `fun.aggregate` for reducing duplicate
+  `(id, variable)` pairs, plus `fill`, `na.rm`, `cores`, and
+  `verbose`.
+* `dataprep()`, `shorvalu()`, `descdata()`, `melt()`, `dcast()`,
+  `prep_fit()`, and `prep_transform()` gain a `cores` argument for
+  OpenMP control (the cleaning functions `obsedele()`, `condextr()`,
+  `percoutl()`, and `optisolu()` already accepted `cores` since
+  0.1.5; their backends now route it to OpenMP as well). The global
+  option `options(dataprep.cores = ...)` is respected by `melt()`
+  and `dcast()`.
+* [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.html) now accepts `stats`
+  as either numeric indices or character names.
 * [`percplot()`](https://chunshengliang.github.io/dataprep/reference/percplot.html) now prints both the
   sample size (`n`) and the number of missing values (`na`) in
   each facet when a grouping column is supplied.
+* [`descplot()`](https://chunshengliang.github.io/dataprep/reference/descplot.html) and
+  [`percplot()`](https://chunshengliang.github.io/dataprep/reference/percplot.html) gain a `num_xaxis`
+  argument that overrides the automatic choice between log and
+  linear x-axis scales when column names are numeric.
 
 ## Documentation
 

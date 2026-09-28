@@ -45,9 +45,10 @@ percoutl <- function(data, cols = NULL, group = NULL, top = .995,
                   date_col = date_col, cores = cores)
   }
 
-  # FIX: the previous version called obsedele() a second time
-  # unconditionally, which doubled the computation and could
-  # also apply the wrong grouping argument.
+  # FIX: 0.1.5 called obsedele() a second time unconditionally
+  # after the branch above. The second call used the same arguments
+  # as the first, and obsedele() is idempotent, so it did not change
+  # the result --- it only doubled the runtime of percoutl().
 
   if (verbose) {
     cat(sum(is.na(a[idx])) -
