@@ -111,15 +111,28 @@ pipeline.
 
 ## Installation
 
+**Recommended** (also builds the vignettes locally; needs `pandoc` and
+the R packages `knitr` and `rmarkdown`):
+
 ``` r
 
-# from GitHub
 # install.packages("remotes")
+remotes::install_github("chunshengliang/dataprep", build_vignettes = TRUE)
+```
+
+**Fallback** (no extra dependencies):
+
+``` r
+
 remotes::install_github("chunshengliang/dataprep")
 ```
 
 The package requires a C++17 compiler (Rtools on Windows, Xcode / clang
-on macOS, gcc on Linux).
+on macOS, gcc on Linux). The `build_vignettes = TRUE` variant
+additionally needs `pandoc` and the R packages `knitr` and `rmarkdown`;
+if any of those is missing, `remotes` will fail. Vignettes are also
+available on the package website:
+<https://chunshengliang.github.io/dataprep/articles/>.
 
 **Note for Windows users**
 

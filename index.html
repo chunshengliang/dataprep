@@ -121,11 +121,14 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
+<p><strong>Recommended</strong> (also builds the vignettes locally; needs <code>pandoc</code> and the R packages <code>knitr</code> and <code>rmarkdown</code>):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># from GitHub</span></span>
-<span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"chunshengliang/dataprep"</span><span class="op">)</span></span></code></pre></div>
-<p>The package requires a C++17 compiler (Rtools on Windows, Xcode / clang on macOS, gcc on Linux).</p>
+<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"chunshengliang/dataprep"</span>, build_vignettes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Fallback</strong> (no extra dependencies):</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"chunshengliang/dataprep"</span><span class="op">)</span></span></code></pre></div>
+<p>The package requires a C++17 compiler (Rtools on Windows, Xcode / clang on macOS, gcc on Linux). The <code>build_vignettes = TRUE</code> variant additionally needs <code>pandoc</code> and the R packages <code>knitr</code> and <code>rmarkdown</code>; if any of those is missing, <code>remotes</code> will fail. Vignettes are also available on the package website: <a href="https://chunshengliang.github.io/dataprep/articles/" class="uri">https://chunshengliang.github.io/dataprep/articles/</a>.</p>
 <p><strong>Note for Windows users</strong></p>
 <p>When installing from GitHub with <code>remotes::install_github()</code>, Windows users may see:</p>
 <blockquote>
@@ -137,7 +140,7 @@
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/chunshengliang/dataprep" class="external-link">dataprep</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># The size-bin columns are the ones whose names are numeric</span></span>
@@ -1737,7 +1740,7 @@
 </tbody>
 </table>
 <p>Reproducible scripts ship under <code>inst/</code> and are disabled by default so that <code>R CMD check</code> does not run them. A single script, <code>benchmark_melt_dcast.R</code>, runs both the per-tool benchmarks and the 8-engine consistency checks:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>DATAPREP_RUN_BENCHMARK <span class="op">=</span> <span class="st">"1"</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"benchmark_melt_dcast.R"</span>, package <span class="op">=</span> <span class="st">"dataprep"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
