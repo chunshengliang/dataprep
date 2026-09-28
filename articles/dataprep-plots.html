@@ -109,7 +109,7 @@ log-scaled x axis.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/descplot.html">descplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="selected-statistics">Selected statistics<a class="anchor" aria-label="anchor" href="#selected-statistics"></a>
@@ -120,7 +120,7 @@ plot.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/descplot.html">descplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span>,</span>
 <span>         stats <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"na"</span>, <span class="st">"min"</span>, <span class="st">"max"</span>, <span class="st">"IQR"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 <p>The <code>stats</code> argument accepts both forms — numeric indices
 (<code>1:9</code>) and character names (<code>"na"</code>,
 <code>"min"</code>, <code>"max"</code>, <code>"IQR"</code>) — and can
@@ -136,7 +136,7 @@ chart.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/descplot.html">descplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="control-facet-layout">Control facet layout<a class="anchor" aria-label="anchor" href="#control-facet-layout"></a>
@@ -144,7 +144,7 @@ chart.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/descplot.html">descplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span>, stats <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"min"</span>, <span class="st">"max"</span>, <span class="st">"IQR"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="full-size-data">Full-size data<a class="anchor" aria-label="anchor" href="#full-size-data"></a>
@@ -153,7 +153,7 @@ chart.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/descplot.html">descplot</a></span><span class="op">(</span><span class="va">data</span>, cols <span class="op">=</span> <span class="fl">5</span><span class="op">:</span><span class="fl">65</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: Removed 84 rows containing missing values or values outside the scale range</span></span>
 <span><span class="co">#&gt; (`geom_line()`).</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="the-underlying-table">The underlying table<a class="anchor" aria-label="anchor" href="#the-underlying-table"></a>
@@ -184,7 +184,7 @@ This is the visual companion to <code><a href="../reference/condextr.html">conde
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/percplot.html">percplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span>, group <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="top-percentiles-only">Top percentiles only<a class="anchor" aria-label="anchor" href="#top-percentiles-only"></a>
@@ -192,7 +192,7 @@ This is the visual companion to <code><a href="../reference/condextr.html">conde
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/percplot.html">percplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span>, group <span class="op">=</span> <span class="fl">2</span>, part <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-10-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-10-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="bottom-percentiles-only">Bottom percentiles only<a class="anchor" aria-label="anchor" href="#bottom-percentiles-only"></a>
@@ -200,7 +200,7 @@ This is the visual companion to <code><a href="../reference/condextr.html">conde
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/percplot.html">percplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span>, group <span class="op">=</span> <span class="fl">2</span>, part <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="numeric-axis-control">Numeric axis control<a class="anchor" aria-label="anchor" href="#numeric-axis-control"></a>
@@ -210,7 +210,7 @@ with <code>num_xaxis = "numeric"</code>.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/percplot.html">percplot</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span>, group <span class="op">=</span> <span class="fl">2</span>, num_xaxis <span class="op">=</span> <span class="st">"numeric"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 <p>The <code>num_xaxis</code> argument controls how the x axis is
 treated when column names are numeric:</p>
 <ul>
@@ -261,7 +261,7 @@ apply.</p>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Percentile curves by month"</span>,</span>
 <span>                x <span class="op">=</span> <span class="st">"Variable"</span>, y <span class="op">=</span> <span class="st">"Value"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">30</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-plots_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="80%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="a-diagnostic-workflow">A diagnostic workflow<a class="anchor" aria-label="anchor" href="#a-diagnostic-workflow"></a>
