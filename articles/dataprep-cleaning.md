@@ -58,7 +58,8 @@ cleaned <- dataprep(data,
                     group      = 4,
                     interval   = 10,
                     times      = 10,
-                    intervals  = 30)
+                    intervals  = 30,
+                    cores      = 1L)
 dim(cleaned)
 #> [1] 6942   39
 ```
@@ -155,7 +156,7 @@ df <- data.frame(
 )
 nrow(df)
 #> [1] 20
-nrow(obsedele(df, cols = c("x", "y"), group = "group", half = 2))
+nrow(obsedele(df, cols = c("x", "y"), group = "group", half = 2, cores = 1L))
 #> [1] 2
 ```
 
@@ -167,7 +168,7 @@ df_boundary <- data.frame(
   date = as.POSIXct("2024-01-01 00:00:00", tz = "UTC") + 0:4 * 600,
   x    = c(1, NA, NA, NA, 5)   # anchors at 0 and 40 minutes
 )
-nrow(obsedele(df_boundary, cols = "x", half = 30))
+nrow(obsedele(df_boundary, cols = "x", half = 30, cores = 1L))
 #> [1] 5
 ```
 
@@ -288,7 +289,7 @@ length(num_cols)          # number of bins that survived
 
 ``` r
 
-step1 <- obsedele(step0, cols = num_cols, group = 4)
+step1 <- obsedele(step0, cols = num_cols, group = 4, cores = 1L)
 nrow(step1)
 #> [1] 772
 ```
@@ -314,7 +315,7 @@ indicate the presence of outliers and long stretches of missing data.
 ``` r
 
 step2 <- condextr(step1, cols = num_cols, group = 4,
-                  interval = 10, times = 10)
+                  interval = 10, times = 10, cores = 1L)
 nrow(step2)
 #> [1] 767
 ```
@@ -346,7 +347,7 @@ tighter, and the number of missing values (`na`) is much smaller.
 
 ``` r
 
-step3 <- shorvalu(step2, cols = num_cols)
+step3 <- shorvalu(step2, cols = num_cols, cores = 1L)
 sum(is.na(step2[, num_cols])) - sum(is.na(step3[, num_cols]))
 #> [1] 2563
 ```
@@ -383,7 +384,8 @@ res  <- dataprep(
   group    = 4,
   interval = 5,
   times    = 3,
-  half     = 30
+  half     = 30,
+  cores    = 1L
 )
 dim(res)
 #> [1] 875  39

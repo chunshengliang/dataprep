@@ -118,7 +118,8 @@ interpolation local.</p></li>
 <span>                    group      <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>                    interval   <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>                    times      <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>                    intervals  <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
+<span>                    intervals  <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>                    cores      <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 6942   39</span></span></code></pre></div>
 <p>The figure below compares the top and bottom percentile curves of
@@ -206,7 +207,7 @@ dataset.</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 20</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="../reference/obsedele.html">obsedele</a></span><span class="op">(</span><span class="va">df</span>, cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span>, group <span class="op">=</span> <span class="st">"group"</span>, half <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="../reference/obsedele.html">obsedele</a></span><span class="op">(</span><span class="va">df</span>, cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span>, group <span class="op">=</span> <span class="st">"group"</span>, half <span class="op">=</span> <span class="fl">2</span>, cores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="boundary-behaviour">Boundary behaviour<a class="anchor" aria-label="anchor" href="#boundary-behaviour"></a>
@@ -216,7 +217,7 @@ dataset.</p>
 <span>  date <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2024-01-01 00:00:00"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">0</span><span class="op">:</span><span class="fl">4</span> <span class="op">*</span> <span class="fl">600</span>,</span>
 <span>  x    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">5</span><span class="op">)</span>   <span class="co"># anchors at 0 and 40 minutes</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="../reference/obsedele.html">obsedele</a></span><span class="op">(</span><span class="va">df_boundary</span>, cols <span class="op">=</span> <span class="st">"x"</span>, half <span class="op">=</span> <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="../reference/obsedele.html">obsedele</a></span><span class="op">(</span><span class="va">df_boundary</span>, cols <span class="op">=</span> <span class="st">"x"</span>, half <span class="op">=</span> <span class="fl">30</span>, cores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 5</span></span></code></pre></div>
 <p>All five rows survive: the two interior rows are 10 and 20 minutes
 from the nearest anchor, and the middle row is exactly 30 minutes
@@ -322,7 +323,7 @@ steps.</p>
 <h3 id="step-2-observation-deletion">Step 2 — Observation deletion<a class="anchor" aria-label="anchor" href="#step-2-observation-deletion"></a>
 </h3>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">step1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/obsedele.html">obsedele</a></span><span class="op">(</span><span class="va">step0</span>, cols <span class="op">=</span> <span class="va">num_cols</span>, group <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">step1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/obsedele.html">obsedele</a></span><span class="op">(</span><span class="va">step0</span>, cols <span class="op">=</span> <span class="va">num_cols</span>, group <span class="op">=</span> <span class="fl">4</span>, cores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">step1</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 772</span></span></code></pre></div>
 <p>Rows whose selected bins contain a gap longer than <code>half</code>
@@ -345,7 +346,7 @@ data.</p>
 </h3>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">step2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/condextr.html">condextr</a></span><span class="op">(</span><span class="va">step1</span>, cols <span class="op">=</span> <span class="va">num_cols</span>, group <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>                  interval <span class="op">=</span> <span class="fl">10</span>, times <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span>                  interval <span class="op">=</span> <span class="fl">10</span>, times <span class="op">=</span> <span class="fl">10</span>, cores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">step2</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 767</span></span></code></pre></div>
 <p><code>condextr</code> combines a percentile threshold with an error
@@ -372,7 +373,7 @@ smaller.</p>
 <h3 id="step-4-short-period-interpolation">Step 4 — Short-period interpolation<a class="anchor" aria-label="anchor" href="#step-4-short-period-interpolation"></a>
 </h3>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">step3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shorvalu.html">shorvalu</a></span><span class="op">(</span><span class="va">step2</span>, cols <span class="op">=</span> <span class="va">num_cols</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">step3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shorvalu.html">shorvalu</a></span><span class="op">(</span><span class="va">step2</span>, cols <span class="op">=</span> <span class="va">num_cols</span>, cores <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">step2</span><span class="op">[</span>, <span class="va">num_cols</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">step3</span><span class="op">[</span>, <span class="va">num_cols</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 2563</span></span></code></pre></div>
 <p><code>shorvalu</code> fills remaining short gaps (within
@@ -406,7 +407,8 @@ fast.</p>
 <span>  group    <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  interval <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  times    <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>  half     <span class="op">=</span> <span class="fl">30</span></span>
+<span>  half     <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>  cores    <span class="op">=</span> <span class="fl">1L</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 875  39</span></span></code></pre></div>
