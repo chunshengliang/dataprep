@@ -48,9 +48,7 @@ draws a line plot with a log-scaled x axis.
 ``` r
 
 descplot(data1, cols = 3:7) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-3-1.png)
@@ -63,9 +61,7 @@ Pass a subset of statistics by index or by name to focus the plot.
 
 descplot(data1, cols = 3:7,
          stats = c("na", "min", "max", "IQR")) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-4-1.png)
@@ -83,9 +79,7 @@ falls back to a bar chart.
 ``` r
 
 descplot(data1, cols = 3:7) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-5-1.png)
@@ -95,9 +89,7 @@ descplot(data1, cols = 3:7) +
 ``` r
 
 descplot(data1, cols = 3:7, stats = c("min", "max", "IQR")) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-6-1.png)
@@ -146,9 +138,7 @@ and
 ``` r
 
 percplot(data1, cols = 3:7, group = 2) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-9-1.png)
@@ -158,9 +148,7 @@ percplot(data1, cols = 3:7, group = 2) +
 ``` r
 
 percplot(data1, cols = 3:7, group = 2, part = "top") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-10-1.png)
@@ -170,9 +158,7 @@ percplot(data1, cols = 3:7, group = 2, part = "top") +
 ``` r
 
 percplot(data1, cols = 3:7, group = 2, part = "bottom") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-11-1.png)
@@ -185,9 +171,7 @@ with `num_xaxis = "numeric"`.
 ``` r
 
 percplot(data1, cols = 3:7, group = 2, num_xaxis = "numeric") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-12-1.png)
@@ -241,9 +225,7 @@ percplot(data1, cols = 3:7, group = 2) +
   ggplot2::theme_bw(base_size = 11) +
   ggplot2::labs(title = "Percentile curves by month",
                 x = "Variable", y = "Value") +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 30,
-                                        hjust = 1, vjust = 1.1))
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
 ![](dataprep-plots_files/figure-html/unnamed-chunk-14-1.png)
