@@ -1,8 +1,6 @@
 ---
 title: "dataprep: design philosophy and preprocessing methodology"
-output:
-  rmarkdown::html_vignette:
-    css: custom.css
+output: rmarkdown::html_vignette
 vignette: >
   %\documentclass{article}
   %\VignetteIndexEntry{dataprep: design philosophy and preprocessing methodology}
@@ -16,8 +14,8 @@ knitr::opts_chunk$set(
   comment   = "#>",
   fig.align = "center",
   fig.width = 6,
-  fig.height = 4,
-  out.width = "80%",
+  fig.height = 5.5,
+  out.width = "75%",
   fig.retina = 2
 )
 ```
@@ -45,7 +43,7 @@ claim.
 
 ## The four-step pipeline
 
-```{r, echo = FALSE, out.width = "80%"}
+```{r, echo = FALSE, out.width = "70%"}
 knitr::include_graphics("figures/fig1_pipeline.png")
 ```
 
@@ -234,7 +232,7 @@ removal.
 
 ## Outlier removal: two principles
 
-```{r, echo = FALSE, out.width = "80%"}
+```{r, echo = FALSE, out.width = "70%"}
 knitr::include_graphics("figures/Outlier_Comparison.png")
 ```
 
@@ -284,7 +282,7 @@ ground-truth-like reference (`percoutl`) is available.
 
 ## Missing-value interpolation: two principles
 
-```{r, echo = FALSE, out.width = "80%"}
+```{r, echo = FALSE, out.width = "70%"}
 knitr::include_graphics("figures/Time_Series_Interpolation_Final.png")
 ```
 

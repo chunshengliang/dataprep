@@ -1,8 +1,6 @@
 ---
 title: "dataprep: cleaning pipeline"
-output:
-  rmarkdown::html_vignette:
-    css: custom.css
+output: rmarkdown::html_vignette
 vignette: >
   %\documentclass{article}
   %\VignetteIndexEntry{dataprep: cleaning pipeline}
@@ -16,8 +14,8 @@ knitr::opts_chunk$set(
   comment   = "#>",
   fig.align = "center",
   fig.width = 6,
-  fig.height = 4,
-  out.width = "80%",
+  fig.height = 5.5,
+  out.width = "95%",
   fig.retina = 2
 )
 ```
@@ -46,7 +44,7 @@ The cleaning pipeline is organised around four sequential steps,
 each addressing a distinct failure mode of high-resolution
 environmental data:
 
-```{r, echo = FALSE, out.width = "80%"}
+```{r, echo = FALSE, out.width = "70%"}
 knitr::include_graphics("figures/fig1_pipeline.png")
 ```
 
@@ -89,7 +87,7 @@ every size bin before and after preprocessing. The label inside
 each facet reports the number of observations (`n`) and the number
 of missing values (`na`) in that group.
 
-```{r}
+```{r, fig.height = 4.5, fig.width = 7}
 percplot(
   rbind(
     transform(data[names(cleaned)],      g = "original"),
@@ -304,7 +302,7 @@ missing run.
 
 #### Before cleaning
 
-```{r}
+```{r, fig.height = 4, fig.width = 6.5}
 percplot(step0, cols = num_cols, group = 4)
 ```
 
@@ -332,7 +330,7 @@ alone.
 
 #### After cleaning
 
-```{r}
+```{r, fig.height = 4, fig.width = 6.5}
 percplot(step2, cols = num_cols, group = 4)
 ```
 
@@ -515,7 +513,7 @@ upstream state. This is what "short-period grouping
 interpolation" means: interpolation is applied only where the
 value can be read from a nearby observation in the same segment.
 
-```{r, echo = FALSE, out.width = "80%"}
+```{r, echo = FALSE, out.width = "70%"}
 knitr::include_graphics("figures/Time_Series_Interpolation_Final.png")
 ```
 

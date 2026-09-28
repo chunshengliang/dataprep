@@ -1,8 +1,6 @@
 ---
 title: "dataprep: fast reshaping with melt() and dcast()"
-output:
-  rmarkdown::html_vignette:
-    css: custom.css
+output: rmarkdown::html_vignette
 vignette: >
   %\documentclass{article}
   %\VignetteIndexEntry{dataprep: fast reshaping with melt() and dcast()}
@@ -16,8 +14,8 @@ knitr::opts_chunk$set(
   comment   = "#>",
   fig.align = "center",
   fig.width = 6,
-  fig.height = 4,
-  out.width = "80%",
+  fig.height = 5.5,
+  out.width = "75%",
   fig.retina = 2
 )
 ```

@@ -180,6 +180,12 @@ percplot <- function(data, cols = NULL, group = NULL, diff = 0.1,
     }
   }
 
+  # Extra top margin so the legend's "n:... / na:..." block fits
+  # inside the canvas at small fig.height values.
+  p <- p + ggplot2::theme(
+    plot.margin = ggplot2::margin(t = 15, r = 8, b = 8, l = 8, unit = "pt")
+  )
+
   if (verbose) cat("Time used by percplot:", format(Sys.time() - t0, digits = 3), "\n")
   p
 }
