@@ -34,7 +34,9 @@ percdata(data, cols = NULL, group = NULL, diff = 0.1,
 
 - part:
 
-  Which parts to return: `"both"` (default), `"bottom"`, or `"top"`.
+  Which parts to return: `"both"` (default), `"bottom"`, or `"top"`. For
+  backward compatibility, `part` also accepts the integer codes `2`
+  (`"both"`), `0` (`"bottom"`), and `1` (`"top"`).
 
 - na.rm:
 
@@ -46,8 +48,9 @@ percdata(data, cols = NULL, group = NULL, diff = 0.1,
 
 ## Details
 
-The function uses a C++ quantile implementation to speed up
-calculations. For grouped data, percentiles are computed within each
+The function uses
+[`stats::quantile()`](https://rdrr.io/r/stats/quantile.html) on each
+selected column. For grouped data, percentiles are computed within each
 group.
 
 ## Value
@@ -58,8 +61,8 @@ additional grouping column is present.
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest.
 
 ## Author
 

@@ -65,7 +65,7 @@
 <dd><p>Common difference between quantile probabilities. Default is 0.1.</p></dd>
 
   <dt id="arg-part">part<a class="anchor" aria-label="anchor" href="#arg-part"></a></dt>
-<dd><p>Which parts to return: <code>"both"</code> (default), <code>"bottom"</code>, or <code>"top"</code>.</p></dd>
+<dd><p>Which parts to return: <code>"both"</code> (default), <code>"bottom"</code>, or <code>"top"</code>. For backward compatibility, <code>part</code> also accepts the integer codes <code>2</code> (<code>"both"</code>), <code>0</code> (<code>"bottom"</code>), and <code>1</code> (<code>"top"</code>).</p></dd>
 
   <dt id="arg-na-rm">na.rm<a class="anchor" aria-label="anchor" href="#arg-na-rm"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, NA values are removed before quantile computation.</p></dd>
@@ -76,7 +76,7 @@
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The function uses a C++ quantile implementation to speed up calculations. For grouped data, percentiles are computed within each group.</p>
+    <p>The function uses <code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">stats::quantile()</a></code> on each selected column. For grouped data, percentiles are computed within each group.</p>
     </div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -84,7 +84,7 @@
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
-    <p>1. Example data is from https://smear.avaa.csc.fi/download. It includes particle number concentrations in SMEAR I Varrio forest.</p>
+    <p>1. Example data is from <a href="https://smear.avaa.csc.fi/download" class="external-link">https://smear.avaa.csc.fi/download</a>. It includes particle number concentrations in SMEAR I Varrio forest.</p>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>

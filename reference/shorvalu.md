@@ -51,8 +51,8 @@ each period.
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest.
 
 ## Author
 

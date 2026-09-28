@@ -41,7 +41,7 @@ roll_apply(data, cols = NULL, window = 3, method = "mean",
 
 - date_col:
 
-  Time column (not required, used only to order if provided).
+  Not used. Present for interface consistency.
 
 - verbose:
 

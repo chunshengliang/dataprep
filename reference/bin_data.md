@@ -48,7 +48,7 @@ bin_data(data, cols = NULL, method = "equal_width",
 
 - verbose:
 
-  Logical; if `TRUE`, prints bin counts and timing information.
+  Logical; if `TRUE`, prints a timing message.
 
 ## Details
 

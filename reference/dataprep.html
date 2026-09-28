@@ -67,8 +67,11 @@
   <dt id="arg-optimal">optimal<a class="anchor" aria-label="anchor" href="#arg-optimal"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, <code>optisolu</code> is used to find optimal <code>interval</code> and <code>times</code>.</p></dd>
 
-  <dt id="arg-interval-times">interval, times<a class="anchor" aria-label="anchor" href="#arg-interval-times"></a></dt>
-<dd><p>Parameters for <code>condextr</code>.</p></dd>
+  <dt id="arg-interval">interval<a class="anchor" aria-label="anchor" href="#arg-interval"></a></dt>
+<dd><p>Number of outlier-marking rounds between two observation-deletion rounds inside <code>condextr</code>.</p></dd>
+
+  <dt id="arg-times">times<a class="anchor" aria-label="anchor" href="#arg-times"></a></dt>
+<dd><p>Number of observation-deletion rounds in <code>condextr</code>.</p></dd>
 
   <dt id="arg-fraction">fraction<a class="anchor" aria-label="anchor" href="#arg-fraction"></a></dt>
 <dd><p>Missing proportion threshold for variable deletion.</p></dd>
@@ -76,8 +79,11 @@
   <dt id="arg-top-top-error-top-magnitude-bottom-bottom-error-bottom-magnitude">top, top.error, top.magnitude, bottom, bottom.error, bottom.magnitude<a class="anchor" aria-label="anchor" href="#arg-top-top-error-top-magnitude-bottom-bottom-error-bottom-magnitude"></a></dt>
 <dd><p>Outlier removal parameters.</p></dd>
 
-  <dt id="arg-by-half">by, half<a class="anchor" aria-label="anchor" href="#arg-by-half"></a></dt>
-<dd><p>Time parameters for observation deletion.</p></dd>
+  <dt id="arg-by">by<a class="anchor" aria-label="anchor" href="#arg-by"></a></dt>
+<dd><p>Time unit for observation deletion. An invalid unit string raises an error.</p></dd>
+
+  <dt id="arg-half">half<a class="anchor" aria-label="anchor" href="#arg-half"></a></dt>
+<dd><p>Half window size in minutes for observation deletion.</p></dd>
 
   <dt id="arg-intervals">intervals<a class="anchor" aria-label="anchor" href="#arg-intervals"></a></dt>
 <dd><p>Time gap for interpolation periods.</p></dd>
@@ -100,7 +106,7 @@
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
-    <p>1. Example data is from https://smear.avaa.csc.fi/download. It includes particle number concentrations in SMEAR I Varrio forest.</p>
+    <p>1. Example data is from <a href="https://smear.avaa.csc.fi/download" class="external-link">https://smear.avaa.csc.fi/download</a>. It includes particle number concentrations in SMEAR I Varrio forest.</p>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>

@@ -60,10 +60,10 @@ A `ggplot` object displaying the descriptive statistics.
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest. 2. Wickham, H.
-2016. ggplot2: elegant graphics for data analysis. Springer-Verlag New
-York.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest. 2.
+Wickham, H. 2016. ggplot2: elegant graphics for data analysis.
+Springer-Verlag New York.
 
 ## Author
 

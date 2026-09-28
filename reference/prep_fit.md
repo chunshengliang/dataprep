@@ -66,8 +66,8 @@ prep_fit(data, steps = c("varidele", "obsedele", "outlier", "impute", "scale"),
 
 - half:
 
-  Half window size for consecutive missing value deletion (see
-  `obsedele`).
+  Half window size in minutes for consecutive missing value deletion
+  (see `obsedele`).
 
 - method_outlier:
 

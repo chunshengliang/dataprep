@@ -34,9 +34,14 @@ half = 30, intervals = 30, date_col = NULL, cores = NULL, verbose = FALSE)
   Logical; if `TRUE`, `optisolu` is used to find optimal `interval` and
   `times`.
 
-- interval, times:
+- interval:
 
-  Parameters for `condextr`.
+  Number of outlier-marking rounds between two observation-deletion
+  rounds inside `condextr`.
+
+- times:
+
+  Number of observation-deletion rounds in `condextr`.
 
 - fraction:
 
@@ -46,9 +51,14 @@ half = 30, intervals = 30, date_col = NULL, cores = NULL, verbose = FALSE)
 
   Outlier removal parameters.
 
-- by, half:
+- by:
 
-  Time parameters for observation deletion.
+  Time unit for observation deletion. An invalid unit string raises an
+  error.
+
+- half:
+
+  Half window size in minutes for observation deletion.
 
 - intervals:
 
@@ -77,8 +87,8 @@ A preprocessed data frame.
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest.
 
 ## Author
 

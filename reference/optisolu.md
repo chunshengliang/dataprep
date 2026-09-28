@@ -68,7 +68,7 @@ verbose = FALSE)
 
 - half:
 
-  Half window size for observation deletion.
+  Half window size in minutes for observation deletion.
 
 - date_col:
 
@@ -97,8 +97,8 @@ A data frame with columns: `case`, `interval`, `times`, `sdr`, `orr`,
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest.
 
 ## Author
 

@@ -22,7 +22,7 @@ detect_outliers(data, cols = NULL, method = "iqr",
 - cols:
 
   The column indices or names of selected variables. If NULL, all
-  columns are used.
+  numeric columns are used.
 
 - method:
 

@@ -22,7 +22,8 @@ data_report(data, cols = NULL, date_col = NULL, verbose = FALSE)
 
 - date_col:
 
-  Optional time column for time gap analysis.
+  Reserved for future use; currently ignored (passed through to
+  [`na_diagnose`](https://chunshengliang.github.io/dataprep/reference/na_diagnose.md)).
 
 - verbose:
 
@@ -35,8 +36,8 @@ missing value diagnosis, and descriptive statistics.
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest.
 
 ## Author
 

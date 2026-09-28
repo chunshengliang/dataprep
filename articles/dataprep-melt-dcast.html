@@ -217,9 +217,10 @@ AVX-512; R 4.6.1 (ucrt), GCC 14.3.0.</p></li>
 </h3>
 <p>Row-major (<code>"row"</code>) is usually faster when there are few
 measure columns; column-major (<code>"col"</code>) is often faster when
-there are many measure columns because bulk copies dominate. Passing
-<code>major = NULL</code> (the default) lets the C++ backend choose
-based on the input shape.</p>
+there are many measure columns because bulk copies dominate.
+<code>major = NULL</code> (the default) is equivalent to
+<code>"col"</code>; there is no automatic switching based on the input
+shape.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wide50</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">100</span>,</span>
 <span>                     <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="fl">50</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">50</span><span class="op">)</span><span class="op">)</span></span>
@@ -256,7 +257,7 @@ session.</p>
 <p><code>melt_cpp</code> uses six design choices that matter at
 scale.</p>
 <div class="section level3">
-<h3 id="two-layout-paths-chosen-automatically">1. Two layout paths chosen automatically<a class="anchor" aria-label="anchor" href="#two-layout-paths-chosen-automatically"></a>
+<h3 id="two-layout-paths-selected-by-major">1. Two layout paths, selected by <code>major</code><a class="anchor" aria-label="anchor" href="#two-layout-paths-selected-by-major"></a>
 </h3>
 <p><code><a href="../reference/melt.html">melt()</a></code> produces the same long-format table as
 <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code> (column-major, <code>major = "col"</code>)
@@ -274,8 +275,9 @@ columns is moderate.</p></li>
 this is compact, but for large <code>n_meas</code> it requires a per-row
 transpose.</p></li>
 </ul>
-<p>Passing <code>major = NULL</code> (the default) lets the backend pick
-the layout based on the input shape.</p>
+<p><code>major = NULL</code> (the default) is equivalent to
+<code>"col"</code>; there is no automatic switching based on the input
+shape.</p>
 </div>
 <div class="section level3">
 <h3 id="simd-streaming-stores">2. SIMD streaming stores<a class="anchor" aria-label="anchor" href="#simd-streaming-stores"></a>

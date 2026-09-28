@@ -20,7 +20,9 @@ encode_categorical(data, cols = NULL, method = "label",
 - cols:
 
   The column indices or names of selected categorical variables. If
-  NULL, all factor/character columns are used.
+  `NULL` (default), all factor and character columns are selected
+  automatically. An error is raised if any explicitly selected column is
+  not categorical.
 
 - method:
 

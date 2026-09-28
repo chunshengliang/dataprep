@@ -35,7 +35,7 @@ obsedele(
 
   Time unit used only to validate the internal `step_sec`. The 0.1.7
   anchor-based scan does not use a regular grid, so this argument does
-  not affect the result.
+  not affect the result. An invalid unit string raises an error.
 
 - half:
 

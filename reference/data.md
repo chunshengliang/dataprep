@@ -278,9 +278,9 @@ A data frame with 7,640 observations on the following 65 variables.
 ## Details
 
 The 61 numeric channels between `1` and `1000` are size bins of the
-differential particle number size distribution, logarithmically spaced
-at 64 channels per decade. Column names are the geometric mean diameter
-in nanometres, written in the shortest form that R accepts as a name (so
+differential particle number size distribution, approximately
+logarithmically spaced. Column names are the geometric mean diameter in
+nanometres, written in the shortest form that R accepts as a name (so
 `1` rather than `1.00`, and `10` rather than `10.0`). Values are number
 concentrations in cm\\^{-3}\\. `tconc` and `TPNC` are integrals of the
 size distribution; `monthyear` is the month label used for group-wise

@@ -42,9 +42,14 @@ times = 10, date_col = NULL, cores = NULL, verbose = FALSE)
 
   Number of outlier marking iterations between observation deletions.
 
-- by, half:
+- by:
 
-  Time parameters for observation deletion.
+  Time unit for observation deletion. An invalid unit string raises an
+  error.
+
+- half:
+
+  Half window size in minutes for observation deletion.
 
 - times:
 
@@ -77,8 +82,8 @@ A data frame with outliers removed.
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest.
 
 ## Author
 

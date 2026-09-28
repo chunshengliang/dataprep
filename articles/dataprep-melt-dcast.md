@@ -146,8 +146,9 @@ melt(df_na, id.vars = "id",
 
 Row-major (`"row"`) is usually faster when there are few measure
 columns; column-major (`"col"`) is often faster when there are many
-measure columns because bulk copies dominate. Passing `major = NULL`
-(the default) lets the C++ backend choose based on the input shape.
+measure columns because bulk copies dominate. `major = NULL` (the
+default) is equivalent to `"col"`; there is no automatic switching based
+on the input shape.
 
 ``` r
 
@@ -185,7 +186,7 @@ options(dataprep.cores = NULL)
 
 `melt_cpp` uses six design choices that matter at scale.
 
-### 1. Two layout paths chosen automatically
+### 1. Two layout paths, selected by `major`
 
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 produces the same long-format table as
@@ -204,8 +205,8 @@ access patterns:
   small `n_meas` this is compact, but for large `n_meas` it requires a
   per-row transpose.
 
-Passing `major = NULL` (the default) lets the backend pick the layout
-based on the input shape.
+`major = NULL` (the default) is equivalent to `"col"`; there is no
+automatic switching based on the input shape.
 
 ### 2. SIMD streaming stores
 

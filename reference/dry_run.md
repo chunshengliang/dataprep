@@ -57,7 +57,7 @@ dry_run(data, steps = c("varidele", "obsedele", "outlier"),
 
 - half:
 
-  Half window size for consecutive missing deletion.
+  Half window size in minutes for consecutive missing deletion.
 
 - method_outlier:
 

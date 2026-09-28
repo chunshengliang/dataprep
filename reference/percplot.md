@@ -30,7 +30,9 @@ percplot(data, cols = NULL, group = NULL, diff = 0.1,
 
 - part:
 
-  Which part to plot: `"both"`, `"bottom"`, or `"top"`.
+  Which part to plot: `"both"`, `"bottom"`, or `"top"`. For backward
+  compatibility, `part` also accepts the integer codes `2` (`"both"`),
+  `0` (`"bottom"`), and `1` (`"top"`).
 
 - ncol:
 
@@ -54,10 +56,10 @@ A `ggplot` object.
 
 ## References
 
-1\. Example data is from https://smear.avaa.csc.fi/download. It includes
-particle number concentrations in SMEAR I Varrio forest. 2. Wickham, H.
-2016. ggplot2: elegant graphics for data analysis. Springer-Verlag New
-York.
+1\. Example data is from <https://smear.avaa.csc.fi/download>. It
+includes particle number concentrations in SMEAR I Varrio forest. 2.
+Wickham, H. 2016. ggplot2: elegant graphics for data analysis.
+Springer-Verlag New York.
 
 ## Author
 
