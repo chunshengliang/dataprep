@@ -278,7 +278,7 @@ data_report(data1, cols = 3:7, verbose = TRUE)
 #> 4 6495.960 926.9235
 #> 5 6474.645 927.0629
 #> 
-#> Time used by data_report: 0.00762 secs
+#> Time used by data_report: 0.00968 secs
 invisible(data_report(data1, cols = 3:7))
 ```
 
