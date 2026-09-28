@@ -129,7 +129,8 @@
 <p><strong>Note for Windows users</strong></p>
 <p>When installing from GitHub with <code>remotes::install_github()</code>, Windows users may see:</p>
 <blockquote>
-<p>Warning: file ‘dataprep/configure’ did not have execute permissions: corrected Warning: file ‘dataprep/cleanup’ did not have execute permissions: corrected</p>
+<p>Warning: file ‘dataprep/configure’ did not have execute permissions: corrected</p>
+<p>Warning: file ‘dataprep/cleanup’ did not have execute permissions: corrected</p>
 </blockquote>
 <p>This is expected and harmless. Windows NTFS does not preserve Unix execute bits, so <code>R CMD build</code> corrects them automatically. The <code>configure.win</code> and <code>cleanup.win</code> scripts still run, and the package installs and works normally — <strong>the warning does not affect any functionality in any way</strong>. Linux, macOS, and CRAN checks do not emit this warning, and Windows users installing the CRAN binary package with <code>install.packages("dataprep")</code> are not affected either.</p>
 </div>
