@@ -135,7 +135,7 @@ of missing values (<code>na</code>) in that group.</p>
 <span>  cols  <span class="op">=</span> <span class="fu">size_bin_cols</span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span>,</span>
 <span>  group <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-cleaning_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="700" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-cleaning_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
 <p>The preprocessed curves are visibly tighter: the extreme tails are
 shorter, the interquartile band is narrower, and the number of missing
 values (<code>na</code>) drops dramatically because whole rows with long
@@ -335,7 +335,7 @@ missing run.</p>
 </h4>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/percplot.html">percplot</a></span><span class="op">(</span><span class="va">step0</span>, cols <span class="op">=</span> <span class="va">num_cols</span>, group <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-cleaning_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="700" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-cleaning_files/figure-html/unnamed-chunk-12-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
 <p>Long, flat tails at the low and high end of the size distribution
 indicate the presence of outliers and long stretches of missing
 data.</p>
@@ -362,7 +362,7 @@ marking alone.</p>
 </h4>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/percplot.html">percplot</a></span><span class="op">(</span><span class="va">step2</span>, cols <span class="op">=</span> <span class="va">num_cols</span>, group <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
-<p><img src="dataprep-cleaning_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="700" style="display: block; margin: auto;"></p>
+<p><img src="dataprep-cleaning_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="95%" style="display: block; margin: auto;"></p>
 <p>Compare with the earlier figure: the top and bottom percentile curves
 are smoother, the extreme tails are shorter, the interquartile band is
 tighter, and the number of missing values (<code>na</code>) is much
