@@ -23,7 +23,7 @@ dry_run(data, steps = c("varidele", "obsedele", "outlier"),
   \item{top}{Top percentile for outlier detection (percentile method).}
   \item{bottom}{Bottom percentile for outlier detection (percentile method).}
   \item{by}{Time unit for consecutive missing deletion (see \code{obsedele}).}
-  \item{half}{Half window size for consecutive missing deletion.}
+  \item{half}{Half window size in minutes for consecutive missing deletion.}
   \item{method_outlier}{Outlier detection method: \code{"iqr"}, \code{"mad"}, or \code{"percentile"}.}
   \item{coef}{Coefficient for IQR or MAD outlier detection.}
   \item{verbose}{Logical; if \code{TRUE}, prints progress message.}

@@ -24,7 +24,7 @@ prep_fit(data, steps = c("varidele", "obsedele", "outlier", "impute", "scale"),
   \item{top}{Top percentile used by the percentile outlier detection method.}
   \item{bottom}{Bottom percentile used by the percentile outlier detection method.}
   \item{by}{Time extension unit for observation deletion (see \code{obsedele}).}
-  \item{half}{Half window size for consecutive missing value deletion (see \code{obsedele}).}
+  \item{half}{Half window size in minutes for consecutive missing value deletion (see \code{obsedele}).}
   \item{method_outlier}{Outlier detection method: \code{"iqr"}, \code{"mad"}, or \code{"percentile"}.}
   \item{coef}{Coefficient for IQR or MAD outlier detection.}
   \item{method_impute}{Missing value imputation method: \code{"linear"}, \code{"locf"}, \code{"nocb"}, \code{"mean"}, or \code{"median"}.}

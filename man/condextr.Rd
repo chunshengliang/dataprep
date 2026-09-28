@@ -19,7 +19,8 @@ times = 10, date_col = NULL, cores = NULL, verbose = FALSE)
   \item{top, top.error, top.magnitude}{Parameters for the top threshold.}
   \item{bottom, bottom.error, bottom.magnitude}{Parameters for the bottom threshold.}
   \item{interval}{Number of outlier marking iterations between observation deletions.}
-  \item{by, half}{Time parameters for observation deletion.}
+  \item{by}{Time unit for observation deletion. An invalid unit string raises an error.}
+  \item{half}{Half window size in minutes for observation deletion.}
   \item{times}{Number of observation deletions.}
   \item{date_col}{Time column index or name.}
   \item{cores}{Number of CPU cores passed to the C++ backend. \code{NULL} (default) lets the backend choose based on data size.}
@@ -32,7 +33,7 @@ The method marks values as outliers if they are the maximum or minimum and excee
 A data frame with outliers removed.
 }
 \references{
-1. Example data is from https://smear.avaa.csc.fi/download. It includes particle number concentrations in SMEAR I Varrio forest.
+1. Example data is from \url{https://smear.avaa.csc.fi/download}. It includes particle number concentrations in SMEAR I Varrio forest.
 }
 \author{
 Chun-Sheng Liang <chun-shengliang@qq.com>

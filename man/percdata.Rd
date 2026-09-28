@@ -15,18 +15,18 @@ percdata(data, cols = NULL, group = NULL, diff = 0.1,
   \item{cols}{Column indices or names of numeric variables. If \code{NULL}, all numeric columns are used.}
   \item{group}{Optional grouping column index or name. If provided, percentiles are computed separately for each group.}
   \item{diff}{Common difference between quantile probabilities. Default is 0.1.}
-  \item{part}{Which parts to return: \code{"both"} (default), \code{"bottom"}, or \code{"top"}.}
+  \item{part}{Which parts to return: \code{"both"} (default), \code{"bottom"}, or \code{"top"}. For backward compatibility, \code{part} also accepts the integer codes \code{2} (\code{"both"}), \code{0} (\code{"bottom"}), and \code{1} (\code{"top"}).}
   \item{na.rm}{Logical; if \code{TRUE}, NA values are removed before quantile computation.}
   \item{verbose}{Logical; if \code{TRUE}, prints timing message.}
 }
 \details{
-The function uses a C++ quantile implementation to speed up calculations. For grouped data, percentiles are computed within each group.
+The function uses \code{stats::quantile()} on each selected column. For grouped data, percentiles are computed within each group.
 }
 \value{
 A data frame with rows corresponding to percentiles and columns corresponding to variables (plus a \code{percentile} column). If grouped, an additional grouping column is present.
 }
 \references{
-1. Example data is from https://smear.avaa.csc.fi/download. It includes particle number concentrations in SMEAR I Varrio forest.
+1. Example data is from \url{https://smear.avaa.csc.fi/download}. It includes particle number concentrations in SMEAR I Varrio forest.
 }
 \author{
 Chun-Sheng Liang <chun-shengliang@qq.com>

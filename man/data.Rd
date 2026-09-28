@@ -85,7 +85,7 @@ A data frame with 7,640 observations on the following 65 variables.
 \details{
 The 61 numeric channels between \code{1} and \code{1000} are size
 bins of the differential particle number size distribution,
-logarithmically spaced at 64 channels per decade. Column names are
+approximately logarithmically spaced. Column names are
 the geometric mean diameter in nanometres, written in the shortest
 form that R accepts as a name (so \code{1} rather than \code{1.00},
 and \code{10} rather than \code{10.0}). Values are number

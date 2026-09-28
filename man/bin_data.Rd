@@ -21,7 +21,7 @@ bin_data(data, cols = NULL, method = "equal_width",
   \item{breaks}{Numeric vector of breakpoints for custom binning. Required when \code{method = "custom"}.}
   \item{labels}{Optional character vector of labels for the bins.}
   \item{include_lowest}{Logical; if \code{TRUE}, the lowest break value is included in the first bin.}
-  \item{verbose}{Logical; if \code{TRUE}, prints bin counts and timing information.}
+  \item{verbose}{Logical; if \code{TRUE}, prints a timing message.}
 }
 \details{
   For \code{"equal_width"}, bins are created by dividing the range of the data into

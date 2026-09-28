@@ -13,7 +13,7 @@ detect_outliers(data, cols = NULL, method = "iqr",
 }
 \arguments{
   \item{data}{A data frame, matrix, or numeric vector.}
-  \item{cols}{The column indices or names of selected variables. If NULL, all columns are used.}
+  \item{cols}{The column indices or names of selected variables. If NULL, all numeric columns are used.}
   \item{method}{Detection method. One of "iqr" (default), "mad", "percentile".}
   \item{top}{The top percentile threshold for percentile method.}
   \item{bottom}{The bottom percentile threshold for percentile method.}

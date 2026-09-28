@@ -30,7 +30,7 @@ verbose = FALSE)
   \item{bottom.error}{Error margin for the bottom threshold.}
   \item{bottom.magnitude}{Magnitude margin for the bottom threshold.}
   \item{by}{Time unit used when computing observation deletion.}
-  \item{half}{Half window size for observation deletion.}
+  \item{half}{Half window size in minutes for observation deletion.}
   \item{date_col}{Time column index or name.}
   \item{cores}{Number of CPU cores.}
   \item{verbose}{Logical; if \code{TRUE}, prints progress message.}
@@ -45,7 +45,7 @@ A data frame with columns: \code{case}, \code{interval}, \code{times},
 \code{optimal} (logical).
 }
 \references{
-1. Example data is from https://smear.avaa.csc.fi/download. It includes
+1. Example data is from \url{https://smear.avaa.csc.fi/download}. It includes
    particle number concentrations in SMEAR I Varrio forest.
 }
 \author{

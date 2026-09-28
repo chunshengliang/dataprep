@@ -325,20 +325,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// sample_data_cpp
-IntegerVector sample_data_cpp(IntegerVector group, int size_per_group, bool replace, int seed);
-RcppExport SEXP _dataprep_sample_data_cpp(SEXP groupSEXP, SEXP size_per_groupSEXP, SEXP replaceSEXP, SEXP seedSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
-    Rcpp::traits::input_parameter< int >::type size_per_group(size_per_groupSEXP);
-    Rcpp::traits::input_parameter< bool >::type replace(replaceSEXP);
-    Rcpp::traits::input_parameter< int >::type seed(seedSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_data_cpp(group, size_per_group, replace, seed));
-    return rcpp_result_gen;
-END_RCPP
-}
 // shorvalu_fill_cpp
 void shorvalu_fill_cpp(NumericMatrix x, IntegerVector starts, IntegerVector lens, int n_threads);
 RcppExport SEXP _dataprep_shorvalu_fill_cpp(SEXP xSEXP, SEXP startsSEXP, SEXP lensSEXP, SEXP n_threadsSEXP) {
@@ -437,7 +423,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dataprep_obsedele_cpp", (DL_FUNC) &_dataprep_obsedele_cpp, 7},
     {"_dataprep_quantile_cpp", (DL_FUNC) &_dataprep_quantile_cpp, 2},
     {"_dataprep_roll_stats_cpp", (DL_FUNC) &_dataprep_roll_stats_cpp, 3},
-    {"_dataprep_sample_data_cpp", (DL_FUNC) &_dataprep_sample_data_cpp, 4},
     {"_dataprep_shorvalu_fill_cpp", (DL_FUNC) &_dataprep_shorvalu_fill_cpp, 4},
     {"_dataprep_shorvalu_segment_cpp", (DL_FUNC) &_dataprep_shorvalu_segment_cpp, 2},
     {"_dataprep_snr_cpp", (DL_FUNC) &_dataprep_snr_cpp, 1},

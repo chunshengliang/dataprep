@@ -27,7 +27,7 @@ This function first calls \code{descdata} and then melts the result into a long 
 A \code{ggplot} object displaying the descriptive statistics.
 }
 \references{
-1. Example data is from https://smear.avaa.csc.fi/download. It includes particle number concentrations in SMEAR I Varrio forest.
+1. Example data is from \url{https://smear.avaa.csc.fi/download}. It includes particle number concentrations in SMEAR I Varrio forest.
 2. Wickham, H. 2016. ggplot2: elegant graphics for data analysis. Springer-Verlag New York.
 }
 \author{

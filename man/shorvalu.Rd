@@ -23,7 +23,7 @@ shorvalu(data, cols = NULL, intervals = 30, units = "mins",
 A data frame with missing values filled by linear interpolation within each period.
 }
 \references{
-1. Example data is from https://smear.avaa.csc.fi/download. It includes particle number concentrations in SMEAR I Varrio forest.
+1. Example data is from \url{https://smear.avaa.csc.fi/download}. It includes particle number concentrations in SMEAR I Varrio forest.
 }
 \author{
 Chun-Sheng Liang <chun-shengliang@qq.com>

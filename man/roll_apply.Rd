@@ -18,7 +18,7 @@ roll_apply(data, cols = NULL, window = 3, method = "mean",
   \item{method}{Statistic to compute: \code{"mean"}, \code{"sd"}, \code{"median"}, \code{"sum"}, \code{"min"}, \code{"max"}, or \code{"var"}.}
   \item{align}{Alignment of window: \code{"right"}, \code{"left"}, or \code{"center"}.}
   \item{group}{Optional grouping column for group-wise rolling computation.}
-  \item{date_col}{Time column (not required, used only to order if provided).}
+  \item{date_col}{Not used. Present for interface consistency.}
   \item{verbose}{Logical; if \code{TRUE}, prints progress message.}
 }
 \value{

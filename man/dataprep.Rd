@@ -18,10 +18,12 @@ half = 30, intervals = 30, date_col = NULL, cores = NULL, verbose = FALSE)
   \item{cols}{Column indices or names of numeric variables to process.}
   \item{group}{Grouping column index or name.}
   \item{optimal}{Logical; if \code{TRUE}, \code{optisolu} is used to find optimal \code{interval} and \code{times}.}
-  \item{interval, times}{Parameters for \code{condextr}.}
+  \item{interval}{Number of outlier-marking rounds between two observation-deletion rounds inside \code{condextr}.}
+  \item{times}{Number of observation-deletion rounds in \code{condextr}.}
   \item{fraction}{Missing proportion threshold for variable deletion.}
   \item{top, top.error, top.magnitude, bottom, bottom.error, bottom.magnitude}{Outlier removal parameters.}
-  \item{by, half}{Time parameters for observation deletion.}
+  \item{by}{Time unit for observation deletion. An invalid unit string raises an error.}
+  \item{half}{Half window size in minutes for observation deletion.}
   \item{intervals}{Time gap for interpolation periods.}
   \item{date_col}{Time column index or name. If \code{NULL}, automatically detected.}
   \item{cores}{Number of CPU cores passed to \code{obsedele()},
@@ -33,7 +35,7 @@ half = 30, intervals = 30, date_col = NULL, cores = NULL, verbose = FALSE)
 A preprocessed data frame.
 }
 \references{
-1. Example data is from https://smear.avaa.csc.fi/download. It includes particle number concentrations in SMEAR I Varrio forest.
+1. Example data is from \url{https://smear.avaa.csc.fi/download}. It includes particle number concentrations in SMEAR I Varrio forest.
 }
 \author{
 Chun-Sheng Liang <chun-shengliang@qq.com>

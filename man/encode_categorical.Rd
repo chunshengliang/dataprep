@@ -12,7 +12,7 @@ encode_categorical(data, cols = NULL, method = "label",
 }
 \arguments{
   \item{data}{A data frame containing categorical variables.}
-  \item{cols}{The column indices or names of selected categorical variables. If NULL, all factor/character columns are used.}
+  \item{cols}{The column indices or names of selected categorical variables. If \code{NULL} (default), all factor and character columns are selected automatically. An error is raised if any explicitly selected column is not categorical.}
   \item{method}{Encoding method. One of \code{"label"} (integer labels), \code{"frequency"} (frequency of each category), or \code{"onehot"} (binary indicator columns).}
   \item{group}{Optional grouping column for grouped frequency encoding.}
   \item{prefix}{Prefix for one-hot encoded column names (used only when \code{method = "onehot"}).}

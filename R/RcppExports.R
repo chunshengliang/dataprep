@@ -89,10 +89,6 @@ roll_stats_cpp <- function(x, window, method) {
     .Call(`_dataprep_roll_stats_cpp`, x, window, method)
 }
 
-sample_data_cpp <- function(group, size_per_group, replace = FALSE, seed = -1L) {
-    .Call(`_dataprep_sample_data_cpp`, group, size_per_group, replace, seed)
-}
-
 shorvalu_fill_cpp <- function(x, starts, lens, n_threads = 0L) {
     invisible(.Call(`_dataprep_shorvalu_fill_cpp`, x, starts, lens, n_threads))
 }

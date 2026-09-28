@@ -35,6 +35,11 @@ encode_categorical <- function(data, cols = NULL, method = "label",
     if (is.null(cols)) cols <- seq_len(ncol(data))
   }
 
+  # Default: select only factor and character columns
+  if (is.null(cols)) {
+    cols <- which(vapply(data, function(x) is.factor(x) || is.character(x), logical(1)))
+  }
+
   idx <- resolve_cols(data, cols)
   for (j in idx) {
     if (!is.factor(data[[j]]) && !is.character(data[[j]])) {
