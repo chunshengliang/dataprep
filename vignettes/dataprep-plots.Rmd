@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
   fig.align = "center",
   fig.width = 6,
   fig.height = 5.5,
-  out.width = "75%",
+  out.width = "80%",
   fig.retina = 2
 )
 ```
@@ -131,8 +131,20 @@ percplot(data1, cols = 3:7, group = 2, part = "top") +
 
 ### Bottom percentiles only
 
-```{r, fig.height = 3}
+```{r, fig.height = 3, fig.width = 7}
 percplot(data1, cols = 3:7, group = 2, part = "bottom") +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
+```
+
+### Percentile curves of the raw data
+
+When the column names are numeric, `percplot()` draws curves
+instead of bars. The 61 size-bin columns of `data` (`cols = 5:65`)
+have numeric names, so the default `num_xaxis = "auto"` selects a
+log-scaled x axis:
+
+```{r, fig.height = 4, fig.width = 7}
+percplot(data, cols = 5:65, group = 4) +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
@@ -142,7 +154,7 @@ For numeric variable names, the x axis can be forced to linear
 scale with `num_xaxis = "numeric"`.
 
 ```{r, fig.height = 4, fig.width = 7}
-percplot(data1, cols = 3:7, group = 2, num_xaxis = "numeric") +
+percplot(data, cols = 5:65, group = 4, num_xaxis = "numeric") +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
 ```
 
