@@ -1,6 +1,8 @@
 ---
 title: "dataprep: cleaning pipeline"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    css: custom.css
 vignette: >
   %\documentclass{article}
   %\VignetteIndexEntry{dataprep: cleaning pipeline}
@@ -13,7 +15,10 @@ knitr::opts_chunk$set(
   collapse  = TRUE,
   comment   = "#>",
   fig.align = "center",
-  out.width = "95%"
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "80%",
+  fig.retina = 2
 )
 ```
 
@@ -41,7 +46,7 @@ The cleaning pipeline is organised around four sequential steps,
 each addressing a distinct failure mode of high-resolution
 environmental data:
 
-```{r, echo = FALSE, out.width = "95%"}
+```{r, echo = FALSE, out.width = "80%"}
 knitr::include_graphics("figures/fig1_pipeline.png")
 ```
 
@@ -208,7 +213,7 @@ and interpolated points. The conditional-extremum rule removes
 only the extreme point of each window and leaves no artificial
 outlier behind.
 
-```{r, echo = FALSE, out.width = "95%"}
+```{r, echo = FALSE, out.width = "80%"}
 knitr::include_graphics("figures/Outlier_Comparison.png")
 ```
 
@@ -510,7 +515,7 @@ upstream state. This is what "short-period grouping
 interpolation" means: interpolation is applied only where the
 value can be read from a nearby observation in the same segment.
 
-```{r, echo = FALSE, out.width = "95%"}
+```{r, echo = FALSE, out.width = "80%"}
 knitr::include_graphics("figures/Time_Series_Interpolation_Final.png")
 ```
 

@@ -1,6 +1,8 @@
 ---
 title: "dataprep: upgrading from 0.1.5 to 0.1.7"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    css: custom.css
 vignette: >
   %\documentclass{article}
   %\VignetteIndexEntry{dataprep: upgrading from 0.1.5 to 0.1.7}
@@ -10,7 +12,8 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
-                      out.width = "95%")
+                      fig.width = 6, fig.height = 4,
+                      out.width = "80%", fig.retina = 2)
 ```
 
 ```{r}
