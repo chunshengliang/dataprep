@@ -88,7 +88,7 @@ environmental data:
    boundary. Grouping by short segments keeps the interpolation
    local.
 
-Steps 1–3 are wrapped by `dataprep()` for one-call use. The design
+Steps 1–4 are wrapped by `dataprep()` for one-call use. The design
 reasoning is documented in full in
 `vignette("dataprep-philosophy")`. `data1` in this package is the
 **already-aggregated** seven-column version of the same dataset;
