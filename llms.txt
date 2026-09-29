@@ -449,9 +449,11 @@ The mean speedup is above 44× for
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 and above 74× for
 [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md)
-on both hosts. On the largest cells (1e8 rows, 8 GB of input),
-`dataprep` is the only engine that completes within 2 s, specifically \<
-0.5 s on Ubuntu and \< 1.3 s on Windows.
+on both hosts. For
+[`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
+on the largest cells (1e8 rows, 1 id + 9 val, 8 GB of input), `dataprep`
+is the only engine that completes within 2.5 s, specifically \< 0.3 s on
+Ubuntu and \< 1.1 s on Windows.
 
 Complete tables — including mean, median, and the full per-competitor
 gradient — are in
