@@ -38,13 +38,13 @@ The speed-up relative to each of the seven alternatives spans:
 
 | Operation | Range across both hosts |
 |---|---:|
-| `melt`  | 0.5–1187× |
-| `dcast` | 2.0–639× |
+| `melt`  | 0.6–2197× |
+| `dcast` | 2.0–677× |
 
 The median across all tested cells and all competitors is
-10.3× on Ubuntu and 5.7× on Windows for `melt`, and 49.7× on
-Ubuntu and 47.7× on Windows for `dcast`. The mean is 58.5× and
-44.2× for `melt`, and 94.7× and 81.6× for `dcast`, respectively.
+12.0× on Ubuntu and 5.7× on Windows for `melt`, and 54.0× on
+Ubuntu and 41.6× on Windows for `dcast`. The mean is 77.9× and
+44.4× for `melt`, and 96.5× and 74.3× for `dcast`, respectively.
 The `melt` median is pulled down by the 1e5-row small tables; at
 larger scales the speed-up is much higher. Full tables —
 including mean, median, and per-competitor ranges — are in
@@ -323,7 +323,7 @@ The full pipeline is described in the `dcast()` help page.
 
 The `dcast` 1e6 × 100 `id` cell is the only case in the entire
 benchmark suite where a competitor reaches a single-digit ratio:
-`polars` at 7.9× on Ubuntu and 4.5× on Windows. Both remain behind
+`polars` at 7.4× on Ubuntu and 3.5× on Windows. Both remain behind
 `dataprep`. This is because `polars`'s SIMD hash is competitive
 when the row key is very wide (100 columns), while `dcast_cpp`'s
 96-bit fingerprint verification is `O(n_id)` per row in that regime.
@@ -385,15 +385,15 @@ per-cell tables are in `vignette("dataprep-performance")`.
 
 | Operation | Min | Median | Mean | Max |
 |---|---:|---:|---:|---:|
-| `melt()`  | 0.6× (data.table @ 1e5 × 10 × 1 × 9) | 10.3× | 58.5× | 1187.1× (dask @ 1e3 × 10001 × 1 × 10000) |
-| `dcast()` | 2.0× (reshape2 @ 1e3 × 1 × 10)        | 49.7× | 94.7× | 508.6× (reshape2 @ 1e6 × 100 × 10) |
+| `melt()`  | 0.6× (polars @ 1e7 × 19 × 10 × 9) | 12.0× | 77.9× | 2197.2× (dask @ 1e3 × 10001 × 1 × 10000) |
+| `dcast()` | 2.0× (reshape2 @ 1e3 × 1 × 10)    | 54.0× | 96.5× | 531.4× (reshape2 @ 1e6 × 100 × 10)        |
 
 ### Windows 11 Pro for Workstations
 
 | Operation | Min | Median | Mean | Max |
 |---|---:|---:|---:|---:|
-| `melt()`  | 0.5× (polars @ 1e5 × 19 × 10 × 9) | 5.7× | 44.2× | 882.6× (dask @ 1e3 × 10001 × 1 × 10000) |
-| `dcast()` | 4.5× (polars @ 1e6 × 100 × 10)   | 47.7× | 81.6× | 638.8× (duckdb @ 1e8 × 1 × 100) |
+| `melt()`  | 0.8× (polars @ 1e5 × 19 × 10 × 9) | 5.7× | 44.4× | 807.3× (dask @ 1e3 × 10001 × 1 × 10000) |
+| `dcast()` | 3.5× (polars @ 1e6 × 100 × 10)   | 41.6× | 74.3× | 677.0× (duckdb @ 1e8 × 1 × 100)         |
 
 On the largest cells (1e8 rows, 8 GB of input), `dataprep` is the
 only engine that completes within 2 s: under 0.5 s on Ubuntu and
