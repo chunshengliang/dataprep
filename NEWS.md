@@ -369,13 +369,23 @@ in case a plan is edited by hand.
   of `value`, and `fun.aggregate` for reducing duplicate
   `(id, variable)` pairs, plus `fill`, `na.rm`, `cores`, and
   `verbose`.
-* `dataprep()`, `shorvalu()`, `descdata()`, `melt()`, `dcast()`,
-  `prep_fit()`, and `prep_transform()` gain a `cores` argument for
-  OpenMP control (the cleaning functions `obsedele()`, `condextr()`,
-  `percoutl()`, and `optisolu()` already accepted `cores` since
-  0.1.5; their backends now route it to OpenMP as well). The global
-  option `options(dataprep.cores = ...)` is respected by `melt()`
-  and `dcast()`.
+* [`dataprep()`](https://chunshengliang.github.io/dataprep/reference/dataprep.html),
+  [`shorvalu()`](https://chunshengliang.github.io/dataprep/reference/shorvalu.html),
+  [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.html),
+  [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.html),
+  [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html),
+  [`prep_fit()`](https://chunshengliang.github.io/dataprep/reference/prep_fit.html),
+  and [`prep_transform()`](https://chunshengliang.github.io/dataprep/reference/prep_transform.html)
+  gain a `cores` argument for OpenMP control (the cleaning functions
+  [`obsedele()`](https://chunshengliang.github.io/dataprep/reference/obsedele.html),
+  [`condextr()`](https://chunshengliang.github.io/dataprep/reference/condextr.html),
+  [`percoutl()`](https://chunshengliang.github.io/dataprep/reference/percoutl.html),
+  and [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.html)
+  already accepted `cores` since 0.1.5; their backends now route it
+  to OpenMP as well). The global option
+  `options(dataprep.cores = ...)` is respected by
+  [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.html)
+  and [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html).
 * [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.html) now accepts `stats`
   as either numeric indices or character names.
 * [`percplot()`](https://chunshengliang.github.io/dataprep/reference/percplot.html) now prints both the
