@@ -365,7 +365,7 @@ in case a plan is edited by hand.
   `id.vars` is an alias of `id` for reshape2 / data.table
   compatibility.
 * [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html) ships a `formula`
-  interface (\code{id1 + id2 ~ variable}), `value.var` as an alias
+  interface (`id1 + id2 ~ variable`), `value.var` as an alias
   of `value`, and `fun.aggregate` for reducing duplicate
   `(id, variable)` pairs, plus `fill`, `na.rm`, `cores`, and
   `verbose`.
