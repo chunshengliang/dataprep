@@ -4,8 +4,8 @@
 // dcast_cpp — CRAN-compliant high-performance wide cast.
 //
 // Dispatch:
-//   8 <= period <= 32 : 8x8 AVX-512 SIMD, 32-row outer tile
-//   otherwise         : TR=128 tile transpose
+//   8 <= period <= 32  AND  g_have_avx512 : 8x8 AVX-512 SIMD, 32-row outer tile
+//   otherwise                             : TR=128 tile transpose
 //
 // THP strategy (validated on 12-channel DDR5 single-socket):
 //   * Output : MADV_HUGEPAGE + MADV_POPULATE_WRITE (or touch_2m fallback)
@@ -292,14 +292,19 @@ static void transpose_32row_tile_avx512(
     const int32_t* __restrict__ first_src,
     const double*  __restrict__ vs,
     double* const* __restrict__ out_val,
-    R_xlen_t bs, int kk, int period, int nr_rows)
+    R_xlen_t bs, int kk, int period, int nr_rows,
+    bool na_rm, double fill_val)
 {
   alignas(64) double tile[32 * 32];
 
   for (int i = 0; i < nr_rows; ++i) {
     R_xlen_t io = (R_xlen_t)first_src[(size_t)(bs + i)];
-    std::memcpy(tile + (size_t)i * period, vs + io,
-                (size_t)period * sizeof(double));
+    double* row = tile + (size_t)i * period;
+    std::memcpy(row, vs + io, (size_t)period * sizeof(double));
+    if (na_rm) {
+      for (int k = 0; k < period; ++k)
+        if (ISNAN(row[k])) row[k] = fill_val;
+    }
   }
 
   const int kk8 = (kk / 8) * 8;
@@ -347,7 +352,8 @@ static void transpose_8x8_rows(
     const int32_t* __restrict__ first_src,
     const double*  __restrict__ vs,
     double* const* __restrict__ out_val,
-    R_xlen_t n_blocks, int kk, int period, int n_threads)
+    R_xlen_t n_blocks, int kk, int period, int n_threads,
+    bool na_rm, double fill_val)
 {
 #if DCAST_GNUC && DCAST_X86
   if (n_threads < 1) n_threads = 1;
@@ -363,12 +369,14 @@ static void transpose_8x8_rows(
     for (R_xlen_t t = 0; t < n_tiles; ++t) {
       const R_xlen_t bs = (R_xlen_t)t * NR;
       const int tr = (int)std::min<R_xlen_t>((R_xlen_t)NR, n_blocks - bs);
-      transpose_32row_tile_avx512(first_src, vs, out_val, bs, kk, period, tr);
+      transpose_32row_tile_avx512(first_src, vs, out_val, bs, kk, period, tr,
+                                   na_rm, fill_val);
     }
   }
 #else
   (void)first_src; (void)vs; (void)out_val; (void)n_blocks;
   (void)kk; (void)period; (void)n_threads;
+  (void)na_rm; (void)fill_val;
 #endif
 }
 
@@ -376,7 +384,8 @@ static void transpose_tile(
     const int32_t* __restrict__ first_src,
     const void*    __restrict__ vs_raw,
     double* const* __restrict__ out_val,
-    R_xlen_t n_blocks, int kk, int period, int n_threads, int kind)
+    R_xlen_t n_blocks, int kk, int period, int n_threads, int kind,
+    bool na_rm, double fill_val)
 {
   if (n_threads < 1) n_threads = 1;
   constexpr int TR = 128;
@@ -418,13 +427,22 @@ static void transpose_tile(
     if (kind == 0 && fs_is_arith) {
       std::memcpy(tile, vs_d + (R_xlen_t)first_src[(size_t)bs],
                   (size_t)tr * (size_t)period * sizeof(double));
+      if (na_rm) {
+        const size_t total = (size_t)tr * (size_t)period;
+        for (size_t x = 0; x < total; ++x)
+          if (ISNAN(tile[x])) tile[x] = fill_val;
+      }
     } else if (kind == 0) {
       for (int t = 0; t < tr; ++t) {
         R_xlen_t io = (R_xlen_t)first_src[(size_t)(bs + t)];
         const double* src = vs_d + io;
         __builtin_prefetch((const void*)src, 0, 3);
-        std::memcpy(tile + (size_t)t * pad, src,
-                    (size_t)kk * sizeof(double));
+        double* row = tile + (size_t)t * pad;
+        std::memcpy(row, src, (size_t)kk * sizeof(double));
+        if (na_rm) {
+          for (int k = 0; k < kk; ++k)
+            if (ISNAN(row[k])) row[k] = fill_val;
+        }
       }
     } else if (kind == 1) {
       for (int t = 0; t < tr; ++t) {
@@ -434,7 +452,9 @@ static void transpose_tile(
         double* row = tile + (size_t)t * pad;
         for (int k = 0; k < kk; ++k) {
           int v = src[k];
-          row[k] = (v == NA_INTEGER) ? NA_REAL : (double)v;
+          row[k] = (v == NA_INTEGER)
+                     ? (na_rm ? fill_val : NA_REAL)
+                     : (double)v;
         }
       }
     } else {
@@ -445,7 +465,9 @@ static void transpose_tile(
         double* row = tile + (size_t)t * pad;
         for (int k = 0; k < kk; ++k) {
           int v = src[k];
-          row[k] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
+          row[k] = (v == NA_LOGICAL)
+                     ? (na_rm ? fill_val : NA_REAL)
+                     : (v ? 1.0 : 0.0);
         }
       }
     }
@@ -620,15 +642,15 @@ static void build_block_phase1_sorted(KF kf,
   if (sorted) {
     first_src.clear();
     first_src.reserve((size_t)std::min<R_xlen_t>(n_blocks, (R_xlen_t)1 << 22));
-    first_src.push_back(0);
     uint64_t prev = kf(0);
     for (R_xlen_t b = 1; b < n_blocks; ++b) {
       uint64_t k = kf(b);
       if (k != prev) {
-        first_src.push_back((int32_t)((int64_t)b * (int64_t)period));
+        first_src.push_back((int32_t)((int64_t)(b - 1) * (int64_t)period));
         prev = k;
       }
     }
+    first_src.push_back((int32_t)((int64_t)(n_blocks - 1) * (int64_t)period));
     n_out = (int32_t)first_src.size();
     return;
   }
@@ -648,14 +670,18 @@ static void build_block_phase1_sorted(KF kf,
   first_src.clear();
   first_src.reserve((size_t)std::min<R_xlen_t>(n_blocks, (R_xlen_t)1 << 22));
   uint64_t prev = ~0ull;
-  bool first = true;
+  int32_t prev_bi = -1;
   for (R_xlen_t t = 0; t < n_blocks; ++t) {
     int32_t bi = idx[(size_t)t];
     uint64_t k = keys[(size_t)bi];
-    if (first || k != prev) {
-      first_src.push_back((int32_t)((int64_t)bi * (int64_t)period));
-      prev = k; first = false;
+    if (t > 0 && k != prev) {
+      first_src.push_back((int32_t)((int64_t)prev_bi * (int64_t)period));
     }
+    prev = k;
+    prev_bi = bi;
+  }
+  if (n_blocks > 0) {
+    first_src.push_back((int32_t)((int64_t)prev_bi * (int64_t)period));
   }
   n_out = (int32_t)first_src.size();
 }
@@ -875,12 +901,15 @@ static bool try_dense_radix_partition(
       if (vs[j][(R_xlen_t)a * period] != vs[j][(R_xlen_t)b * period]) return false;
     return true;
   };
-  int32_t prev = perm[0];
-  reps.push_back(prev);
+  int32_t run_last = perm[0];
   for (R_xlen_t b = 1; b < n_blocks; ++b) {
     int32_t cur = perm[(size_t)b];
-    if (!keys_equal(cur, prev)) { reps.push_back(cur); prev = cur; }
+    if (!keys_equal(cur, run_last)) {
+      reps.push_back(run_last);
+    }
+    run_last = cur;
   }
+  reps.push_back(run_last);
   std::sort(reps.begin(), reps.end());
   first_src.resize(reps.size());
   for (size_t i = 0; i < reps.size(); ++i)
@@ -899,6 +928,8 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
                int cores = 0,
                SEXP fill = R_NilValue,
                bool na_rm = false) {
+  // variable_name is retained for ABI/Rcpp-generated R-call signature
+  // stability; the R layer resolves the actual name and does not use it here.
   (void)variable_name;
   init_cpu_features();
 
@@ -1609,10 +1640,11 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
                            g_have_avx512;
       if (use_8x8) {
         transpose_8x8_rows(fs, vs, out_val.data(), n_blocks, kk,
-                           period_i, actual_threads);
+                           period_i, actual_threads, false, NA_REAL);
       } else {
         transpose_tile(fs, (const void*)vs, out_val.data(),
-                       n_blocks, kk, period_i, actual_threads, 0);
+                       n_blocks, kk, period_i, actual_threads, 0,
+                       false, NA_REAL);
       }
     } else {
       bool need_fill = (!dense) || na_rm;
@@ -1623,13 +1655,13 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
       do_id_gather();
       if (val_type == REALSXP) {
         transpose_tile(fs, (const void*)vs, out_val.data(),
-                       n_blocks, kk, period_i, actual_threads, 0);
+                       n_blocks, kk, period_i, actual_threads, 0, na_rm, fv);
       } else if (val_type == INTSXP) {
         transpose_tile(fs, (const void*)vi, out_val.data(),
-                       n_blocks, kk, period_i, actual_threads, 1);
+                       n_blocks, kk, period_i, actual_threads, 1, na_rm, fv);
       } else {
         transpose_tile(fs, (const void*)vl, out_val.data(),
-                       n_blocks, kk, period_i, actual_threads, 2);
+                       n_blocks, kk, period_i, actual_threads, 2, na_rm, fv);
       }
     }
   } else {

@@ -274,6 +274,31 @@ for such columns, so the transform becomes `x - center`.
 `prep_transform()` additionally guards against `scale_val == 0`
 in case a plan is edited by hand.
 
+## Bug fixes
+
+* **`dcast()`: `na.rm = TRUE` combined with an explicit non-`NA`
+  `fill` no longer loses the `fill` value.** On the block-path
+  (canonical melt output), the tile transpose wrote the input
+  values unconditionally after the fill pass, so cells whose
+  input was `NA`/`NaN` ended up as `NA` instead of the requested
+  `fill`. The transpose kernels now receive `na_rm` and the
+  resolved `fill_val` and substitute them while the tile is
+  built. The general path was not affected; both paths now
+  produce identical output. Repro:
+  `dcast(data.frame(id=c(1,1,2,2), variable=c("x","y","x","y"),
+  value=c(1,NA,3,4)), id="id", variable="variable",
+  value="value", na.rm=TRUE, fill=-1)` now returns
+  `(1,"y") = -1`.
+
+* **`dcast()`: duplicate `(id, variable)` pairs now resolve
+  consistently with the documented "last occurrence wins"
+  rule.** The block path previously kept the *first*
+  occurrence of a duplicated block; the general path kept the
+  *last*. The block path now keeps the last occurrence, matching
+  `dcast()`'s documentation and `reshape2::dcast()`. This only
+  affects non-canonical inputs (canonical `melt()` output has
+  no duplicates); canonical round-trips are unchanged.
+
 ## New functions
 
 ### Cleaning

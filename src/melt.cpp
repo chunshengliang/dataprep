@@ -5,13 +5,14 @@
 // melt.cpp -- CRAN-compliant, SIMD-dispatched dataframe melt for R.
 // Optimized for large mixed-id datasets; matches/exceeds polars performance.
 //
-// Key optimizations vs baseline:
+// Key optimizations (melt_cpp and its SPMD path; tiny/small fast paths
+// short-circuit most of these to minimize fixed overhead):
 //   * Blocked id-column doubling: id columns read ONCE from input, replicated
 //     via L2-cached block doubling. Cuts id-column read bandwidth by 8/9.
 //   * Normal-store first block + NT-store remaining blocks: maximizes cache
 //     utilization for replication while avoiding cache pollution.
 //   * Added normal-store SIMD int copy (copy_i32) for cached paths.
-//   * L2-sized blocking (16Ki rows) for all id column replication.
+//   * L2-sized blocking (16Ki rows) for id column replication.
 //
 // CRAN compliance: no PGO, no global -march=native, all intrinsics guarded,
 // runtime feature detection, scalar fallbacks, no custom allocators.
@@ -319,6 +320,10 @@ static inline void copy_pd(double* dst, const double* src, R_xlen_t n) {
   copy_pd_ptr(dst, src, n);
 }
 
+// Fast bulk copy of a SEXP vector via memcpy/SIMD. Safe ONLY when
+// `dst` was produced by Rf_allocVector in this call, so every element
+// is NEW from the GC's point of view and no write barrier is required.
+// Do not use for in-place modification of a live vector.
 static inline void copy_sexp(SEXP* dst, const SEXP* src, R_xlen_t n) {
   copy_pd_ptr((double*)dst, (const double*)src, n);
 }

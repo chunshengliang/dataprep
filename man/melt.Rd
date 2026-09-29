@@ -16,7 +16,11 @@ melt(data, id = NULL, measure.vars = NULL,
 }
 \arguments{
   \item{data}{A data frame to reshape. Numeric, integer, logical,
-    character, and factor columns are supported.}
+    character, and factor columns are accepted as id columns. Factor
+    columns used as \code{measure.vars} cannot be cast to numeric, so
+    their cells are written as \code{NA} in the value column; pass
+    \code{measure.vars} as \code{character} or \code{numeric} to
+    avoid this.}
   \item{id}{Identifier columns. Character names, integer indices, a
     logical mask, or \code{NULL}. If \code{NULL} and
     \code{measure.vars} is also \code{NULL}, ID columns are inferred
@@ -49,8 +53,9 @@ melt(data, id = NULL, measure.vars = NULL,
     return value is always a plain \code{data.frame}; no
     \code{tibble} attributes are attached.}
   \item{verbose}{Logical; if \code{TRUE}, prints timing messages.}
-  \item{parallel_threshold}{Minimum number of output elements before
-    automatic parallelism is enabled. Default \code{5e6}.}
+  \item{parallel_threshold}{Minimum number of output elements, i.e.\
+    \code{nrow(data) * length(measure.vars)}, before automatic
+    parallelism is enabled. Default \code{5e6}.}
   \item{id.vars}{Alias of \code{id}, provided for reshape2 / data.table
     compatibility. Supplying both is an error.}
 }

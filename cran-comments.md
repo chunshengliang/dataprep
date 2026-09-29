@@ -78,7 +78,7 @@ AVX-512. All unit tests pass on both.
 
 ## Unit tests
 
-`tests/testthat/` runs 49 assertions across three files
+`tests/testthat/` runs 63 assertions across three files
 (`test-cleaning-pipeline.R`, `test-fit-transform.R`,
 `test-melt-dcast.R`). All pass in approximately 1.5 seconds on
 Windows 11 Pro for Workstations and under 1 second on Ubuntu

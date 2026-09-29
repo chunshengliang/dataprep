@@ -180,3 +180,48 @@ test_that("dcast matches reshape2 when available", {
   expect_equal(w1$a, w2$a, tolerance = 1e-12)
   expect_equal(w1$b, w2$b, tolerance = 1e-12)
 })
+# ---- regression: dcast na.rm + explicit non-NA fill (block-path) ----
+test_that("dcast na.rm keeps fill value on block path", {
+  long5 <- data.frame(
+    id       = c(1, 1, 2, 2),
+    variable = c("x", "y", "x", "y"),
+    value    = c(1, NA, 3, 4)
+  )
+  r <- dcast(long5, id = "id", variable = "variable", value = "value",
+             na.rm = TRUE, fill = -1)
+  expect_equal(r[r$id == 1, "y"], -1)
+  expect_equal(r[r$id == 1, "x"],  1)
+  expect_equal(r[r$id == 2, "x"],  3)
+  expect_equal(r[r$id == 2, "y"],  4)
+
+  r0 <- dcast(long5, id = "id", variable = "variable", value = "value",
+              na.rm = FALSE, fill = -1)
+  expect_true(is.na(r0[r0$id == 1, "y"]))
+
+  rN <- dcast(long5, id = "id", variable = "variable", value = "value",
+              na.rm = TRUE)                      # default fill = NA_real_
+  expect_true(is.na(rN[rN$id == 1, "y"]))
+})
+
+test_that("dcast duplicate (id, variable) is last-wins on both paths", {
+  # block-path candidate: period-aligned, id constant, var unique in period
+  dup <- data.frame(
+    id       = c(1, 1, 2, 2,  1, 1, 2, 2),
+    variable = c("x", "y", "x", "y",
+                 "x", "y", "x", "y"),
+    value    = c(10, 20, 30, 40, 99, 88, 77, 66)
+  )
+  r <- dcast(dup, id = "id", variable = "variable", value = "value")
+  expect_equal(r[r$id == 1, "x"], 99)
+  expect_equal(r[r$id == 1, "y"], 88)
+  expect_equal(r[r$id == 2, "x"], 77)
+  expect_equal(r[r$id == 2, "y"], 66)
+
+  # general path: var non-periodic
+  gen <- data.frame(
+    id = c(1, 2, 1, 2), variable = "x", value = c(11, 22, 33, 44)
+  )
+  rg <- dcast(gen, id = "id", variable = "variable", value = "value")
+  expect_equal(rg[rg$id == 1, "x"], 33)
+  expect_equal(rg[rg$id == 2, "x"], 44)
+})
