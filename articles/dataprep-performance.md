@@ -19,15 +19,71 @@ Python ecosystems:
 
 Every cell is measured with a C++ steady-clock timer and an adaptive
 `times` rule (20 / 15 / 10 / 5 / 1 iterations based on warmup time). Two
-statistics are quoted: reported:
+statistics are recorded per cell:
 
-- **median** — the number to quote. Robust to scheduler and GC jitter.
-- **mean** — the tail. A large mean / median ratio indicates one-off OS
-  work or cache effects.
+- **mean** — the number quoted in every table below. Each timed call
+  runs after `gc(full = TRUE)` and `py_gc_collect()`, so the GC /
+  allocation tail is kept out of the timing window and the mean is a
+  steady-state throughput measure rather than a GC-jitter measure.
+- **median** — a robust cross-check. It is not tabulated here, but it is
+  kept in the raw CSV files shipped under `inst/extdata/`. The scatter
+  plot below compares the two statistics cell by cell.
 
 For every cell the tables also report the speed-up of `dataprep`
 relative to each competitor, so the reader can see the full gradient
 from “about the same” to “three orders of magnitude”.
+
+## Mean vs median
+
+The four benchmark CSV files shipped under `inst/extdata/` carry both
+the mean and the median of every per-cell timing sample. The scatter
+plot below puts them side by side: each point is one (tool, host, shape)
+combination, the x axis is the median in milliseconds and the y axis is
+the mean. Points on the 1:1 line mean the two statistics agree; points
+above the line mean the mean is inflated by a long right tail in the
+per-iteration timings.
+
+``` r
+
+suppressPackageStartupMessages(library(ggplot2))
+
+read_bench <- function(fname, op) {
+  p <- system.file("extdata", fname, package = "dataprep")
+  d <- read.csv(p, stringsAsFactors = FALSE)
+  d <- d[!d$skipped, c("tool", "mean", "median")]
+  d$op <- op
+  d
+}
+
+bench <- rbind(
+  read_bench("bench_melt_ubuntu.csv",  "melt (Ubuntu)"),
+  read_bench("bench_dcast_ubuntu.csv", "dcast (Ubuntu)"),
+  read_bench("bench_melt_win.csv",     "melt (Windows)"),
+  read_bench("bench_dcast_win.csv",    "dcast (Windows)")
+)
+
+ggplot(bench, aes(median, mean)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50") +
+  geom_point(alpha = 0.45, size = 1.4) +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_wrap(~ tool, ncol = 4) +
+  labs(x = "median (ms, log scale)",
+       y = "mean (ms, log scale)") +
+  theme_bw(base_size = 10)
+```
+
+![](dataprep-performance_files/figure-html/mean-vs-median-1.png)
+
+Almost every point sits on or just above the 1:1 line. The visible
+exceptions are the few `dask` and `duckdb` cells in the 1e3 × 10000
+shape, where a single slow iteration pulls the mean up by up to 50 %;
+those are also the cells where the two statistics disagree the most on
+the speed-up ratio. For the `dataprep` column itself the two statistics
+never differ by more than a few percent, which is why the mean-based
+numbers quoted throughout this vignette are representative of the steady
+state.
 
 ## Test environment
 
@@ -364,14 +420,18 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] dataprep_0.1.7
+#> [1] ggplot2_4.0.3  dataprep_0.1.7
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    
-#>  [5] xfun_0.61         cachem_1.1.0      parallel_4.6.1    knitr_1.52       
-#>  [9] htmltools_0.5.9   rmarkdown_2.32    lifecycle_1.0.5   cli_3.6.6        
-#> [13] sass_0.4.10       pkgdown_2.2.1     textshaping_1.0.5 jquerylib_0.1.4  
-#> [17] systemfonts_1.3.2 compiler_4.6.1    tools_4.6.1       ragg_1.5.2       
-#> [21] bslib_0.12.0      evaluate_1.0.5    Rcpp_1.1.2        yaml_2.3.12      
-#> [25] otel_0.2.0        jsonlite_2.0.0    rlang_1.3.0       fs_2.1.0
+#>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    
+#>  [5] tidyselect_1.2.1   Rcpp_1.1.2         parallel_4.6.1     jquerylib_0.1.4   
+#>  [9] systemfonts_1.3.2  scales_1.4.0       textshaping_1.0.5  yaml_2.3.12       
+#> [13] fastmap_1.2.0      R6_2.6.1           generics_0.1.4     knitr_1.52        
+#> [17] tibble_3.3.1       desc_1.4.3         bslib_0.12.0       pillar_1.11.1     
+#> [21] RColorBrewer_1.1-3 rlang_1.3.0        cachem_1.1.0       xfun_0.61         
+#> [25] fs_2.1.0           sass_0.4.10        S7_0.2.2           otel_0.2.0        
+#> [29] cli_3.6.6          withr_3.0.3        pkgdown_2.2.1      magrittr_2.0.5    
+#> [33] digest_0.6.39      grid_4.6.1         lifecycle_1.0.5    vctrs_0.7.3       
+#> [37] evaluate_1.0.5     glue_1.8.1         farver_2.1.2       ragg_1.5.2        
+#> [41] rmarkdown_2.32     tools_4.6.1        pkgconfig_2.0.3    htmltools_0.5.9
 ```
