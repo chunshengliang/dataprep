@@ -133,7 +133,7 @@ if (!.run_bench) {
 }
 
 if (.run_bench) {
-  required <- c("Rcpp", "microbenchmark", "reticulate",
+  required <- c("Rcpp", "reticulate",
                 "data.table", "reshape2", "tidyr", "dataprep")
   missing_pkgs <- required[!vapply(required, requireNamespace,
                                    logical(1), quietly = TRUE)]
@@ -141,7 +141,7 @@ if (.run_bench) {
     stop("Missing R packages: ", paste(missing_pkgs, collapse = ", "))
 
   suppressPackageStartupMessages({
-    library(Rcpp); library(microbenchmark); library(reticulate)
+    library(Rcpp); library(reticulate)
     library(data.table); library(reshape2); library(tidyr); library(dataprep)
   })
 
