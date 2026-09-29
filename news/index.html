@@ -217,7 +217,7 @@
 <div class="section level4">
 <h4 id="melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-7">
 <code>melt()</code> — speed-up vs every one of the 7 major alternatives<a class="anchor" aria-label="anchor" href="#melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-7"></a></h4>
-<p>Speed-ups relative to each competitor span <strong>0.5×–1187×</strong> across both hosts. The sub-1.0× cells are concentrated at 1e5 rows (Ubuntu and Windows) and at 1e7 × 10 id on Ubuntu, where <code>polars</code> is faster than <code>dataprep</code>; every other cell has <code>dataprep</code> ahead of or on par with the fastest competitor.</p>
+<p>Speed-ups relative to each competitor span <strong>0.6×–2197×</strong> across both hosts. The sub-1.0× cells are concentrated at 1e5 rows with 10 id columns (Windows) and at 1e7 rows × 10 id (Ubuntu), where <code>polars</code> is faster than <code>dataprep</code>; every other cell has <code>dataprep</code> ahead of or on par with the fastest competitor.</p>
 <p>Medians in milliseconds (Ubuntu 25.10):</p>
 <table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>rows</th>
 <th>val</th>
@@ -271,14 +271,14 @@
 <td>65624 (132×)</td>
 </tr><tr><td>1e3</td>
 <td>10000</td>
-<td>3.616</td>
-<td>92.45 (25.6×)</td>
-<td>9.659 (2.7×)</td>
-<td>107.7 (29.8×)</td>
-<td>499.0 (138×)</td>
-<td>16.31 (4.5×)</td>
-<td>4292 (<strong>1187×</strong>)</td>
-<td>1914 (529×)</td>
+<td>2.026</td>
+<td>91.112 (45.0×)</td>
+<td>12.841 (6.3×)</td>
+<td>102.550 (50.6×)</td>
+<td>495.632 (244.7×)</td>
+<td>20.448 (10.1×)</td>
+<td>4450.699 (<strong>2197.2×</strong>)</td>
+<td>1917.203 (946.5×)</td>
 </tr></tbody></table><p>Medians in milliseconds (Windows 11 Pro for Workstations):</p>
 <table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>rows</th>
 <th>val</th>
@@ -332,20 +332,20 @@
 <td>160256 (134×)</td>
 </tr><tr><td>1e3</td>
 <td>10000</td>
-<td>11.58</td>
-<td>158.7 (13.7×)</td>
-<td>34.86 (3.0×)</td>
-<td>224.1 (19.4×)</td>
-<td>1647 (142×)</td>
-<td>30.51 (2.6×)</td>
-<td>10220 (883×)</td>
-<td>5518 (477×)</td>
-</tr></tbody></table><p>The <strong>median</strong> speed-up across all melt cells and all competitors is 10.3× on Ubuntu and 5.7× on Windows. The <strong>mean</strong> is 58.5× and 44.2× respectively. The median is pulled down by the 1e5-row small tables; at larger scales the speed-up is much higher.</p>
+<td>12.848</td>
+<td>172.965 (13.5×)</td>
+<td>36.763 (2.9×)</td>
+<td>213.030 (16.6×)</td>
+<td>1405.853 (109.4×)</td>
+<td>38.241 (3.0×)</td>
+<td>10372.086 (<strong>807.3×</strong>)</td>
+<td>5060.629 (393.9×)</td>
+</tr></tbody></table><p>The <strong>median</strong> speed-up across all melt cells and all competitors is 12.0× on Ubuntu and 5.7× on Windows. The <strong>mean</strong> is 77.9× and 44.4× respectively. The median is pulled down by the 1e5-row small tables; at larger scales the speed-up is much higher.</p>
 </div>
 <div class="section level4">
 <h4 id="dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-7">
 <code>dcast()</code> — speed-up vs every one of the 7 major alternatives<a class="anchor" aria-label="anchor" href="#dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-7"></a></h4>
-<p>Speed-ups relative to each competitor span <strong>2.0×–639×</strong> across both hosts. Every cell has <code>dataprep</code> ahead of every other engine.</p>
+<p>Speed-ups relative to each competitor span <strong>2.0×–677×</strong> across both hosts. Every cell has <code>dataprep</code> ahead of every other engine.</p>
 <p>Medians in milliseconds (Ubuntu 25.10):</p>
 <table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>n_long</th>
 <th>levels</th>
@@ -440,19 +440,19 @@
 <td>5562 (262×)</td>
 </tr><tr><td>1e8</td>
 <td>100</td>
-<td>106.3</td>
-<td>24253 (228×)</td>
-<td>14965 (141×)</td>
-<td>13392 (126×)</td>
-<td>26311 (248×)</td>
-<td>7646 (71.9×)</td>
-<td>32874 (309×)</td>
-<td>67894 (<strong>639×</strong>)</td>
-</tr></tbody></table><p>The <strong>median</strong> speed-up across all dcast cells and all competitors is 49.7× on Ubuntu and 47.7× on Windows. The <strong>mean</strong> is 94.7× and 81.6× respectively. On the 1e8-row cells (8 GB of input), <code>dataprep</code> completes in <strong>44–209 ms</strong> while several competitors exceed 12 s on Ubuntu and 12 s on Windows.</p>
+<td>120.830</td>
+<td>24115.628 (199.6×)</td>
+<td>14914.904 (123.4×)</td>
+<td>14148.150 (117.1×)</td>
+<td>26487.805 (219.2×)</td>
+<td>8239.811 (68.2×)</td>
+<td>33408.904 (276.5×)</td>
+<td>81803.327 (<strong>677.0×</strong>)</td>
+</tr></tbody></table><p>The <strong>median</strong> speed-up across all dcast cells and all competitors is 54.0× on Ubuntu and 41.6× on Windows. The <strong>mean</strong> is 96.5× and 74.3× respectively. On the 1e8-row cells (8 GB of input), <code>dataprep</code> completes in <strong>44–209 ms</strong> while several competitors exceed 12 s on Ubuntu and 12 s on Windows.</p>
 </div>
 <div class="section level4">
 <h4 id="cross-engine-consistency-0-1-7">Cross-engine consistency<a class="anchor" aria-label="anchor" href="#cross-engine-consistency-0-1-7"></a></h4>
-<p><code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> produce output <strong>byte-identical</strong> to <code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code> on every tested shape, within <code>tol = 1e-12</code>.</p>
+<p><code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> produce output <strong>numerically identical</strong> to <code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code> on every tested shape, within <code>tol = 1e-12</code>.</p>
 <table class="table"><thead><tr><th>Operation</th>
 <th align="right">Cells tested</th>
 <th align="right">Engines</th>
@@ -616,7 +616,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="performance-notes-0-1-7">Performance notes<a class="anchor" aria-label="anchor" href="#performance-notes-0-1-7"></a></h3>
-<p>Three benchmark cells sit close to, or marginally behind, the fastest competitor — <code><a href="../reference/dcast.html">dcast()</a></code> at 100 id columns, <code><a href="../reference/melt.html">melt()</a></code> at 1e7 rows × 10 id columns, and <code><a href="../reference/varidele.html">varidele()</a></code> on full-year data — and all three share the same root cause: the affected internal buffers (the 96-bit fingerprint table, the per-id-column id blocks, and the <code>is.na</code> scratch matrix) are allocated with <code>Rf_allocVector</code>, which routes through R’s default <code>malloc</code>-based allocator and therefore cannot be directed to hugepages, a per-process free pool, or a NUMA-aware arena, so first-touch page faults dominate those cells. Two possible fixes were prototyped on the reshaping backends and both were measured to close the gap: routing those buffers through <code>Rf_allocVector3</code> with a hypothetical custom <code>R_allocator_t</code> adds a further few-fold speed-up on top of the existing hundred-fold to thousand-fold margins, and returning <strong>ALTREP</strong> virtual objects from <code><a href="../reference/melt.html">melt()</a></code> / <code><a href="../reference/dcast.html">dcast()</a></code> — a lazy <code>variable</code> column and a deferred id block, so that large parts of the output are never materialised — adds another order of magnitude (tens of times) on the wide-table shapes. Neither is used in this release. <code>Rf_allocVector3</code> is not recommended by CRAN, and an ALTREP return value, while fast to produce, is slow for downstream complex statistics because every element access re-enters the virtual-object layer, which shifts the cost from <code>dataprep</code> to the caller’s analysis code. The shipped 0.1.7 backends therefore keep the standard allocation path, and the reported speed-ups stand as measured: <code><a href="../reference/melt.html">melt()</a></code> spans 0.5×–1187× and <code><a href="../reference/dcast.html">dcast()</a></code> spans 2.0×–639× across the two reference hosts, with the sub-1.0× <code><a href="../reference/melt.html">melt()</a></code> cells confined to the 1e5-row shapes where per-call overhead dominates. On the cleaning pipeline the 0.1.5 → 0.1.7 speed-ups of 1.1×–1146× stand as reported; <code>Rf_allocVector3</code> and ALTREP were not evaluated there.</p>
+<p>Three benchmark cells sit close to, or marginally behind, the fastest competitor — <code><a href="../reference/dcast.html">dcast()</a></code> at 100 id columns, <code><a href="../reference/melt.html">melt()</a></code> at 1e7 rows × 10 id columns, and <code><a href="../reference/varidele.html">varidele()</a></code> on full-year data — and all three share the same root cause: the affected internal buffers (the 96-bit fingerprint table, the per-id-column id blocks, and the <code>is.na</code> scratch matrix) are allocated with <code>Rf_allocVector</code>, which routes through R’s default <code>malloc</code>-based allocator and therefore cannot be directed to hugepages, a per-process free pool, or a NUMA-aware arena, so first-touch page faults dominate those cells. Two possible fixes were prototyped on the reshaping backends and both were measured to close the gap: routing those buffers through <code>Rf_allocVector3</code> with a hypothetical custom <code>R_allocator_t</code> adds a further few-fold speed-up on top of the existing hundred-fold to thousand-fold margins, and returning <strong>ALTREP</strong> virtual objects from <code><a href="../reference/melt.html">melt()</a></code> / <code><a href="../reference/dcast.html">dcast()</a></code> — a lazy <code>variable</code> column and a deferred id block, so that large parts of the output are never materialised — adds another order of magnitude (tens of times) on the wide-table shapes. Neither is used in this release. <code>Rf_allocVector3</code> is not recommended by CRAN, and an ALTREP return value, while fast to produce, is slow for downstream complex statistics because every element access re-enters the virtual-object layer, which shifts the cost from <code>dataprep</code> to the caller’s analysis code. The shipped 0.1.7 backends therefore keep the standard allocation path, and the reported speed-ups stand as measured: <code><a href="../reference/melt.html">melt()</a></code> spans 0.6×–2197× and <code><a href="../reference/dcast.html">dcast()</a></code> spans 2.0×–677× across the two reference hosts, with the sub-1.0× <code><a href="../reference/melt.html">melt()</a></code> cells confined to the 1e5-row shapes where per-call overhead dominates. On the cleaning pipeline the 0.1.5 → 0.1.7 speed-ups of 1.1×–1146× stand as reported; <code>Rf_allocVector3</code> and ALTREP were not evaluated there.</p>
 </div>
 <div class="section level3">
 <h3 id="environment-variables-optional-0-1-7">Environment variables (optional)<a class="anchor" aria-label="anchor" href="#environment-variables-optional-0-1-7"></a></h3>

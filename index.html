@@ -73,7 +73,7 @@
 <div class="section level2">
 <h2 id="in-one-paragraph">In one paragraph<a class="anchor" aria-label="anchor" href="#in-one-paragraph"></a>
 </h2>
-<p><code>dataprep</code> provides an opinionated, high-performance pipeline for cleaning tabular and time-series data. The 0.1.7 release rewrites the cleaning routines in C++ and delivers a speedup over 0.1.5 that ranges from about <strong>1.0×</strong> (for <code>varidele</code> on some full-year data) to about <strong>1146×</strong> (for <code>condextr</code> on full-year Ubuntu data). The <code><a href="reference/melt.html">melt()</a></code> and <code><a href="reference/dcast.html">dcast()</a></code> reshaping functions are benchmarked against every one of the seven major alternatives in the R and Python ecosystems, at every tested scale (from 1,000 to 100,000,000 rows), on two reference hosts; the resulting speed-up ranges are <strong>0.5–1187×</strong> for <code><a href="reference/melt.html">melt()</a></code> and <strong>2.0–639×</strong> for <code><a href="reference/dcast.html">dcast()</a></code>. On both hosts the output is <strong>identical</strong> to <code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code>, within <code>tol = 1e-12</code>.</p>
+<p><code>dataprep</code> provides an opinionated, high-performance pipeline for cleaning tabular and time-series data. The 0.1.7 release rewrites the cleaning routines in C++ and delivers a speedup over 0.1.5 that ranges from about <strong>1.0×</strong> (for <code>varidele</code> on some full-year data) to about <strong>1146×</strong> (for <code>condextr</code> on full-year Ubuntu data). The <code><a href="reference/melt.html">melt()</a></code> and <code><a href="reference/dcast.html">dcast()</a></code> reshaping functions are benchmarked against every one of the seven major alternatives in the R and Python ecosystems, at every tested scale (from 1,000 to 100,000,000 rows), on two reference hosts; the resulting speed-up ranges are <strong>0.6–2197×</strong> for <code><a href="reference/melt.html">melt()</a></code> and <strong>2.0–677×</strong> for <code><a href="reference/dcast.html">dcast()</a></code>. On both hosts the output is <strong>identical</strong> to <code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code>, within <code>tol = 1e-12</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="why-dataprep">Why dataprep<a class="anchor" aria-label="anchor" href="#why-dataprep"></a>
@@ -167,7 +167,7 @@
 <div class="section level2">
 <h2 id="performance">Performance<a class="anchor" aria-label="anchor" href="#performance"></a>
 </h2>
-<p><code><a href="reference/melt.html">melt()</a></code> and <code><a href="reference/dcast.html">dcast()</a></code> are benchmarked against all 7 major alternatives across 10 shapes and 6 scales (1,000 to 100,000,000 rows). Every cell is measured with microbenchmark using an adaptive times rule. Two reference hosts were used.</p>
+<p><code><a href="reference/melt.html">melt()</a></code> and <code><a href="reference/dcast.html">dcast()</a></code> are benchmarked against all 7 major alternatives across 10 shapes and 6 scales (1,000 to 100,000,000 rows). Every cell is measured with a C++ steady-clock timer and an adaptive <code>times</code> rule (20 / 15 / 10 / 5 / 1 iterations based on warmup time). Two reference hosts were used.</p>
 <div class="section level3">
 <h3 id="reference-host-a--ubuntu-2510">Reference host A — Ubuntu 25.10<a class="anchor" aria-label="anchor" href="#reference-host-a--ubuntu-2510"></a>
 </h3>
@@ -409,69 +409,69 @@
 <tbody>
 <tr>
 <td align="right">1e3</td>
-<td align="right">0.176</td>
-<td align="right">0.373 (2.1×)</td>
-<td align="right">0.272 (1.5×)</td>
-<td align="right">3.009 (17.1×)</td>
-<td align="right">2.162 (12.3×)</td>
-<td align="right">0.612 (3.5×)</td>
-<td align="right">15.61 (88.6×)</td>
-<td align="right">4.714 (26.8×)</td>
+<td align="right">0.164</td>
+<td align="right">0.372 (2.3×)</td>
+<td align="right">0.244 (1.5×)</td>
+<td align="right">2.698 (16.5×)</td>
+<td align="right">2.095 (12.8×)</td>
+<td align="right">0.703 (4.3×)</td>
+<td align="right">15.131 (92.3×)</td>
+<td align="right">4.366 (26.6×)</td>
 </tr>
 <tr>
 <td align="right">1e4</td>
-<td align="right">0.235</td>
-<td align="right">0.436 (1.9×)</td>
-<td align="right">0.341 (1.5×)</td>
-<td align="right">3.379 (14.4×)</td>
-<td align="right">2.517 (10.7×)</td>
-<td align="right">0.685 (2.9×)</td>
-<td align="right">15.59 (66.4×)</td>
-<td align="right">11.00 (46.9×)</td>
+<td align="right">0.233</td>
+<td align="right">0.445 (1.9×)</td>
+<td align="right">0.331 (1.4×)</td>
+<td align="right">3.197 (13.7×)</td>
+<td align="right">2.479 (10.6×)</td>
+<td align="right">0.835 (3.6×)</td>
+<td align="right">15.486 (66.4×)</td>
+<td align="right">10.465 (44.9×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">1.588</td>
-<td align="right">1.138 (0.7×)</td>
-<td align="right">1.018 (0.6×)</td>
-<td align="right">8.230 (5.2×)</td>
-<td align="right">6.660 (4.2×)</td>
-<td align="right">1.557 (1.0×)</td>
-<td align="right">17.99 (11.3×)</td>
-<td align="right">68.79 (43.3×)</td>
+<td align="right">0.667</td>
+<td align="right">1.174 (1.8×)</td>
+<td align="right">0.999 (1.5×)</td>
+<td align="right">7.978 (12.0×)</td>
+<td align="right">6.805 (10.2×)</td>
+<td align="right">1.904 (2.9×)</td>
+<td align="right">17.931 (26.9×)</td>
+<td align="right">69.430 (104.0×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">3.680</td>
-<td align="right">17.89 (4.9×)</td>
-<td align="right">7.900 (2.1×)</td>
-<td align="right">76.77 (20.9×)</td>
-<td align="right">60.30 (16.4×)</td>
-<td align="right">10.44 (2.8×)</td>
-<td align="right">46.49 (12.6×)</td>
-<td align="right">642.1 (174×)</td>
+<td align="right">2.177</td>
+<td align="right">18.031 (8.3×)</td>
+<td align="right">9.444 (4.3×)</td>
+<td align="right">73.345 (33.7×)</td>
+<td align="right">62.328 (28.6×)</td>
+<td align="right">13.234 (6.1×)</td>
+<td align="right">47.444 (21.8×)</td>
+<td align="right">650.287 (298.7×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">37.95</td>
-<td align="right">372.7 (9.8×)</td>
-<td align="right">371.6 (9.8×)</td>
-<td align="right">1111 (29.3×)</td>
-<td align="right">720.1 (19.0×)</td>
-<td align="right">92.53 (2.4×)</td>
-<td align="right">486.4 (12.8×)</td>
-<td align="right">6423 (169×)</td>
+<td align="right">26.323</td>
+<td align="right">368.068 (14.0×)</td>
+<td align="right">363.900 (13.8×)</td>
+<td align="right">1079.493 (41.0×)</td>
+<td align="right">709.694 (27.0×)</td>
+<td align="right">157.963 (6.0×)</td>
+<td align="right">491.043 (18.7×)</td>
+<td align="right">6344.768 (241.0×)</td>
 </tr>
 <tr>
 <td align="right">1e8</td>
-<td align="right">496.4</td>
-<td align="right">3577 (7.2×)</td>
-<td align="right">3576 (7.2×)</td>
-<td align="right">12089 (24.4×)</td>
-<td align="right">7410 (14.9×)</td>
-<td align="right">2563 (5.2×)</td>
-<td align="right">4590 (9.2×)</td>
-<td align="right">65624 (132×)</td>
+<td align="right">259.022</td>
+<td align="right">3522.152 (13.6×)</td>
+<td align="right">3508.029 (13.5×)</td>
+<td align="right">12037.801 (46.5×)</td>
+<td align="right">7394.460 (28.5×)</td>
+<td align="right">3088.464 (11.9×)</td>
+<td align="right">4487.400 (17.3×)</td>
+<td align="right">71636.937 (276.6×)</td>
 </tr>
 </tbody>
 </table>
@@ -502,58 +502,58 @@
 <tbody>
 <tr>
 <td align="right">1e3</td>
-<td align="right">0.231</td>
-<td align="right">0.540 (2.3×)</td>
-<td align="right">0.422 (1.8×)</td>
-<td align="right">3.123 (13.5×)</td>
-<td align="right">5.626 (24.4×)</td>
-<td align="right">0.954 (4.1×)</td>
-<td align="right">53.07 (230×)</td>
-<td align="right">10.64 (46.1×)</td>
+<td align="right">0.229</td>
+<td align="right">0.543 (2.4×)</td>
+<td align="right">0.400 (1.7×)</td>
+<td align="right">2.894 (12.6×)</td>
+<td align="right">5.448 (23.8×)</td>
+<td align="right">1.066 (4.7×)</td>
+<td align="right">53.506 (233.6×)</td>
+<td align="right">10.375 (45.3×)</td>
 </tr>
 <tr>
 <td align="right">1e4</td>
-<td align="right">0.475</td>
-<td align="right">1.984 (4.2×)</td>
-<td align="right">1.760 (3.7×)</td>
-<td align="right">4.941 (10.4×)</td>
-<td align="right">6.090 (12.8×)</td>
-<td align="right">1.889 (4.0×)</td>
-<td align="right">54.21 (114×)</td>
-<td align="right">50.11 (106×)</td>
+<td align="right">0.562</td>
+<td align="right">2.189 (3.9×)</td>
+<td align="right">1.761 (3.1×)</td>
+<td align="right">4.783 (8.5×)</td>
+<td align="right">6.153 (10.9×)</td>
+<td align="right">1.825 (3.2×)</td>
+<td align="right">53.920 (95.9×)</td>
+<td align="right">48.782 (86.8×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">3.752</td>
-<td align="right">16.74 (4.5×)</td>
-<td align="right">14.90 (4.0×)</td>
-<td align="right">23.06 (6.1×)</td>
-<td align="right">13.12 (3.5×)</td>
-<td align="right">3.944 (1.1×)</td>
-<td align="right">57.69 (15.4×)</td>
-<td align="right">469.6 (125×)</td>
+<td align="right">3.599</td>
+<td align="right">17.338 (4.8×)</td>
+<td align="right">14.812 (4.1×)</td>
+<td align="right">22.670 (6.3×)</td>
+<td align="right">13.083 (3.6×)</td>
+<td align="right">4.289 (1.2×)</td>
+<td align="right">57.986 (16.1×)</td>
+<td align="right">471.724 (131.1×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">21.28</td>
-<td align="right">206.2 (9.7×)</td>
-<td align="right">153.7 (7.2×)</td>
-<td align="right">219.9 (10.3×)</td>
-<td align="right">90.42 (4.2×)</td>
-<td align="right">37.50 (1.8×)</td>
-<td align="right">106.8 (5.0×)</td>
-<td align="right">4666 (219×)</td>
+<td align="right">18.653</td>
+<td align="right">212.030 (11.4×)</td>
+<td align="right">156.515 (8.4×)</td>
+<td align="right">219.428 (11.8×)</td>
+<td align="right">89.268 (4.8×)</td>
+<td align="right">33.021 (1.8×)</td>
+<td align="right">109.259 (5.9×)</td>
+<td align="right">4656.521 (249.6×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">868.6</td>
-<td align="right">3168 (3.6×)</td>
-<td align="right">2703 (3.1×)</td>
-<td align="right">3731 (4.3×)</td>
-<td align="right">1357 (1.6×)</td>
-<td align="right">562.3 (0.6×)</td>
-<td align="right">928.2 (1.1×)</td>
-<td align="right">48519 (55.9×)</td>
+<td align="right">811.193</td>
+<td align="right">3204.314 (4.0×)</td>
+<td align="right">2674.113 (3.3×)</td>
+<td align="right">3655.460 (4.5×)</td>
+<td align="right">1334.659 (1.6×)</td>
+<td align="right">500.393 (0.6×)</td>
+<td align="right">953.358 (1.2×)</td>
+<td align="right">47794.207 (58.9×)</td>
 </tr>
 </tbody>
 </table>
@@ -584,47 +584,47 @@
 <tbody>
 <tr>
 <td align="right">10</td>
-<td align="right">0.174</td>
-<td align="right">0.373 (2.1×)</td>
-<td align="right">0.267 (1.5×)</td>
-<td align="right">2.956 (17.0×)</td>
-<td align="right">2.143 (12.3×)</td>
-<td align="right">0.608 (3.5×)</td>
-<td align="right">16.65 (95.6×)</td>
-<td align="right">4.853 (27.9×)</td>
+<td align="right">0.167</td>
+<td align="right">0.392 (2.3×)</td>
+<td align="right">0.249 (1.5×)</td>
+<td align="right">2.705 (16.2×)</td>
+<td align="right">2.091 (12.5×)</td>
+<td align="right">0.579 (3.5×)</td>
+<td align="right">15.589 (93.4×)</td>
+<td align="right">4.980 (29.8×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">0.260</td>
-<td align="right">1.081 (4.2×)</td>
-<td align="right">0.381 (1.5×)</td>
-<td align="right">3.779 (14.5×)</td>
-<td align="right">6.458 (24.8×)</td>
-<td align="right">0.726 (2.8×)</td>
-<td align="right">50.90 (196×)</td>
-<td align="right">21.25 (81.7×)</td>
+<td align="right">0.255</td>
+<td align="right">1.104 (4.3×)</td>
+<td align="right">0.362 (1.4×)</td>
+<td align="right">3.726 (14.6×)</td>
+<td align="right">6.463 (25.3×)</td>
+<td align="right">0.783 (3.1×)</td>
+<td align="right">48.917 (191.6×)</td>
+<td align="right">20.743 (81.2×)</td>
 </tr>
 <tr>
 <td align="right">1000</td>
-<td align="right">0.973</td>
-<td align="right">8.141 (8.4×)</td>
-<td align="right">1.350 (1.4×)</td>
-<td align="right">12.26 (12.6×)</td>
-<td align="right">48.29 (49.6×)</td>
-<td align="right">3.535 (3.6×)</td>
-<td align="right">370.9 (381×)</td>
-<td align="right">174.1 (179×)</td>
+<td align="right">0.810</td>
+<td align="right">8.027 (9.9×)</td>
+<td align="right">1.201 (1.5×)</td>
+<td align="right">11.733 (14.5×)</td>
+<td align="right">48.145 (59.4×)</td>
+<td align="right">2.800 (3.5×)</td>
+<td align="right">381.540 (471.1×)</td>
+<td align="right">173.686 (214.4×)</td>
 </tr>
 <tr>
 <td align="right">10000</td>
-<td align="right">3.616</td>
-<td align="right">92.45 (25.6×)</td>
-<td align="right">9.659 (2.7×)</td>
-<td align="right">107.7 (29.8×)</td>
-<td align="right">499.0 (138×)</td>
-<td align="right">16.31 (4.5×)</td>
-<td align="right">4292 (1187×)</td>
-<td align="right">1914 (529×)</td>
+<td align="right">2.026</td>
+<td align="right">91.112 (45.0×)</td>
+<td align="right">12.841 (6.3×)</td>
+<td align="right">102.550 (50.6×)</td>
+<td align="right">495.632 (244.7×)</td>
+<td align="right">20.448 (10.1×)</td>
+<td align="right">4450.699 (2197.2×)</td>
+<td align="right">1917.203 (946.5×)</td>
 </tr>
 </tbody>
 </table>
@@ -655,47 +655,47 @@
 <tbody>
 <tr>
 <td align="right">10</td>
-<td align="right">0.247</td>
-<td align="right">0.613 (2.5×)</td>
-<td align="right">0.459 (1.9×)</td>
-<td align="right">3.114 (12.6×)</td>
-<td align="right">5.655 (22.9×)</td>
-<td align="right">0.915 (3.7×)</td>
-<td align="right">53.18 (216×)</td>
-<td align="right">12.06 (48.9×)</td>
+<td align="right">0.244</td>
+<td align="right">0.561 (2.3×)</td>
+<td align="right">0.422 (1.7×)</td>
+<td align="right">2.926 (12.0×)</td>
+<td align="right">5.642 (23.1×)</td>
+<td align="right">1.097 (4.5×)</td>
+<td align="right">52.566 (215.2×)</td>
+<td align="right">11.455 (46.9×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">0.529</td>
-<td align="right">2.783 (5.3×)</td>
-<td align="right">1.964 (3.7×)</td>
-<td align="right">5.513 (10.4×)</td>
-<td align="right">20.76 (39.2×)</td>
-<td align="right">2.051 (3.9×)</td>
-<td align="right">186.4 (352×)</td>
-<td align="right">59.88 (113×)</td>
+<td align="right">0.526</td>
+<td align="right">2.878 (5.5×)</td>
+<td align="right">1.940 (3.7×)</td>
+<td align="right">5.275 (10.0×)</td>
+<td align="right">20.608 (39.2×)</td>
+<td align="right">2.028 (3.9×)</td>
+<td align="right">225.567 (429.2×)</td>
+<td align="right">61.420 (116.9×)</td>
 </tr>
 <tr>
 <td align="right">1000</td>
-<td align="right">4.304</td>
-<td align="right">25.15 (5.8×)</td>
-<td align="right">16.73 (3.9×)</td>
-<td align="right">28.76 (6.7×)</td>
-<td align="right">168.6 (39.2×)</td>
-<td align="right">6.207 (1.4×)</td>
-<td align="right">1614 (375×)</td>
-<td align="right">566.6 (132×)</td>
+<td align="right">4.039</td>
+<td align="right">25.503 (6.3×)</td>
+<td align="right">16.669 (4.1×)</td>
+<td align="right">28.220 (7.0×)</td>
+<td align="right">168.101 (41.6×)</td>
+<td align="right">6.791 (1.7×)</td>
+<td align="right">2130.133 (527.4×)</td>
+<td align="right">564.126 (139.7×)</td>
 </tr>
 <tr>
 <td align="right">10000</td>
-<td align="right">25.22</td>
-<td align="right">313.6 (12.4×)</td>
-<td align="right">169.0 (6.7×)</td>
-<td align="right">281.7 (11.2×)</td>
-<td align="right">1793 (71.1×)</td>
-<td align="right">59.36 (2.4×)</td>
-<td align="right">22456 (891×)</td>
-<td align="right">5792 (230×)</td>
+<td align="right">23.030</td>
+<td align="right">318.444 (13.8×)</td>
+<td align="right">181.472 (7.9×)</td>
+<td align="right">278.753 (12.1×)</td>
+<td align="right">1789.076 (77.7×)</td>
+<td align="right">61.271 (2.7×)</td>
+<td align="right">20808.858 (903.6×)</td>
+<td align="right">5747.896 (249.6×)</td>
 </tr>
 </tbody>
 </table>
@@ -731,69 +731,69 @@
 <tbody>
 <tr>
 <td align="right">1e3</td>
-<td align="right">0.319</td>
-<td align="right">0.653 (2.0×)</td>
-<td align="right">0.512 (1.6×)</td>
-<td align="right">4.224 (13.2×)</td>
-<td align="right">3.575 (11.2×)</td>
-<td align="right">0.513 (1.6×)</td>
-<td align="right">28.55 (89.5×)</td>
-<td align="right">7.724 (24.2×)</td>
+<td align="right">0.306</td>
+<td align="right">0.638 (2.1×)</td>
+<td align="right">0.448 (1.5×)</td>
+<td align="right">4.064 (13.3×)</td>
+<td align="right">3.420 (11.2×)</td>
+<td align="right">0.538 (1.8×)</td>
+<td align="right">29.186 (95.2×)</td>
+<td align="right">7.828 (25.5×)</td>
 </tr>
 <tr>
 <td align="right">1e4</td>
-<td align="right">0.533</td>
-<td align="right">0.938 (1.8×)</td>
-<td align="right">0.780 (1.5×)</td>
-<td align="right">5.208 (9.8×)</td>
-<td align="right">5.369 (10.1×)</td>
-<td align="right">0.795 (1.5×)</td>
-<td align="right">29.60 (55.6×)</td>
-<td align="right">22.33 (41.9×)</td>
+<td align="right">0.483</td>
+<td align="right">0.903 (1.9×)</td>
+<td align="right">0.734 (1.5×)</td>
+<td align="right">5.007 (10.4×)</td>
+<td align="right">4.857 (10.1×)</td>
+<td align="right">0.797 (1.7×)</td>
+<td align="right">29.926 (62.0×)</td>
+<td align="right">23.092 (47.8×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">3.964</td>
-<td align="right">3.485 (0.9×)</td>
-<td align="right">3.131 (0.8×)</td>
-<td align="right">16.43 (4.1×)</td>
-<td align="right">24.99 (6.3×)</td>
-<td align="right">2.692 (0.7×)</td>
-<td align="right">44.12 (11.1×)</td>
-<td align="right">175.9 (44.4×)</td>
+<td align="right">2.690</td>
+<td align="right">3.797 (1.4×)</td>
+<td align="right">3.381 (1.3×)</td>
+<td align="right">17.132 (6.4×)</td>
+<td align="right">22.881 (8.5×)</td>
+<td align="right">3.725 (1.4×)</td>
+<td align="right">45.735 (17.0×)</td>
+<td align="right">180.649 (67.2×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">12.15</td>
-<td align="right">24.44 (2.0×)</td>
-<td align="right">26.17 (2.2×)</td>
-<td align="right">174.4 (14.3×)</td>
-<td align="right">210.6 (17.3×)</td>
-<td align="right">17.99 (1.5×)</td>
-<td align="right">178.8 (14.7×)</td>
-<td align="right">1558 (128×)</td>
+<td align="right">12.414</td>
+<td align="right">26.406 (2.1×)</td>
+<td align="right">26.623 (2.1×)</td>
+<td align="right">193.073 (15.6×)</td>
+<td align="right">193.283 (15.6×)</td>
+<td align="right">24.984 (2.0×)</td>
+<td align="right">197.627 (15.9×)</td>
+<td align="right">1458.473 (117.5×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">101.4</td>
-<td align="right">262.2 (2.6×)</td>
-<td align="right">253.3 (2.5×)</td>
-<td align="right">1510 (14.9×)</td>
-<td align="right">1908 (18.8×)</td>
-<td align="right">177.5 (1.8×)</td>
-<td align="right">1541 (15.2×)</td>
-<td align="right">14588 (144×)</td>
+<td align="right">159.654</td>
+<td align="right">314.406 (2.0×)</td>
+<td align="right">322.484 (2.0×)</td>
+<td align="right">1871.675 (11.7×)</td>
+<td align="right">2016.507 (12.6×)</td>
+<td align="right">251.983 (1.6×)</td>
+<td align="right">1761.710 (11.0×)</td>
+<td align="right">14561.307 (91.2×)</td>
 </tr>
 <tr>
 <td align="right">1e8</td>
-<td align="right">1197</td>
-<td align="right">3514 (2.9×)</td>
-<td align="right">2806 (2.3×)</td>
-<td align="right">21106 (17.6×)</td>
-<td align="right">22968 (19.2×)</td>
-<td align="right">5227 (4.4×)</td>
-<td align="right">16904 (14.1×)</td>
-<td align="right">160256 (134×)</td>
+<td align="right">1081.994</td>
+<td align="right">2596.127 (2.4×)</td>
+<td align="right">2629.491 (2.4×)</td>
+<td align="right">17211.577 (15.9×)</td>
+<td align="right">20196.679 (18.7×)</td>
+<td align="right">4705.301 (4.3×)</td>
+<td align="right">14989.606 (13.9×)</td>
+<td align="right">149796.139 (138.4×)</td>
 </tr>
 </tbody>
 </table>
@@ -824,58 +824,58 @@
 <tbody>
 <tr>
 <td align="right">1e3</td>
-<td align="right">0.520</td>
-<td align="right">1.237 (2.4×)</td>
-<td align="right">0.903 (1.7×)</td>
-<td align="right">4.754 (9.1×)</td>
-<td align="right">12.98 (24.9×)</td>
-<td align="right">1.227 (2.4×)</td>
-<td align="right">99.55 (191×)</td>
-<td align="right">22.59 (43.4×)</td>
+<td align="right">0.506</td>
+<td align="right">1.131 (2.2×)</td>
+<td align="right">0.848 (1.7×)</td>
+<td align="right">4.521 (8.9×)</td>
+<td align="right">11.282 (22.3×)</td>
+<td align="right">1.263 (2.5×)</td>
+<td align="right">97.726 (193.2×)</td>
+<td align="right">21.775 (43.0×)</td>
 </tr>
 <tr>
 <td align="right">1e4</td>
-<td align="right">1.564</td>
-<td align="right">5.179 (3.3×)</td>
-<td align="right">3.733 (2.4×)</td>
-<td align="right">8.992 (5.8×)</td>
-<td align="right">16.17 (10.3×)</td>
-<td align="right">1.966 (1.3×)</td>
-<td align="right">104.0 (66.5×)</td>
-<td align="right">105.3 (67.3×)</td>
+<td align="right">1.591</td>
+<td align="right">4.807 (3.0×)</td>
+<td align="right">3.479 (2.2×)</td>
+<td align="right">8.393 (5.3×)</td>
+<td align="right">14.679 (9.2×)</td>
+<td align="right">2.242 (1.4×)</td>
+<td align="right">103.377 (65.0×)</td>
+<td align="right">110.031 (69.2×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">14.15</td>
-<td align="right">43.11 (3.0×)</td>
-<td align="right">31.50 (2.2×)</td>
-<td align="right">47.48 (3.4×)</td>
-<td align="right">48.34 (3.4×)</td>
-<td align="right">7.501 (0.5×)</td>
-<td align="right">133.2 (9.4×)</td>
-<td align="right">1133 (80.1×)</td>
+<td align="right">14.388</td>
+<td align="right">41.408 (2.9×)</td>
+<td align="right">28.350 (2.0×)</td>
+<td align="right">46.071 (3.2×)</td>
+<td align="right">45.080 (3.1×)</td>
+<td align="right">10.817 (0.8×)</td>
+<td align="right">133.017 (9.2×)</td>
+<td align="right">996.675 (69.3×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">96.20</td>
-<td align="right">435.8 (4.5×)</td>
-<td align="right">270.6 (2.8×)</td>
-<td align="right">491.2 (5.1×)</td>
-<td align="right">348.7 (3.6×)</td>
-<td align="right">84.98 (0.9×)</td>
-<td align="right">366.6 (3.8×)</td>
-<td align="right">10123 (105×)</td>
+<td align="right">94.441</td>
+<td align="right">422.005 (4.5×)</td>
+<td align="right">279.172 (3.0×)</td>
+<td align="right">443.575 (4.7×)</td>
+<td align="right">325.483 (3.4×)</td>
+<td align="right">101.768 (1.1×)</td>
+<td align="right">376.744 (4.0×)</td>
+<td align="right">9698.458 (102.7×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">922.5</td>
-<td align="right">4062 (4.4×)</td>
-<td align="right">2819 (3.1×)</td>
-<td align="right">5023 (5.4×)</td>
-<td align="right">3324 (3.6×)</td>
-<td align="right">961.4 (1.0×)</td>
-<td align="right">2745 (3.0×)</td>
-<td align="right">104826 (114×)</td>
+<td align="right">957.280</td>
+<td align="right">4283.333 (4.5×)</td>
+<td align="right">2736.284 (2.9×)</td>
+<td align="right">4885.442 (5.1×)</td>
+<td align="right">3246.495 (3.4×)</td>
+<td align="right">1048.586 (1.1×)</td>
+<td align="right">2846.474 (3.0×)</td>
+<td align="right">98876.869 (103.3×)</td>
 </tr>
 </tbody>
 </table>
@@ -906,47 +906,47 @@
 <tbody>
 <tr>
 <td align="right">10</td>
-<td align="right">0.417</td>
-<td align="right">0.830 (2.0×)</td>
-<td align="right">0.627 (1.5×)</td>
-<td align="right">4.396 (10.6×)</td>
-<td align="right">3.916 (9.4×)</td>
-<td align="right">0.527 (1.3×)</td>
-<td align="right">28.96 (69.5×)</td>
-<td align="right">10.08 (24.2×)</td>
+<td align="right">0.407</td>
+<td align="right">0.745 (1.8×)</td>
+<td align="right">0.585 (1.4×)</td>
+<td align="right">4.372 (10.7×)</td>
+<td align="right">4.215 (10.4×)</td>
+<td align="right">0.583 (1.4×)</td>
+<td align="right">28.410 (69.8×)</td>
+<td align="right">10.143 (24.9×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">0.813</td>
-<td align="right">2.521 (3.1×)</td>
-<td align="right">1.082 (1.3×)</td>
-<td align="right">6.579 (8.1×)</td>
-<td align="right">16.19 (19.9×)</td>
-<td align="right">0.768 (0.9×)</td>
-<td align="right">113.8 (140×)</td>
-<td align="right">54.63 (67.2×)</td>
+<td align="right">0.830</td>
+<td align="right">2.332 (2.8×)</td>
+<td align="right">1.079 (1.3×)</td>
+<td align="right">6.041 (7.3×)</td>
+<td align="right">46.832 (56.5×)</td>
+<td align="right">217.136 (261.8×)</td>
+<td align="right">111.534 (134.5×)</td>
+<td align="right">49.581 (59.8×)</td>
 </tr>
 <tr>
 <td align="right">1000</td>
 <td align="right">3.854</td>
-<td align="right">15.89 (4.1×)</td>
-<td align="right">3.901 (1.0×)</td>
-<td align="right">26.12 (6.8×)</td>
-<td align="right">164.0 (42.6×)</td>
-<td align="right">3.787 (1.0×)</td>
-<td align="right">972.9 (252×)</td>
-<td align="right">479.3 (124×)</td>
+<td align="right">16.041 (4.2×)</td>
+<td align="right">3.950 (1.0×)</td>
+<td align="right">26.502 (6.9×)</td>
+<td align="right">141.405 (36.7×)</td>
+<td align="right">4.332 (1.1×)</td>
+<td align="right">961.776 (249.6×)</td>
+<td align="right">461.652 (119.8×)</td>
 </tr>
 <tr>
 <td align="right">10000</td>
-<td align="right">11.58</td>
-<td align="right">158.7 (13.7×)</td>
-<td align="right">34.86 (3.0×)</td>
-<td align="right">224.1 (19.4×)</td>
-<td align="right">1647 (142×)</td>
-<td align="right">30.51 (2.6×)</td>
-<td align="right">10220 (883×)</td>
-<td align="right">5518 (477×)</td>
+<td align="right">12.848</td>
+<td align="right">172.965 (13.5×)</td>
+<td align="right">36.763 (2.9×)</td>
+<td align="right">213.030 (16.6×)</td>
+<td align="right">1405.853 (109.4×)</td>
+<td align="right">38.241 (3.0×)</td>
+<td align="right">10372.086 (807.3×)</td>
+<td align="right">5060.629 (393.9×)</td>
 </tr>
 </tbody>
 </table>
@@ -977,47 +977,47 @@
 <tbody>
 <tr>
 <td align="right">10</td>
-<td align="right">0.540</td>
-<td align="right">1.296 (2.4×)</td>
-<td align="right">0.938 (1.7×)</td>
-<td align="right">5.014 (9.3×)</td>
-<td align="right">13.66 (25.3×)</td>
-<td align="right">1.170 (2.2×)</td>
-<td align="right">104.4 (193×)</td>
-<td align="right">24.26 (44.9×)</td>
+<td align="right">0.480</td>
+<td align="right">1.186 (2.5×)</td>
+<td align="right">0.873 (1.8×)</td>
+<td align="right">4.615 (9.6×)</td>
+<td align="right">11.939 (24.9×)</td>
+<td align="right">1.261 (2.6×)</td>
+<td align="right">103.220 (214.9×)</td>
+<td align="right">24.181 (50.3×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">1.701</td>
-<td align="right">6.831 (4.0×)</td>
-<td align="right">3.996 (2.3×)</td>
-<td align="right">9.709 (5.7×)</td>
-<td align="right">64.26 (37.8×)</td>
-<td align="right">2.706 (1.6×)</td>
-<td align="right">508.6 (299×)</td>
-<td align="right">130.6 (76.8×)</td>
+<td align="right">1.663</td>
+<td align="right">6.647 (4.0×)</td>
+<td align="right">3.619 (2.2×)</td>
+<td align="right">9.429 (5.7×)</td>
+<td align="right">58.083 (34.9×)</td>
+<td align="right">2.905 (1.7×)</td>
+<td align="right">502.474 (302.2×)</td>
+<td align="right">135.155 (81.3×)</td>
 </tr>
 <tr>
 <td align="right">1000</td>
-<td align="right">16.65</td>
-<td align="right">55.66 (3.3×)</td>
-<td align="right">33.08 (2.0×)</td>
-<td align="right">62.23 (3.7×)</td>
-<td align="right">605.7 (36.4×)</td>
-<td align="right">11.70 (0.7×)</td>
-<td align="right">4810 (289×)</td>
-<td align="right">1382 (83.0×)</td>
+<td align="right">17.137</td>
+<td align="right">55.558 (3.2×)</td>
+<td align="right">31.872 (1.9×)</td>
+<td align="right">56.418 (3.3×)</td>
+<td align="right">518.748 (30.3×)</td>
+<td align="right">15.320 (0.9×)</td>
+<td align="right">4784.479 (279.2×)</td>
+<td align="right">1291.982 (75.4×)</td>
 </tr>
 <tr>
 <td align="right">10000</td>
-<td align="right">101.7</td>
-<td align="right">604.5 (5.9×)</td>
-<td align="right">347.7 (3.4×)</td>
-<td align="right">559.2 (5.5×)</td>
-<td align="right">5875 (57.8×)</td>
-<td align="right">108.0 (1.1×)</td>
-<td align="right">52155 (513×)</td>
-<td align="right">14011 (138×)</td>
+<td align="right">105.350</td>
+<td align="right">574.994 (5.5×)</td>
+<td align="right">349.719 (3.3×)</td>
+<td align="right">576.305 (5.5×)</td>
+<td align="right">5631.684 (53.5×)</td>
+<td align="right">132.502 (1.3×)</td>
+<td align="right">54112.865 (513.6×)</td>
+<td align="right">13485.024 (128.0×)</td>
 </tr>
 </tbody>
 </table>
@@ -1053,69 +1053,69 @@
 <tbody>
 <tr>
 <td align="right">1e3</td>
-<td align="right">0.859</td>
-<td align="right">1.689 (2.0×)</td>
-<td align="right">1.818 (2.1×)</td>
-<td align="right">4.349 (5.1×)</td>
-<td align="right">1.889 (2.2×)</td>
-<td align="right">30.04 (35.0×)</td>
-<td align="right">8.351 (9.7×)</td>
-<td align="right">7.584 (8.8×)</td>
+<td align="right">0.838</td>
+<td align="right">1.699 (2.0×)</td>
+<td align="right">1.794 (2.1×)</td>
+<td align="right">4.087 (4.9×)</td>
+<td align="right">1.869 (2.2×)</td>
+<td align="right">64.712 (77.2×)</td>
+<td align="right">8.259 (9.9×)</td>
+<td align="right">7.244 (8.6×)</td>
 </tr>
 <tr>
 <td align="right">1e4</td>
-<td align="right">0.874</td>
-<td align="right">2.649 (3.0×)</td>
-<td align="right">2.578 (3.0×)</td>
-<td align="right">4.630 (5.3×)</td>
-<td align="right">2.352 (2.7×)</td>
-<td align="right">38.20 (43.7×)</td>
-<td align="right">9.035 (10.3×)</td>
-<td align="right">10.51 (12.0×)</td>
+<td align="right">0.858</td>
+<td align="right">2.584 (3.0×)</td>
+<td align="right">2.592 (3.0×)</td>
+<td align="right">4.422 (5.2×)</td>
+<td align="right">2.314 (2.7×)</td>
+<td align="right">66.390 (77.4×)</td>
+<td align="right">8.814 (10.3×)</td>
+<td align="right">10.341 (12.1×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">1.014</td>
-<td align="right">19.86 (19.6×)</td>
-<td align="right">14.74 (14.5×)</td>
-<td align="right">7.969 (7.9×)</td>
-<td align="right">7.115 (7.0×)</td>
-<td align="right">51.95 (51.2×)</td>
-<td align="right">15.03 (14.8×)</td>
-<td align="right">33.84 (33.4×)</td>
+<td align="right">1.008</td>
+<td align="right">19.901 (19.7×)</td>
+<td align="right">14.270 (14.2×)</td>
+<td align="right">7.671 (7.6×)</td>
+<td align="right">6.738 (6.7×)</td>
+<td align="right">63.669 (63.2×)</td>
+<td align="right">16.159 (16.0×)</td>
+<td align="right">35.706 (35.4×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">1.632</td>
-<td align="right">151.3 (92.7×)</td>
-<td align="right">345.4 (212×)</td>
-<td align="right">46.67 (28.6×)</td>
-<td align="right">58.85 (36.1×)</td>
-<td align="right">105.8 (64.8×)</td>
-<td align="right">80.65 (49.4×)</td>
-<td align="right">158.7 (97.3×)</td>
+<td align="right">1.760</td>
+<td align="right">151.497 (86.1×)</td>
+<td align="right">344.820 (196.0×)</td>
+<td align="right">49.973 (28.4×)</td>
+<td align="right">58.741 (33.4×)</td>
+<td align="right">109.993 (62.5×)</td>
+<td align="right">81.242 (46.2×)</td>
+<td align="right">160.831 (91.4×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">8.417</td>
-<td align="right">1888 (224×)</td>
-<td align="right">557.6 (66.2×)</td>
-<td align="right">740.2 (87.9×)</td>
-<td align="right">808.2 (96.0×)</td>
-<td align="right">307.8 (36.6×)</td>
-<td align="right">968.7 (115×)</td>
-<td align="right">1756 (209×)</td>
+<td align="right">7.457</td>
+<td align="right">1852.872 (248.5×)</td>
+<td align="right">580.994 (77.9×)</td>
+<td align="right">718.827 (96.4×)</td>
+<td align="right">780.511 (104.7×)</td>
+<td align="right">314.969 (42.2×)</td>
+<td align="right">961.602 (128.9×)</td>
+<td align="right">1682.043 (225.6×)</td>
 </tr>
 <tr>
 <td align="right">1e8</td>
-<td align="right">100.4</td>
-<td align="right">21075 (210×)</td>
-<td align="right">17434 (174×)</td>
-<td align="right">9711 (96.7×)</td>
-<td align="right">10758 (107×)</td>
-<td align="right">2429 (24.2×)</td>
-<td align="right">12982 (129×)</td>
-<td align="right">17061 (170×)</td>
+<td align="right">97.860</td>
+<td align="right">22091.756 (225.7×)</td>
+<td align="right">18956.133 (193.7×)</td>
+<td align="right">9897.783 (101.1×)</td>
+<td align="right">10686.355 (109.2×)</td>
+<td align="right">2378.465 (24.3×)</td>
+<td align="right">13470.390 (137.7×)</td>
+<td align="right">17039.024 (174.1×)</td>
 </tr>
 </tbody>
 </table>
@@ -1146,36 +1146,47 @@
 <tbody>
 <tr>
 <td align="right">10</td>
-<td align="right">1.632</td>
-<td align="right">151.3 (92.7×)</td>
-<td align="right">345.4 (212×)</td>
-<td align="right">46.67 (28.6×)</td>
-<td align="right">58.85 (36.1×)</td>
-<td align="right">105.8 (64.8×)</td>
-<td align="right">80.65 (49.4×)</td>
-<td align="right">158.7 (97.3×)</td>
+<td align="right">1.760</td>
+<td align="right">151.497 (86.1×)</td>
+<td align="right">344.820 (196.0×)</td>
+<td align="right">49.973 (28.4×)</td>
+<td align="right">58.741 (33.4×)</td>
+<td align="right">109.993 (62.5×)</td>
+<td align="right">81.242 (46.2×)</td>
+<td align="right">160.831 (91.4×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">1.451</td>
-<td align="right">108.7 (74.9×)</td>
-<td align="right">335.9 (232×)</td>
-<td align="right">43.25 (29.8×)</td>
-<td align="right">56.27 (38.8×)</td>
-<td align="right">172.6 (119×)</td>
-<td align="right">77.04 (53.1×)</td>
-<td align="right">180.9 (125×)</td>
+<td align="right">1.362</td>
+<td align="right">100.167 (73.5×)</td>
+<td align="right">353.876 (259.8×)</td>
+<td align="right">43.134 (31.7×)</td>
+<td align="right">53.645 (39.4×)</td>
+<td align="right">179.944 (132.1×)</td>
+<td align="right">74.103 (54.4×)</td>
+<td align="right">177.384 (130.2×)</td>
 </tr>
 <tr>
 <td align="right">1000</td>
-<td align="right">1.966</td>
-<td align="right">106.8 (54.3×)</td>
-<td align="right">183.9 (93.5×)</td>
-<td align="right">44.37 (22.6×)</td>
-<td align="right">57.64 (29.3×)</td>
-<td align="right">208.4 (106×)</td>
-<td align="right">79.51 (40.4×)</td>
-<td align="right">200.5 (102×)</td>
+<td align="right">1.859</td>
+<td align="right">99.793 (53.7×)</td>
+<td align="right">335.939 (180.7×)</td>
+<td align="right">44.074 (23.7×)</td>
+<td align="right">55.423 (29.8×)</td>
+<td align="right">203.755 (109.6×)</td>
+<td align="right">75.738 (40.7×)</td>
+<td align="right">196.444 (105.6×)</td>
+</tr>
+<tr>
+<td align="right">10000</td>
+<td align="right">11.197</td>
+<td align="right">128.396 (11.5×)</td>
+<td align="right">533.499 (47.6×)</td>
+<td align="right">55.436 (5.0×)</td>
+<td align="right">59.201 (5.3×)</td>
+<td align="right">321.541 (28.7×)</td>
+<td align="right">79.903 (7.1×)</td>
+<td align="right">490.346 (43.8×)</td>
 </tr>
 </tbody>
 </table>
@@ -1206,58 +1217,58 @@
 <tbody>
 <tr>
 <td align="right">1e4</td>
-<td align="right">1.011</td>
-<td align="right">2.885 (2.9×)</td>
-<td align="right">2.926 (2.9×)</td>
-<td align="right">4.851 (4.8×)</td>
-<td align="right">2.487 (2.5×)</td>
-<td align="right">37.85 (37.4×)</td>
-<td align="right">9.310 (9.2×)</td>
-<td align="right">15.28 (15.1×)</td>
+<td align="right">0.992</td>
+<td align="right">2.739 (2.8×)</td>
+<td align="right">2.777 (2.8×)</td>
+<td align="right">4.569 (4.6×)</td>
+<td align="right">2.509 (2.5×)</td>
+<td align="right">46.744 (47.1×)</td>
+<td align="right">9.281 (9.4×)</td>
+<td align="right">14.178 (14.3×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">1.144</td>
-<td align="right">18.12 (15.8×)</td>
-<td align="right">8.935 (7.8×)</td>
-<td align="right">8.016 (7.0×)</td>
-<td align="right">7.015 (6.1×)</td>
-<td align="right">55.99 (48.9×)</td>
-<td align="right">14.78 (12.9×)</td>
-<td align="right">41.93 (36.7×)</td>
+<td align="right">1.080</td>
+<td align="right">18.386 (17.0×)</td>
+<td align="right">8.541 (7.9×)</td>
+<td align="right">7.808 (7.2×)</td>
+<td align="right">6.635 (6.1×)</td>
+<td align="right">64.753 (59.9×)</td>
+<td align="right">14.849 (13.7×)</td>
+<td align="right">42.541 (39.4×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">1.393</td>
-<td align="right">108.9 (78.2×)</td>
-<td align="right">320.7 (230×)</td>
-<td align="right">43.53 (31.3×)</td>
-<td align="right">56.04 (40.2×)</td>
-<td align="right">160.4 (115×)</td>
-<td align="right">77.95 (56.0×)</td>
-<td align="right">175.7 (126×)</td>
+<td align="right">1.362</td>
+<td align="right">100.167 (73.5×)</td>
+<td align="right">353.876 (259.8×)</td>
+<td align="right">43.134 (31.7×)</td>
+<td align="right">53.645 (39.4×)</td>
+<td align="right">179.944 (132.1×)</td>
+<td align="right">74.103 (54.4×)</td>
+<td align="right">177.384 (130.2×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">4.733</td>
-<td align="right">2084 (440×)</td>
-<td align="right">550.9 (116×)</td>
-<td align="right">633.0 (134×)</td>
-<td align="right">768.4 (162×)</td>
-<td align="right">458.8 (96.9×)</td>
-<td align="right">953.6 (202×)</td>
-<td align="right">1717 (363×)</td>
+<td align="right">4.354</td>
+<td align="right">1840.332 (422.6×)</td>
+<td align="right">631.070 (144.9×)</td>
+<td align="right">623.314 (143.1×)</td>
+<td align="right">789.977 (181.4×)</td>
+<td align="right">496.461 (114.0×)</td>
+<td align="right">986.938 (226.6×)</td>
+<td align="right">1701.048 (390.6×)</td>
 </tr>
 <tr>
 <td align="right">1e8</td>
-<td align="right">43.91</td>
-<td align="right">17115 (390×)</td>
-<td align="right">16193 (369×)</td>
-<td align="right">8174 (186×)</td>
-<td align="right">9880 (225×)</td>
-<td align="right">2467 (56.2×)</td>
-<td align="right">12217 (278×)</td>
-<td align="right">17895 (408×)</td>
+<td align="right">43.842</td>
+<td align="right">16612.906 (378.9×)</td>
+<td align="right">17668.158 (403.0×)</td>
+<td align="right">8528.194 (194.5×)</td>
+<td align="right">9963.530 (227.3×)</td>
+<td align="right">2452.894 (55.9×)</td>
+<td align="right">12286.978 (280.3×)</td>
+<td align="right">17476.822 (398.6×)</td>
 </tr>
 </tbody>
 </table>
@@ -1288,47 +1299,47 @@
 <tbody>
 <tr>
 <td align="right">1</td>
-<td align="right">1.632</td>
-<td align="right">151.3 (92.7×)</td>
-<td align="right">345.4 (212×)</td>
-<td align="right">46.67 (28.6×)</td>
-<td align="right">58.85 (36.1×)</td>
-<td align="right">105.8 (64.8×)</td>
-<td align="right">80.65 (49.4×)</td>
-<td align="right">158.7 (97.3×)</td>
+<td align="right">1.760</td>
+<td align="right">151.497 (86.1×)</td>
+<td align="right">344.820 (196.0×)</td>
+<td align="right">49.973 (28.4×)</td>
+<td align="right">58.741 (33.4×)</td>
+<td align="right">109.993 (62.5×)</td>
+<td align="right">81.242 (46.2×)</td>
+<td align="right">160.831 (91.4×)</td>
 </tr>
 <tr>
 <td align="right">2</td>
-<td align="right">2.268</td>
-<td align="right">206.9 (91.2×)</td>
-<td align="right">375.0 (165×)</td>
-<td align="right">61.10 (26.9×)</td>
-<td align="right">83.84 (37.0×)</td>
-<td align="right">111.2 (49.0×)</td>
-<td align="right">112.3 (49.5×)</td>
-<td align="right">308.8 (136×)</td>
+<td align="right">1.882</td>
+<td align="right">201.356 (107.0×)</td>
+<td align="right">375.490 (199.5×)</td>
+<td align="right">54.298 (28.8×)</td>
+<td align="right">79.881 (42.4×)</td>
+<td align="right">122.078 (64.9×)</td>
+<td align="right">106.899 (56.8×)</td>
+<td align="right">284.290 (151.0×)</td>
 </tr>
 <tr>
 <td align="right">10</td>
-<td align="right">3.457</td>
-<td align="right">1230 (356×)</td>
-<td align="right">437.7 (127×)</td>
-<td align="right">94.13 (27.2×)</td>
-<td align="right">192.9 (55.8×)</td>
-<td align="right">119.6 (34.6×)</td>
-<td align="right">242.3 (70.1×)</td>
-<td align="right">927.6 (268×)</td>
+<td align="right">3.377</td>
+<td align="right">1214.021 (359.5×)</td>
+<td align="right">485.386 (143.7×)</td>
+<td align="right">84.796 (25.1×)</td>
+<td align="right">187.125 (55.4×)</td>
+<td align="right">127.203 (37.7×)</td>
+<td align="right">242.001 (71.7×)</td>
+<td align="right">914.026 (270.6×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">20.14</td>
-<td align="right">10242 (509×)</td>
-<td align="right">542.0 (26.9×)</td>
-<td align="right">413.4 (20.5×)</td>
-<td align="right">1332 (66.2×)</td>
-<td align="right">158.3 (7.9×)</td>
-<td align="right">1644 (81.6×)</td>
-<td align="right">8344 (414×)</td>
+<td align="right">19.733</td>
+<td align="right">10485.868 (531.4×)</td>
+<td align="right">797.361 (40.4×)</td>
+<td align="right">402.418 (20.4×)</td>
+<td align="right">1321.065 (66.9×)</td>
+<td align="right">146.569 (7.4×)</td>
+<td align="right">1686.926 (85.5×)</td>
+<td align="right">8214.293 (416.3×)</td>
 </tr>
 </tbody>
 </table>
@@ -1364,69 +1375,69 @@
 <tbody>
 <tr>
 <td align="right">1e3</td>
-<td align="right">0.440</td>
-<td align="right">2.518 (5.7×)</td>
-<td align="right">4.337 (9.9×)</td>
-<td align="right">7.095 (16.1×)</td>
-<td align="right">2.511 (5.7×)</td>
-<td align="right">5.061 (11.5×)</td>
-<td align="right">15.16 (34.5×)</td>
-<td align="right">21.24 (48.3×)</td>
+<td align="right">0.411</td>
+<td align="right">2.447 (6.0×)</td>
+<td align="right">3.663 (8.9×)</td>
+<td align="right">6.446 (15.7×)</td>
+<td align="right">2.819 (6.9×)</td>
+<td align="right">5.609 (13.7×)</td>
+<td align="right">14.901 (36.3×)</td>
+<td align="right">18.838 (45.8×)</td>
 </tr>
 <tr>
 <td align="right">1e4</td>
-<td align="right">0.520</td>
-<td align="right">4.744 (9.1×)</td>
-<td align="right">8.552 (16.4×)</td>
-<td align="right">8.481 (16.3×)</td>
-<td align="right">5.161 (9.9×)</td>
-<td align="right">5.919 (11.4×)</td>
-<td align="right">18.12 (34.8×)</td>
-<td align="right">25.88 (49.7×)</td>
+<td align="right">0.561</td>
+<td align="right">4.352 (7.8×)</td>
+<td align="right">8.541 (15.2×)</td>
+<td align="right">8.168 (14.6×)</td>
+<td align="right">5.056 (9.0×)</td>
+<td align="right">7.470 (13.3×)</td>
+<td align="right">18.053 (32.2×)</td>
+<td align="right">23.505 (41.9×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">1.226</td>
-<td align="right">35.49 (28.9×)</td>
-<td align="right">43.96 (35.9×)</td>
-<td align="right">16.07 (13.1×)</td>
-<td align="right">24.02 (19.6×)</td>
-<td align="right">12.94 (10.6×)</td>
-<td align="right">41.88 (34.2×)</td>
-<td align="right">73.57 (60.0×)</td>
+<td align="right">1.076</td>
+<td align="right">31.478 (29.3×)</td>
+<td align="right">39.110 (36.4×)</td>
+<td align="right">14.097 (13.1×)</td>
+<td align="right">20.435 (19.0×)</td>
+<td align="right">15.394 (14.3×)</td>
+<td align="right">41.224 (38.3×)</td>
+<td align="right">73.388 (68.2×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">3.940</td>
-<td align="right">305.7 (77.6×)</td>
-<td align="right">155.1 (39.4×)</td>
-<td align="right">98.29 (24.9×)</td>
-<td align="right">269.7 (68.4×)</td>
-<td align="right">49.29 (12.5×)</td>
-<td align="right">359.8 (91.3×)</td>
-<td align="right">399.8 (101×)</td>
+<td align="right">3.452</td>
+<td align="right">296.568 (85.9×)</td>
+<td align="right">146.564 (42.5×)</td>
+<td align="right">99.476 (28.8×)</td>
+<td align="right">248.761 (72.1×)</td>
+<td align="right">65.200 (18.9×)</td>
+<td align="right">341.027 (98.8×)</td>
+<td align="right">385.068 (111.6×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">24.34</td>
-<td align="right">2821 (116×)</td>
-<td align="right">1035 (42.5×)</td>
-<td align="right">1509 (62.0×)</td>
-<td align="right">2718 (112×)</td>
-<td align="right">506.2 (20.8×)</td>
-<td align="right">3639 (150×)</td>
-<td align="right">3775 (155×)</td>
+<td align="right">24.787</td>
+<td align="right">2864.941 (115.6×)</td>
+<td align="right">1041.879 (42.0×)</td>
+<td align="right">1528.987 (61.7×)</td>
+<td align="right">2549.284 (102.8×)</td>
+<td align="right">555.367 (22.4×)</td>
+<td align="right">3344.242 (134.9×)</td>
+<td align="right">3521.290 (142.1×)</td>
 </tr>
 <tr>
 <td align="right">1e8</td>
-<td align="right">208.9</td>
-<td align="right">29019 (139×)</td>
-<td align="right">12640 (60.5×)</td>
-<td align="right">15943 (76.3×)</td>
-<td align="right">32102 (154×)</td>
-<td align="right">5021 (24.0×)</td>
-<td align="right">38770 (186×)</td>
-<td align="right">34355 (165×)</td>
+<td align="right">219.750</td>
+<td align="right">29775.789 (135.5×)</td>
+<td align="right">13401.225 (61.0×)</td>
+<td align="right">16399.642 (74.6×)</td>
+<td align="right">31762.248 (144.5×)</td>
+<td align="right">5564.739 (25.3×)</td>
+<td align="right">39105.868 (178.0×)</td>
+<td align="right">34107.019 (155.2×)</td>
 </tr>
 </tbody>
 </table>
@@ -1457,36 +1468,47 @@
 <tbody>
 <tr>
 <td align="right">10</td>
-<td align="right">3.940</td>
-<td align="right">305.7 (77.6×)</td>
-<td align="right">155.1 (39.4×)</td>
-<td align="right">98.29 (24.9×)</td>
-<td align="right">269.7 (68.4×)</td>
-<td align="right">49.29 (12.5×)</td>
-<td align="right">359.8 (91.3×)</td>
-<td align="right">399.8 (101×)</td>
+<td align="right">3.452</td>
+<td align="right">296.568 (85.9×)</td>
+<td align="right">146.564 (42.5×)</td>
+<td align="right">99.476 (28.8×)</td>
+<td align="right">248.761 (72.1×)</td>
+<td align="right">65.200 (18.9×)</td>
+<td align="right">341.027 (98.8×)</td>
+<td align="right">385.068 (111.6×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">4.085</td>
-<td align="right">191.6 (46.9×)</td>
-<td align="right">177.9 (43.6×)</td>
-<td align="right">82.31 (20.2×)</td>
-<td align="right">226.0 (55.3×)</td>
-<td align="right">69.16 (16.9×)</td>
-<td align="right">341.5 (83.6×)</td>
-<td align="right">800.1 (196×)</td>
+<td align="right">4.229</td>
+<td align="right">174.438 (41.2×)</td>
+<td align="right">181.993 (43.0×)</td>
+<td align="right">91.899 (21.7×)</td>
+<td align="right">248.562 (58.8×)</td>
+<td align="right">88.165 (20.8×)</td>
+<td align="right">329.288 (77.9×)</td>
+<td align="right">808.286 (191.1×)</td>
 </tr>
 <tr>
 <td align="right">1000</td>
-<td align="right">5.419</td>
-<td align="right">207.6 (38.3×)</td>
-<td align="right">164.9 (30.4×)</td>
-<td align="right">92.65 (17.1×)</td>
-<td align="right">262.5 (48.4×)</td>
-<td align="right">245.3 (45.3×)</td>
-<td align="right">314.5 (58.0×)</td>
-<td align="right">1152 (213×)</td>
+<td align="right">5.454</td>
+<td align="right">170.007 (31.2×)</td>
+<td align="right">170.607 (31.3×)</td>
+<td align="right">90.087 (16.5×)</td>
+<td align="right">257.311 (47.2×)</td>
+<td align="right">304.129 (55.8×)</td>
+<td align="right">322.657 (59.2×)</td>
+<td align="right">1129.586 (207.1×)</td>
+</tr>
+<tr>
+<td align="right">10000</td>
+<td align="right">32.125</td>
+<td align="right">254.416 (7.9×)</td>
+<td align="right">193.725 (6.0×)</td>
+<td align="right">138.006 (4.3×)</td>
+<td align="right">250.750 (7.8×)</td>
+<td align="right">2069.130 (64.4×)</td>
+<td align="right">351.603 (10.9×)</td>
+<td align="right">14037.759 (437.0×)</td>
 </tr>
 </tbody>
 </table>
@@ -1517,58 +1539,58 @@
 <tbody>
 <tr>
 <td align="right">1e4</td>
-<td align="right">0.522</td>
-<td align="right">5.219 (10.0×)</td>
-<td align="right">8.750 (16.8×)</td>
-<td align="right">8.277 (15.8×)</td>
-<td align="right">5.532 (10.6×)</td>
-<td align="right">10.13 (19.4×)</td>
-<td align="right">18.98 (36.3×)</td>
-<td align="right">81.00 (155×)</td>
+<td align="right">0.573</td>
+<td align="right">4.870 (8.5×)</td>
+<td align="right">9.075 (15.8×)</td>
+<td align="right">8.774 (15.3×)</td>
+<td align="right">5.350 (9.3×)</td>
+<td align="right">11.534 (20.1×)</td>
+<td align="right">18.621 (32.5×)</td>
+<td align="right">88.427 (154.4×)</td>
 </tr>
 <tr>
 <td align="right">1e5</td>
-<td align="right">0.858</td>
-<td align="right">33.76 (39.4×)</td>
-<td align="right">38.64 (45.0×)</td>
-<td align="right">16.90 (19.7×)</td>
-<td align="right">27.31 (31.8×)</td>
-<td align="right">14.34 (16.7×)</td>
-<td align="right">41.56 (48.4×)</td>
-<td align="right">268.4 (313×)</td>
+<td align="right">0.920</td>
+<td align="right">33.562 (36.5×)</td>
+<td align="right">42.152 (45.8×)</td>
+<td align="right">18.442 (20.1×)</td>
+<td align="right">34.785 (37.8×)</td>
+<td align="right">18.178 (19.8×)</td>
+<td align="right">63.364 (68.9×)</td>
+<td align="right">281.700 (306.3×)</td>
 </tr>
 <tr>
 <td align="right">1e6</td>
-<td align="right">3.886</td>
-<td align="right">188.5 (48.5×)</td>
-<td align="right">160.5 (41.3×)</td>
-<td align="right">93.87 (24.2×)</td>
-<td align="right">255.4 (65.7×)</td>
-<td align="right">67.64 (17.4×)</td>
-<td align="right">303.7 (78.1×)</td>
-<td align="right">781.5 (201×)</td>
+<td align="right">4.229</td>
+<td align="right">174.438 (41.2×)</td>
+<td align="right">181.993 (43.0×)</td>
+<td align="right">91.899 (21.7×)</td>
+<td align="right">248.562 (58.8×)</td>
+<td align="right">88.165 (20.8×)</td>
+<td align="right">329.288 (77.9×)</td>
+<td align="right">808.286 (191.1×)</td>
 </tr>
 <tr>
 <td align="right">1e7</td>
-<td align="right">21.21</td>
-<td align="right">3253 (153×)</td>
-<td align="right">1010 (47.6×)</td>
-<td align="right">1332 (62.8×)</td>
-<td align="right">2420 (114×)</td>
-<td align="right">1125 (53.0×)</td>
-<td align="right">3061 (144×)</td>
-<td align="right">5562 (262×)</td>
+<td align="right">34.596</td>
+<td align="right">3130.501 (90.5×)</td>
+<td align="right">1109.646 (32.1×)</td>
+<td align="right">1340.192 (38.7×)</td>
+<td align="right">2345.418 (67.8×)</td>
+<td align="right">1111.499 (32.1×)</td>
+<td align="right">3133.278 (90.6×)</td>
+<td align="right">7377.747 (213.3×)</td>
 </tr>
 <tr>
 <td align="right">1e8</td>
-<td align="right">106.3</td>
-<td align="right">24253 (228×)</td>
-<td align="right">14965 (141×)</td>
-<td align="right">13392 (126×)</td>
-<td align="right">26311 (248×)</td>
-<td align="right">7646 (71.9×)</td>
-<td align="right">32874 (309×)</td>
-<td align="right">67894 (639×)</td>
+<td align="right">120.830</td>
+<td align="right">24115.628 (199.6×)</td>
+<td align="right">14914.904 (123.4×)</td>
+<td align="right">14148.150 (117.1×)</td>
+<td align="right">26487.805 (219.2×)</td>
+<td align="right">8239.811 (68.2×)</td>
+<td align="right">33408.904 (276.5×)</td>
+<td align="right">81803.327 (677.0×)</td>
 </tr>
 </tbody>
 </table>
@@ -1599,47 +1621,47 @@
 <tbody>
 <tr>
 <td align="right">1</td>
-<td align="right">3.940</td>
-<td align="right">305.7 (77.6×)</td>
-<td align="right">155.1 (39.4×)</td>
-<td align="right">98.29 (24.9×)</td>
-<td align="right">269.7 (68.4×)</td>
-<td align="right">49.29 (12.5×)</td>
-<td align="right">359.8 (91.3×)</td>
-<td align="right">399.8 (101×)</td>
+<td align="right">3.452</td>
+<td align="right">296.568 (85.9×)</td>
+<td align="right">146.564 (42.5×)</td>
+<td align="right">99.476 (28.8×)</td>
+<td align="right">248.761 (72.1×)</td>
+<td align="right">65.200 (18.9×)</td>
+<td align="right">341.027 (98.8×)</td>
+<td align="right">385.068 (111.6×)</td>
 </tr>
 <tr>
 <td align="right">2</td>
-<td align="right">6.120</td>
-<td align="right">390.9 (63.9×)</td>
-<td align="right">178.8 (29.2×)</td>
-<td align="right">111.1 (18.1×)</td>
-<td align="right">329.8 (53.9×)</td>
-<td align="right">68.54 (11.2×)</td>
-<td align="right">482.6 (78.9×)</td>
-<td align="right">645.0 (105×)</td>
+<td align="right">9.561</td>
+<td align="right">383.313 (40.1×)</td>
+<td align="right">207.532 (21.7×)</td>
+<td align="right">119.882 (12.5×)</td>
+<td align="right">401.175 (42.0×)</td>
+<td align="right">83.631 (8.7×)</td>
+<td align="right">486.630 (50.9×)</td>
+<td align="right">672.731 (70.4×)</td>
 </tr>
 <tr>
 <td align="right">10</td>
-<td align="right">11.59</td>
-<td align="right">2862 (247×)</td>
-<td align="right">251.9 (21.7×)</td>
-<td align="right">175.1 (15.1×)</td>
-<td align="right">802.2 (69.2×)</td>
-<td align="right">77.98 (6.7×)</td>
-<td align="right">1076 (92.9×)</td>
-<td align="right">1941 (168×)</td>
+<td align="right">15.827</td>
+<td align="right">2677.380 (169.2×)</td>
+<td align="right">365.816 (23.1×)</td>
+<td align="right">186.221 (11.8×)</td>
+<td align="right">906.928 (57.3×)</td>
+<td align="right">93.757 (5.9×)</td>
+<td align="right">1109.067 (70.1×)</td>
+<td align="right">1903.762 (120.3×)</td>
 </tr>
 <tr>
 <td align="right">100</td>
-<td align="right">54.19</td>
-<td align="right">24145 (446×)</td>
-<td align="right">1011 (18.7×)</td>
-<td align="right">739.2 (13.6×)</td>
-<td align="right">5954 (110×)</td>
-<td align="right">241.6 (4.5×)</td>
-<td align="right">7386 (136×)</td>
-<td align="right">16429 (303×)</td>
+<td align="right">72.347</td>
+<td align="right">24036.087 (332.2×)</td>
+<td align="right">1033.295 (14.3×)</td>
+<td align="right">724.565 (10.0×)</td>
+<td align="right">6952.087 (96.1×)</td>
+<td align="right">251.811 (3.5×)</td>
+<td align="right">8300.249 (114.7×)</td>
+<td align="right">16128.655 (222.9×)</td>
 </tr>
 </tbody>
 </table>
@@ -1667,17 +1689,17 @@
 <tbody>
 <tr>
 <td><code><a href="reference/melt.html">melt()</a></code></td>
-<td align="right">0.6× (data.table @ 1e5 × 10 × 1 × 9)</td>
-<td align="right">10.3×</td>
-<td align="right">58.5×</td>
-<td align="right">1187.1× (dask @ 1e3 × 10001 × 1 × 10000)</td>
+<td align="right">0.6× (polars @ 1e7 × 19 × 10 × 9)</td>
+<td align="right">12.0×</td>
+<td align="right">77.9×</td>
+<td align="right">2197.2× (dask @ 1e3 × 10001 × 1 × 10000)</td>
 </tr>
 <tr>
 <td><code><a href="reference/dcast.html">dcast()</a></code></td>
 <td align="right">2.0× (reshape2 @ 1e3 × 1 × 10)</td>
-<td align="right">49.7×</td>
-<td align="right">94.7×</td>
-<td align="right">508.6× (reshape2 @ 1e6 × 100 × 10)</td>
+<td align="right">54.0×</td>
+<td align="right">96.5×</td>
+<td align="right">531.4× (reshape2 @ 1e6 × 100 × 10)</td>
 </tr>
 </tbody>
 </table>
@@ -1700,21 +1722,21 @@
 <tbody>
 <tr>
 <td><code><a href="reference/melt.html">melt()</a></code></td>
-<td align="right">0.5× (polars @ 1e5 × 19 × 10 × 9)</td>
+<td align="right">0.8× (polars @ 1e5 × 19 × 10 × 9)</td>
 <td align="right">5.7×</td>
-<td align="right">44.2×</td>
-<td align="right">882.6× (dask @ 1e3 × 10001 × 1 × 10000)</td>
+<td align="right">44.4×</td>
+<td align="right">807.3× (dask @ 1e3 × 10001 × 1 × 10000)</td>
 </tr>
 <tr>
 <td><code><a href="reference/dcast.html">dcast()</a></code></td>
-<td align="right">4.5× (polars @ 1e6 × 100 × 10)</td>
-<td align="right">47.7×</td>
-<td align="right">81.6×</td>
-<td align="right">638.8× (duckdb @ 1e8 × 1 × 100)</td>
+<td align="right">3.5× (polars @ 1e6 × 100 × 10)</td>
+<td align="right">41.6×</td>
+<td align="right">74.3×</td>
+<td align="right">677.0× (duckdb @ 1e8 × 1 × 100)</td>
 </tr>
 </tbody>
 </table>
-<p>Combined across both hosts, the smallest speedups remain at 0.5–0.6× (<code><a href="reference/melt.html">melt()</a></code> at 1e5 rows), while the largest reach 1187× for <code><a href="reference/melt.html">melt()</a></code> and 639× for <code><a href="reference/dcast.html">dcast()</a></code>. The mean speedup is above 44× for <code><a href="reference/melt.html">melt()</a></code> and above 81× for <code><a href="reference/dcast.html">dcast()</a></code> on both hosts. On the largest cells (1e8 rows, 8 GB of input), <code>dataprep</code> is the only engine that completes within 2 s, specifically &lt; 0.5 s on Ubuntu and &lt; 1.3 s on Windows.</p>
+<p>Combined across both hosts, the smallest speedups remain at 0.6–0.8× (<code><a href="reference/melt.html">melt()</a></code> at 1e5 and 1e7 rows), while the largest reach 2197× for <code><a href="reference/melt.html">melt()</a></code> and 677× for <code><a href="reference/dcast.html">dcast()</a></code>. The mean speedup is above 44× for <code><a href="reference/melt.html">melt()</a></code> and above 74× for <code><a href="reference/dcast.html">dcast()</a></code> on both hosts. On the largest cells (1e8 rows, 8 GB of input), <code>dataprep</code> is the only engine that completes within 2 s, specifically &lt; 0.5 s on Ubuntu and &lt; 1.3 s on Windows.</p>
 <p>Complete tables — including mean, median, and the full per-competitor gradient — are in <code><a href="articles/dataprep-performance.html">vignette("dataprep-performance")</a></code>.</p>
 </div>
 </div>

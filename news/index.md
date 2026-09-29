@@ -147,11 +147,11 @@ little room for improvement.
 
 #### `melt()` — speed-up vs every one of the 7 major alternatives
 
-Speed-ups relative to each competitor span **0.5×–1187×** across both
-hosts. The sub-1.0× cells are concentrated at 1e5 rows (Ubuntu and
-Windows) and at 1e7 × 10 id on Ubuntu, where `polars` is faster than
-`dataprep`; every other cell has `dataprep` ahead of or on par with the
-fastest competitor.
+Speed-ups relative to each competitor span **0.6×–2197×** across both
+hosts. The sub-1.0× cells are concentrated at 1e5 rows with 10 id
+columns (Windows) and at 1e7 rows × 10 id (Ubuntu), where `polars` is
+faster than `dataprep`; every other cell has `dataprep` ahead of or on
+par with the fastest competitor.
 
 Medians in milliseconds (Ubuntu 25.10):
 
@@ -161,7 +161,7 @@ Medians in milliseconds (Ubuntu 25.10):
 | 1e6 | 9 | 3.680 | 17.89 (4.9×) | 7.900 (2.1×) | 76.77 (20.9×) | 60.30 (16.4×) | 10.44 (2.8×) | 46.49 (12.6×) | 642.1 (174×) |
 | 1e7 | 9 | 37.95 | 372.7 (9.8×) | 371.6 (9.8×) | 1111 (29.3×) | 720.1 (19.0×) | 92.53 (2.4×) | 486.4 (12.8×) | 6423 (169×) |
 | 1e8 | 9 | 496.4 | 3577 (7.2×) | 3576 (7.2×) | 12089 (24.4×) | 7410 (14.9×) | 2563 (5.2×) | 4590 (9.2×) | 65624 (132×) |
-| 1e3 | 10000 | 3.616 | 92.45 (25.6×) | 9.659 (2.7×) | 107.7 (29.8×) | 499.0 (138×) | 16.31 (4.5×) | 4292 (**1187×**) | 1914 (529×) |
+| 1e3 | 10000 | 2.026 | 91.112 (45.0×) | 12.841 (6.3×) | 102.550 (50.6×) | 495.632 (244.7×) | 20.448 (10.1×) | 4450.699 (**2197.2×**) | 1917.203 (946.5×) |
 
 Medians in milliseconds (Windows 11 Pro for Workstations):
 
@@ -171,16 +171,16 @@ Medians in milliseconds (Windows 11 Pro for Workstations):
 | 1e6 | 9 | 12.15 | 24.44 (2.0×) | 26.17 (2.2×) | 174.4 (14.3×) | 210.6 (17.3×) | 17.99 (1.5×) | 178.8 (14.7×) | 1558 (128×) |
 | 1e7 | 9 | 101.4 | 262.2 (2.6×) | 253.3 (2.5×) | 1510 (14.9×) | 1908 (18.8×) | 177.5 (1.8×) | 1541 (15.2×) | 14588 (144×) |
 | 1e8 | 9 | 1197 | 3514 (2.9×) | 2806 (2.3×) | 21106 (17.6×) | 22968 (19.2×) | 5227 (4.4×) | 16904 (14.1×) | 160256 (134×) |
-| 1e3 | 10000 | 11.58 | 158.7 (13.7×) | 34.86 (3.0×) | 224.1 (19.4×) | 1647 (142×) | 30.51 (2.6×) | 10220 (883×) | 5518 (477×) |
+| 1e3 | 10000 | 12.848 | 172.965 (13.5×) | 36.763 (2.9×) | 213.030 (16.6×) | 1405.853 (109.4×) | 38.241 (3.0×) | 10372.086 (**807.3×**) | 5060.629 (393.9×) |
 
 The **median** speed-up across all melt cells and all competitors is
-10.3× on Ubuntu and 5.7× on Windows. The **mean** is 58.5× and 44.2×
+12.0× on Ubuntu and 5.7× on Windows. The **mean** is 77.9× and 44.4×
 respectively. The median is pulled down by the 1e5-row small tables; at
 larger scales the speed-up is much higher.
 
 #### `dcast()` — speed-up vs every one of the 7 major alternatives
 
-Speed-ups relative to each competitor span **2.0×–639×** across both
+Speed-ups relative to each competitor span **2.0×–677×** across both
 hosts. Every cell has `dataprep` ahead of every other engine.
 
 Medians in milliseconds (Ubuntu 25.10):
@@ -199,10 +199,10 @@ Medians in milliseconds (Windows 11 Pro for Workstations):
 | 1e6 | 10 | 3.940 | 305.7 (77.6×) | 155.1 (39.4×) | 98.29 (24.9×) | 269.7 (68.4×) | 49.29 (12.5×) | 359.8 (91.3×) | 399.8 (101×) |
 | 1e6 | 100 | 4.085 | 191.6 (46.9×) | 177.9 (43.6×) | 82.31 (20.2×) | 226.0 (55.3×) | 69.16 (16.9×) | 341.5 (83.6×) | 800.1 (196×) |
 | 1e7 | 100 | 21.21 | 3253 (153×) | 1010 (47.6×) | 1332 (62.8×) | 2420 (114×) | 1125 (53.0×) | 3061 (144×) | 5562 (262×) |
-| 1e8 | 100 | 106.3 | 24253 (228×) | 14965 (141×) | 13392 (126×) | 26311 (248×) | 7646 (71.9×) | 32874 (309×) | 67894 (**639×**) |
+| 1e8 | 100 | 120.830 | 24115.628 (199.6×) | 14914.904 (123.4×) | 14148.150 (117.1×) | 26487.805 (219.2×) | 8239.811 (68.2×) | 33408.904 (276.5×) | 81803.327 (**677.0×**) |
 
 The **median** speed-up across all dcast cells and all competitors is
-49.7× on Ubuntu and 47.7× on Windows. The **mean** is 94.7× and 81.6×
+54.0× on Ubuntu and 41.6× on Windows. The **mean** is 96.5× and 74.3×
 respectively. On the 1e8-row cells (8 GB of input), `dataprep` completes
 in **44–209 ms** while several competitors exceed 12 s on Ubuntu and 12
 s on Windows.
@@ -212,9 +212,9 @@ s on Windows.
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 and
 [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md)
-produce output **byte-identical** to `reshape2`, `data.table`, `tidyr`,
-`pandas`, `polars`, `dask`, and `duckdb` on every tested shape, within
-`tol = 1e-12`.
+produce output **numerically identical** to `reshape2`, `data.table`,
+`tidyr`, `pandas`, `polars`, `dask`, and `duckdb` on every tested shape,
+within `tol = 1e-12`.
 
 | Operation | Cells tested | Engines | Pairwise       |
 |-----------|-------------:|--------:|----------------|
@@ -467,9 +467,9 @@ layer, which shifts the cost from `dataprep` to the caller’s analysis
 code. The shipped 0.1.7 backends therefore keep the standard allocation
 path, and the reported speed-ups stand as measured:
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
-spans 0.5×–1187× and
+spans 0.6×–2197× and
 [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md)
-spans 2.0×–639× across the two reference hosts, with the sub-1.0×
+spans 2.0×–677× across the two reference hosts, with the sub-1.0×
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 cells confined to the 1e5-row shapes where per-call overhead dominates.
 On the cleaning pipeline the 0.1.5 → 0.1.7 speed-ups of 1.1×–1146× stand

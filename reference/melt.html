@@ -135,35 +135,35 @@ backend (<code>melt_cpp</code>) has been benchmarked against <strong>all
 seven major alternatives</strong> in the R and Python ecosystems:
 <code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>,
 <code>polars</code>, <code>dask</code>, and <code>duckdb</code>. Every cell is
-measured with <code>microbenchmark</code> using an adaptive <code>times</code>
+measured with a C++ steady-clock timer and an adaptive <code>times</code>
 rule.</p>
 <p><strong>Speed-up relative to each competitor spans
-<code>0.5x</code> to <code>1187x</code>.</strong> The median across all tested cells
-and all competitors is <code>10.3x</code> on Ubuntu 25.10 and
+<code>0.6x</code> to <code>2197x</code>.</strong> The median across all tested cells
+and all competitors is <code>12.0x</code> on Ubuntu 25.10 and
 <code>5.7x</code> on Windows 11 Pro for Workstations; the mean is
-<code>58.5x</code> and <code>44.2x</code>, respectively. The largest gaps
+<code>77.9x</code> and <code>44.4x</code>, respectively. The largest gaps
 appear on wide tables (many value columns, few rows); the smallest
 gaps appear on small tables where initialization overhead dominates.</p>
-<p>Representative cells (medians; numbers in parentheses are the
+<p>Representative cells (means; numbers in parentheses are the
 speed-up of <code>melt()</code> relative to that competitor) taken from
 the Ubuntu 25.10 host:</p>
 <ul><li><p><strong>1e6 rows, 1 id, 9 value columns</strong> —
-        <code>3.68 ms</code> vs <code>7.90 ms</code> (<code>data.table</code>,
-        <code>2.1x</code>), <code>76.8 ms</code> (<code>tidyr</code>, <code>20.9x</code>),
-        <code>642 ms</code> (<code>duckdb</code>, <code>174x</code>).</p></li>
+        <code>2.18 ms</code> vs <code>9.44 ms</code> (<code>data.table</code>,
+        <code>4.3x</code>), <code>73.3 ms</code> (<code>tidyr</code>, <code>33.7x</code>),
+        <code>650 ms</code> (<code>duckdb</code>, <code>298.7x</code>).</p></li>
 <li><p><strong>1e7 rows, 1 id, 9 value columns</strong> —
-        <code>37.9 ms</code> vs <code>372 ms</code> (<code>data.table</code>,
-        <code>9.8x</code>), <code>1111 ms</code> (<code>tidyr</code>, <code>29.3x</code>),
-        <code>6423 ms</code> (<code>duckdb</code>, <code>169x</code>).</p></li>
+        <code>26.3 ms</code> vs <code>364 ms</code> (<code>data.table</code>,
+        <code>13.8x</code>), <code>1079 ms</code> (<code>tidyr</code>, <code>41.0x</code>),
+        <code>6345 ms</code> (<code>duckdb</code>, <code>241.0x</code>).</p></li>
 <li><p><strong>1e3 rows, 1 id, 10000 value columns</strong> —
-        <code>3.62 ms</code> vs <code>9.66 ms</code> (<code>data.table</code>,
-        <code>2.7x</code>), <code>16.3 ms</code> (<code>polars</code>, <code>4.5x</code>),
-        <code>4292 ms</code> (<code>dask</code>, <strong><code>1187x</code></strong>).</p></li>
+        <code>2.03 ms</code> vs <code>12.8 ms</code> (<code>data.table</code>,
+        <code>6.3x</code>), <code>20.4 ms</code> (<code>polars</code>, <code>10.1x</code>),
+        <code>4451 ms</code> (<code>dask</code>, <strong><code>2197.2x</code></strong>).</p></li>
 <li><p><strong>1e3 rows, 10 id, 10000 value columns</strong> —
-        <code>25.2 ms</code> vs <code>59.4 ms</code> (<code>polars</code>,
-        <code>2.4x</code>), <code>169 ms</code> (<code>data.table</code>,
-        <code>6.7x</code>), <code>22456 ms</code> (<code>dask</code>,
-        <strong><code>891x</code></strong>).</p></li>
+        <code>23.0 ms</code> vs <code>61.3 ms</code> (<code>polars</code>,
+        <code>2.7x</code>), <code>181 ms</code> (<code>data.table</code>,
+        <code>7.9x</code>), <code>20809 ms</code> (<code>dask</code>,
+        <strong><code>903.6x</code></strong>).</p></li>
 </ul><p>The speed-up comes from three design choices:</p>
 <ol><li><p><strong>Two layout paths, selected by <code>major</code>.</strong> The
         default is column-major. On the column-major path, each output
