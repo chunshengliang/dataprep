@@ -1,0 +1,4 @@
+/* Shrink logo on pkgdown site; GitHub README keeps height=180 */
+.page-header h1 img {
+  height: 120px !important;
+}

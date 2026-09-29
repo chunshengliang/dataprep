@@ -8,7 +8,9 @@
 docs/
 inst/doc/
 *.tar.gz
-pkgdown/
+pkgdown/*
+!pkgdown/extra.css
+!pkgdown/favicon
 vignettes/*.html
 src/Makevars
 src/*.o
