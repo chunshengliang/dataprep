@@ -86,13 +86,13 @@ tables.
 On the canonical long-to-wide shape, \code{dcast()} is faster than
 every tested alternative. The speed-up relative to \code{reshape2},
 \code{data.table}, \code{tidyr}, \code{pandas}, \code{polars},
-\code{dask}, and \code{duckdb} spans \code{2.0x} (against
+\code{dask}, and \code{duckdb} spans \code{1.9x} (against
 \code{reshape2} on 1e3 rows and 10 levels, Ubuntu 25.10) to
-\code{677x} (against \code{duckdb} on 1e8 rows and 100 levels,
+\code{799.8x} (against \code{duckdb} on 1e8 rows and 100 levels,
 Windows 11 Pro for Workstations). The median across all tested
-cells and all competitors is \code{54.0x} on Ubuntu 25.10 and
-\code{41.6x} on Windows 11 Pro for Workstations; the mean is
-\code{96.5x} and \code{74.3x}, respectively.
+cells and all competitors is \code{46.5x} on Ubuntu 25.10 and
+\code{41.4x} on Windows 11 Pro for Workstations; the mean is
+\code{90.2x} and \code{76.6x}, respectively.
 }
 \value{
 A wide-format data frame with one row per unique \code{id}

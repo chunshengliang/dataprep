@@ -70,10 +70,10 @@ measured with a C++ steady-clock timer and an adaptive \code{times}
 rule.
 
 \strong{Speed-up relative to each competitor spans
-\code{0.6x} to \code{2197x}.} The median across all tested cells
-and all competitors is \code{12.0x} on Ubuntu 25.10 and
-\code{5.7x} on Windows 11 Pro for Workstations; the mean is
-\code{77.9x} and \code{44.4x}, respectively. The largest gaps
+\code{0.6x} to \code{1628.9x}.} The median across all tested cells
+and all competitors is \code{11.3x} on Ubuntu 25.10 and
+\code{5.6x} on Windows 11 Pro for Workstations; the mean is
+\code{67.8x} and \code{46.6x}, respectively. The largest gaps
 appear on wide tables (many value columns, few rows); the smallest
 gaps appear on small tables where initialization overhead dominates.
 
@@ -83,22 +83,22 @@ the Ubuntu 25.10 host:
 
 \itemize{
   \item \strong{1e6 rows, 1 id, 9 value columns} ---
-        \code{2.18 ms} vs \code{9.44 ms} (\code{data.table},
-        \code{4.3x}), \code{73.3 ms} (\code{tidyr}, \code{33.7x}),
-        \code{650 ms} (\code{duckdb}, \code{298.7x}).
+        \code{3.474 ms} vs \code{9.646 ms} (\code{data.table},
+        \code{2.8x}), \code{80.014 ms} (\code{tidyr}, \code{23.0x}),
+        \code{648.895 ms} (\code{duckdb}, \code{186.8x}).
   \item \strong{1e7 rows, 1 id, 9 value columns} ---
-        \code{26.3 ms} vs \code{364 ms} (\code{data.table},
-        \code{13.8x}), \code{1079 ms} (\code{tidyr}, \code{41.0x}),
-        \code{6345 ms} (\code{duckdb}, \code{241.0x}).
+        \code{33.412 ms} vs \code{365.065 ms} (\code{data.table},
+        \code{10.9x}), \code{1083.987 ms} (\code{tidyr}, \code{32.4x}),
+        \code{6389.564 ms} (\code{duckdb}, \code{191.2x}).
   \item \strong{1e3 rows, 1 id, 10000 value columns} ---
-        \code{2.03 ms} vs \code{12.8 ms} (\code{data.table},
-        \code{6.3x}), \code{20.4 ms} (\code{polars}, \code{10.1x}),
-        \code{4451 ms} (\code{dask}, \strong{\code{2197.2x}}).
+        \code{2.295 ms} vs \code{12.415 ms} (\code{data.table},
+        \code{5.4x}), \code{19.408 ms} (\code{polars}, \code{8.5x}),
+        \code{3737.866 ms} (\code{dask}, \strong{\code{1628.9x}}).
   \item \strong{1e3 rows, 10 id, 10000 value columns} ---
-        \code{23.0 ms} vs \code{61.3 ms} (\code{polars},
-        \code{2.7x}), \code{181 ms} (\code{data.table},
-        \code{7.9x}), \code{20809 ms} (\code{dask},
-        \strong{\code{903.6x}}).
+        \code{25.009 ms} vs \code{71.605 ms} (\code{polars},
+        \code{2.9x}), \code{182.019 ms} (\code{data.table},
+        \code{7.3x}), \code{23777.051 ms} (\code{dask},
+        \strong{\code{950.7x}}).
 }
 
 The speed-up comes from three design choices:
