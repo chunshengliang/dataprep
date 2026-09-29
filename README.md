@@ -432,10 +432,10 @@ seven competitors (`reshape2`, `data.table`, `tidyr`, `pandas`,
 Combined across both hosts, the smallest speedups remain at
 0.6–0.8× (`melt()` at 1e5 and 1e7 rows), while the largest reach
 2197× for `melt()` and 677× for `dcast()`. The mean speedup is above
-44× for `melt()` and above 74× for `dcast()` on both hosts. On the
-largest cells (1e8 rows, 8 GB of input), `dataprep` is the only engine
-that completes within 2 s, specifically < 0.5 s on Ubuntu and
-< 1.3 s on Windows.
+44× for `melt()` and above 74× for `dcast()` on both hosts. For
+`melt()` on the largest cells (1e8 rows, 1 id + 9 val, 8 GB of
+input), `dataprep` is the only engine that completes within 2.5 s,
+specifically < 0.3 s on Ubuntu and < 1.1 s on Windows.
 
 Complete tables — including mean, median, and the full
 per-competitor gradient — are in
