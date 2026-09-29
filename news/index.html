@@ -218,7 +218,7 @@
 <h4 id="melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-7">
 <code>melt()</code> — speed-up vs every one of the 7 major alternatives<a class="anchor" aria-label="anchor" href="#melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-7"></a></h4>
 <p>Speed-ups relative to each competitor span <strong>0.6×–2197×</strong> across both hosts. The sub-1.0× cells are concentrated at 1e5 rows with 10 id columns (Windows) and at 1e7 rows × 10 id (Ubuntu), where <code>polars</code> is faster than <code>dataprep</code>; every other cell has <code>dataprep</code> ahead of or on par with the fastest competitor.</p>
-<p>Medians in milliseconds (Ubuntu 25.10):</p>
+<p>Means in milliseconds (Ubuntu 25.10):</p>
 <table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>rows</th>
 <th>val</th>
 <th>dataprep</th>
@@ -231,44 +231,44 @@
 <th>duckdb</th>
 </tr></thead><tbody><tr><td>1e3</td>
 <td>9</td>
-<td>0.176</td>
-<td>0.373 (2.1×)</td>
-<td>0.272 (1.5×)</td>
-<td>3.009 (17.1×)</td>
-<td>2.162 (12.3×)</td>
-<td>0.612 (3.5×)</td>
-<td>15.61 (88.6×)</td>
-<td>4.714 (26.8×)</td>
+<td>0.164</td>
+<td>0.372 (2.3×)</td>
+<td>0.244 (1.5×)</td>
+<td>2.698 (16.5×)</td>
+<td>2.095 (12.8×)</td>
+<td>0.703 (4.3×)</td>
+<td>15.131 (92.3×)</td>
+<td>4.366 (26.6×)</td>
 </tr><tr><td>1e6</td>
 <td>9</td>
-<td>3.680</td>
-<td>17.89 (4.9×)</td>
-<td>7.900 (2.1×)</td>
-<td>76.77 (20.9×)</td>
-<td>60.30 (16.4×)</td>
-<td>10.44 (2.8×)</td>
-<td>46.49 (12.6×)</td>
-<td>642.1 (174×)</td>
+<td>2.177</td>
+<td>18.031 (8.3×)</td>
+<td>9.444 (4.3×)</td>
+<td>73.345 (33.7×)</td>
+<td>62.328 (28.6×)</td>
+<td>13.234 (6.1×)</td>
+<td>47.444 (21.8×)</td>
+<td>650.287 (298.7×)</td>
 </tr><tr><td>1e7</td>
 <td>9</td>
-<td>37.95</td>
-<td>372.7 (9.8×)</td>
-<td>371.6 (9.8×)</td>
-<td>1111 (29.3×)</td>
-<td>720.1 (19.0×)</td>
-<td>92.53 (2.4×)</td>
-<td>486.4 (12.8×)</td>
-<td>6423 (169×)</td>
+<td>26.323</td>
+<td>368.068 (14.0×)</td>
+<td>363.900 (13.8×)</td>
+<td>1079.493 (41.0×)</td>
+<td>709.694 (27.0×)</td>
+<td>157.963 (6.0×)</td>
+<td>491.043 (18.7×)</td>
+<td>6344.768 (241.0×)</td>
 </tr><tr><td>1e8</td>
 <td>9</td>
-<td>496.4</td>
-<td>3577 (7.2×)</td>
-<td>3576 (7.2×)</td>
-<td>12089 (24.4×)</td>
-<td>7410 (14.9×)</td>
-<td>2563 (5.2×)</td>
-<td>4590 (9.2×)</td>
-<td>65624 (132×)</td>
+<td>259.022</td>
+<td>3522.152 (13.6×)</td>
+<td>3508.029 (13.5×)</td>
+<td>12037.801 (46.5×)</td>
+<td>7394.460 (28.5×)</td>
+<td>3088.464 (11.9×)</td>
+<td>4487.400 (17.3×)</td>
+<td>71636.937 (276.6×)</td>
 </tr><tr><td>1e3</td>
 <td>10000</td>
 <td>2.026</td>
@@ -277,9 +277,9 @@
 <td>102.550 (50.6×)</td>
 <td>495.632 (244.7×)</td>
 <td>20.448 (10.1×)</td>
-<td>4450.699 (<strong>2197.2×</strong>)</td>
+<td>4450.699 (2197.2×)</td>
 <td>1917.203 (946.5×)</td>
-</tr></tbody></table><p>Medians in milliseconds (Windows 11 Pro for Workstations):</p>
+</tr></tbody></table><p>Means in milliseconds (Windows 11 Pro for Workstations):</p>
 <table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>rows</th>
 <th>val</th>
 <th>dataprep</th>
@@ -292,44 +292,44 @@
 <th>duckdb</th>
 </tr></thead><tbody><tr><td>1e3</td>
 <td>9</td>
-<td>0.319</td>
-<td>0.653 (2.0×)</td>
-<td>0.512 (1.6×)</td>
-<td>4.224 (13.2×)</td>
-<td>3.575 (11.2×)</td>
-<td>0.513 (1.6×)</td>
-<td>28.55 (89.5×)</td>
-<td>7.724 (24.2×)</td>
+<td>0.306</td>
+<td>0.638 (2.1×)</td>
+<td>0.448 (1.5×)</td>
+<td>4.064 (13.3×)</td>
+<td>3.420 (11.2×)</td>
+<td>0.538 (1.8×)</td>
+<td>29.186 (95.2×)</td>
+<td>7.828 (25.5×)</td>
 </tr><tr><td>1e6</td>
 <td>9</td>
-<td>12.15</td>
-<td>24.44 (2.0×)</td>
-<td>26.17 (2.2×)</td>
-<td>174.4 (14.3×)</td>
-<td>210.6 (17.3×)</td>
-<td>17.99 (1.5×)</td>
-<td>178.8 (14.7×)</td>
-<td>1558 (128×)</td>
+<td>12.414</td>
+<td>26.406 (2.1×)</td>
+<td>26.623 (2.1×)</td>
+<td>193.073 (15.6×)</td>
+<td>193.283 (15.6×)</td>
+<td>24.984 (2.0×)</td>
+<td>197.627 (15.9×)</td>
+<td>1458.473 (117.5×)</td>
 </tr><tr><td>1e7</td>
 <td>9</td>
-<td>101.4</td>
-<td>262.2 (2.6×)</td>
-<td>253.3 (2.5×)</td>
-<td>1510 (14.9×)</td>
-<td>1908 (18.8×)</td>
-<td>177.5 (1.8×)</td>
-<td>1541 (15.2×)</td>
-<td>14588 (144×)</td>
+<td>159.654</td>
+<td>314.406 (2.0×)</td>
+<td>322.484 (2.0×)</td>
+<td>1871.675 (11.7×)</td>
+<td>2016.507 (12.6×)</td>
+<td>251.983 (1.6×)</td>
+<td>1761.710 (11.0×)</td>
+<td>14561.307 (91.2×)</td>
 </tr><tr><td>1e8</td>
 <td>9</td>
-<td>1197</td>
-<td>3514 (2.9×)</td>
-<td>2806 (2.3×)</td>
-<td>21106 (17.6×)</td>
-<td>22968 (19.2×)</td>
-<td>5227 (4.4×)</td>
-<td>16904 (14.1×)</td>
-<td>160256 (134×)</td>
+<td>1081.994</td>
+<td>2596.127 (2.4×)</td>
+<td>2629.491 (2.4×)</td>
+<td>17211.577 (15.9×)</td>
+<td>20196.679 (18.7×)</td>
+<td>4705.301 (4.3×)</td>
+<td>14989.606 (13.9×)</td>
+<td>149796.139 (138.4×)</td>
 </tr><tr><td>1e3</td>
 <td>10000</td>
 <td>12.848</td>
@@ -338,7 +338,7 @@
 <td>213.030 (16.6×)</td>
 <td>1405.853 (109.4×)</td>
 <td>38.241 (3.0×)</td>
-<td>10372.086 (<strong>807.3×</strong>)</td>
+<td>10372.086 (807.3×)</td>
 <td>5060.629 (393.9×)</td>
 </tr></tbody></table><p>The <strong>median</strong> speed-up across all melt cells and all competitors is 12.0× on Ubuntu and 5.7× on Windows. The <strong>mean</strong> is 77.9× and 44.4× respectively. The median is pulled down by the 1e5-row small tables; at larger scales the speed-up is much higher.</p>
 </div>
@@ -346,7 +346,7 @@
 <h4 id="dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-7">
 <code>dcast()</code> — speed-up vs every one of the 7 major alternatives<a class="anchor" aria-label="anchor" href="#dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-7"></a></h4>
 <p>Speed-ups relative to each competitor span <strong>2.0×–677×</strong> across both hosts. Every cell has <code>dataprep</code> ahead of every other engine.</p>
-<p>Medians in milliseconds (Ubuntu 25.10):</p>
+<p>Means in milliseconds (Ubuntu 25.10):</p>
 <table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>n_long</th>
 <th>levels</th>
 <th>dataprep</th>
@@ -359,45 +359,45 @@
 <th>duckdb</th>
 </tr></thead><tbody><tr><td>1e6</td>
 <td>10</td>
-<td>1.632</td>
-<td>151.3 (92.7×)</td>
-<td>345.4 (212×)</td>
-<td>46.67 (28.6×)</td>
-<td>58.85 (36.1×)</td>
-<td>105.8 (64.8×)</td>
-<td>80.65 (49.4×)</td>
-<td>158.7 (97.3×)</td>
+<td>1.760</td>
+<td>151.497 (86.1×)</td>
+<td>344.820 (196.0×)</td>
+<td>49.973 (28.4×)</td>
+<td>58.741 (33.4×)</td>
+<td>109.993 (62.5×)</td>
+<td>81.242 (46.2×)</td>
+<td>160.831 (91.4×)</td>
 </tr><tr><td>1e6</td>
 <td>100</td>
-<td>1.451</td>
-<td>108.7 (74.9×)</td>
-<td>335.9 (232×)</td>
-<td>43.25 (29.8×)</td>
-<td>56.27 (38.8×)</td>
-<td>172.6 (119×)</td>
-<td>77.04 (53.1×)</td>
-<td>180.9 (125×)</td>
+<td>1.362</td>
+<td>100.167 (73.5×)</td>
+<td>353.876 (259.8×)</td>
+<td>43.134 (31.7×)</td>
+<td>53.645 (39.4×)</td>
+<td>179.944 (132.1×)</td>
+<td>74.103 (54.4×)</td>
+<td>177.384 (130.2×)</td>
 </tr><tr><td>1e7</td>
 <td>100</td>
-<td>4.733</td>
-<td>2084 (440×)</td>
-<td>550.9 (116×)</td>
-<td>633.0 (134×)</td>
-<td>768.4 (162×)</td>
-<td>458.8 (96.9×)</td>
-<td>953.6 (202×)</td>
-<td>1717 (363×)</td>
+<td>4.354</td>
+<td>1840.332 (422.6×)</td>
+<td>631.070 (144.9×)</td>
+<td>623.314 (143.1×)</td>
+<td>789.977 (181.4×)</td>
+<td>496.461 (114.0×)</td>
+<td>986.938 (226.6×)</td>
+<td>1701.048 (390.6×)</td>
 </tr><tr><td>1e8</td>
 <td>100</td>
-<td>43.91</td>
-<td>17115 (390×)</td>
-<td>16193 (369×)</td>
-<td>8174 (186×)</td>
-<td>9880 (225×)</td>
-<td>2467 (56.2×)</td>
-<td>12217 (278×)</td>
-<td>17895 (408×)</td>
-</tr></tbody></table><p>Medians in milliseconds (Windows 11 Pro for Workstations):</p>
+<td>43.842</td>
+<td>16612.906 (378.9×)</td>
+<td>17668.158 (403.0×)</td>
+<td>8528.194 (194.5×)</td>
+<td>9963.530 (227.3×)</td>
+<td>2452.894 (55.9×)</td>
+<td>12286.978 (280.3×)</td>
+<td>17476.822 (398.6×)</td>
+</tr></tbody></table><p>Means in milliseconds (Windows 11 Pro for Workstations):</p>
 <table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>n_long</th>
 <th>levels</th>
 <th>dataprep</th>
@@ -410,34 +410,34 @@
 <th>duckdb</th>
 </tr></thead><tbody><tr><td>1e6</td>
 <td>10</td>
-<td>3.940</td>
-<td>305.7 (77.6×)</td>
-<td>155.1 (39.4×)</td>
-<td>98.29 (24.9×)</td>
-<td>269.7 (68.4×)</td>
-<td>49.29 (12.5×)</td>
-<td>359.8 (91.3×)</td>
-<td>399.8 (101×)</td>
+<td>3.452</td>
+<td>296.568 (85.9×)</td>
+<td>146.564 (42.5×)</td>
+<td>99.476 (28.8×)</td>
+<td>248.761 (72.1×)</td>
+<td>65.200 (18.9×)</td>
+<td>341.027 (98.8×)</td>
+<td>385.068 (111.6×)</td>
 </tr><tr><td>1e6</td>
 <td>100</td>
-<td>4.085</td>
-<td>191.6 (46.9×)</td>
-<td>177.9 (43.6×)</td>
-<td>82.31 (20.2×)</td>
-<td>226.0 (55.3×)</td>
-<td>69.16 (16.9×)</td>
-<td>341.5 (83.6×)</td>
-<td>800.1 (196×)</td>
+<td>4.229</td>
+<td>174.438 (41.2×)</td>
+<td>181.993 (43.0×)</td>
+<td>91.899 (21.7×)</td>
+<td>248.562 (58.8×)</td>
+<td>88.165 (20.8×)</td>
+<td>329.288 (77.9×)</td>
+<td>808.286 (191.1×)</td>
 </tr><tr><td>1e7</td>
 <td>100</td>
-<td>21.21</td>
-<td>3253 (153×)</td>
-<td>1010 (47.6×)</td>
-<td>1332 (62.8×)</td>
-<td>2420 (114×)</td>
-<td>1125 (53.0×)</td>
-<td>3061 (144×)</td>
-<td>5562 (262×)</td>
+<td>34.596</td>
+<td>3130.501 (90.5×)</td>
+<td>1109.646 (32.1×)</td>
+<td>1340.192 (38.7×)</td>
+<td>2345.418 (67.8×)</td>
+<td>1111.499 (32.1×)</td>
+<td>3133.278 (90.6×)</td>
+<td>7377.747 (213.3×)</td>
 </tr><tr><td>1e8</td>
 <td>100</td>
 <td>120.830</td>
@@ -447,7 +447,7 @@
 <td>26487.805 (219.2×)</td>
 <td>8239.811 (68.2×)</td>
 <td>33408.904 (276.5×)</td>
-<td>81803.327 (<strong>677.0×</strong>)</td>
+<td>81803.327 (677.0×)</td>
 </tr></tbody></table><p>The <strong>median</strong> speed-up across all dcast cells and all competitors is 54.0× on Ubuntu and 41.6× on Windows. The <strong>mean</strong> is 96.5× and 74.3× respectively. On the 1e8-row cells (8 GB of input), <code>dataprep</code> completes in <strong>44–209 ms</strong> while several competitors exceed 12 s on Ubuntu and 12 s on Windows.</p>
 </div>
 <div class="section level4">
