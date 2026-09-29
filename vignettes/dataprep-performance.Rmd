@@ -35,17 +35,71 @@ in the R and Python ecosystems:
 
 Every cell is measured with a C++ steady-clock timer and an
 adaptive `times` rule (20 / 15 / 10 / 5 / 1 iterations based on
-warmup time). Two statistics are quoted:
-reported:
+warmup time). Two statistics are recorded per cell:
 
-* **median** — the number to quote. Robust to scheduler and GC
-  jitter.
-* **mean** — the tail. A large mean / median ratio indicates
-  one-off OS work or cache effects.
+* **mean** — the number quoted in every table below. Each timed
+  call runs after `gc(full = TRUE)` and `py_gc_collect()`, so the
+  GC / allocation tail is kept out of the timing window and the
+  mean is a steady-state throughput measure rather than a
+  GC-jitter measure.
+* **median** — a robust cross-check. It is not tabulated here,
+  but it is kept in the raw CSV files shipped under
+  `inst/extdata/`. The scatter plot below compares the two
+  statistics cell by cell.
 
 For every cell the tables also report the speed-up of `dataprep`
 relative to each competitor, so the reader can see the full
 gradient from "about the same" to "three orders of magnitude".
+
+## Mean vs median
+
+The four benchmark CSV files shipped under `inst/extdata/` carry
+both the mean and the median of every per-cell timing sample.
+The scatter plot below puts them side by side: each point is one
+(tool, host, shape) combination, the x axis is the median in
+milliseconds and the y axis is the mean. Points on the 1:1 line
+mean the two statistics agree; points above the line mean the
+mean is inflated by a long right tail in the per-iteration
+timings.
+
+```{r mean-vs-median, fig.width = 7, fig.height = 6, fig.retina = 2}
+suppressPackageStartupMessages(library(ggplot2))
+
+read_bench <- function(fname, op) {
+  p <- system.file("extdata", fname, package = "dataprep")
+  d <- read.csv(p, stringsAsFactors = FALSE)
+  d <- d[!d$skipped, c("tool", "mean", "median")]
+  d$op <- op
+  d
+}
+
+bench <- rbind(
+  read_bench("bench_melt_ubuntu.csv",  "melt (Ubuntu)"),
+  read_bench("bench_dcast_ubuntu.csv", "dcast (Ubuntu)"),
+  read_bench("bench_melt_win.csv",     "melt (Windows)"),
+  read_bench("bench_dcast_win.csv",    "dcast (Windows)")
+)
+
+ggplot(bench, aes(median, mean)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50") +
+  geom_point(alpha = 0.45, size = 1.4) +
+  scale_x_log10() +
+  scale_y_log10() +
+  facet_wrap(~ tool, ncol = 4) +
+  labs(x = "median (ms, log scale)",
+       y = "mean (ms, log scale)") +
+  theme_bw(base_size = 10)
+```
+
+Almost every point sits on or just above the 1:1 line. The
+visible exceptions are the few `dask` and `duckdb` cells in the
+1e3 × 10000 shape, where a single slow iteration pulls the mean
+up by up to 50 %; those are also the cells where the two
+statistics disagree the most on the speed-up ratio. For the
+`dataprep` column itself the two statistics never differ by more
+than a few percent, which is why the mean-based numbers quoted
+throughout this vignette are representative of the steady state.
 
 ## Test environment
 
