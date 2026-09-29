@@ -20,3 +20,4 @@ dataprep.Rcheck/
 docs
 *.bak
 src/Makevars.win
+doc/
