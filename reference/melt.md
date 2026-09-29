@@ -21,7 +21,10 @@ melt(data, id = NULL, measure.vars = NULL,
 - data:
 
   A data frame to reshape. Numeric, integer, logical, character, and
-  factor columns are supported.
+  factor columns are accepted as id columns. Factor columns used as
+  `measure.vars` cannot be cast to numeric, so their cells are written
+  as `NA` in the value column; pass `measure.vars` as `character` or
+  `numeric` to avoid this.
 
 - id:
 
@@ -81,7 +84,8 @@ melt(data, id = NULL, measure.vars = NULL,
 
 - parallel_threshold:
 
-  Minimum number of output elements before automatic parallelism is
+  Minimum number of output elements, i.e.\\
+  `nrow(data) * length(measure.vars)`, before automatic parallelism is
   enabled. Default `5e6`.
 
 - id.vars:

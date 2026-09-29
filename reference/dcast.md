@@ -265,7 +265,7 @@ dcast(long5, id = "id",
       variable = "variable", value = "value",
       na.rm = TRUE, fill = -1)
 #>   id x  y
-#> 1  1 1 NA
+#> 1  1 1 -1
 #> 2  2 3  4
 
 

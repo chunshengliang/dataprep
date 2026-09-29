@@ -500,6 +500,11 @@
 </div>
 </div>
 <div class="section level3">
+<h3 id="bug-fixes-0-1-7">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-7"></a></h3>
+<ul><li><p><strong><code><a href="../reference/dcast.html">dcast()</a></code>: <code>na.rm = TRUE</code> combined with an explicit non-<code>NA</code> <code>fill</code> no longer loses the <code>fill</code> value.</strong> On the block-path (canonical melt output), the tile transpose wrote the input values unconditionally after the fill pass, so cells whose input was <code>NA</code>/<code>NaN</code> ended up as <code>NA</code> instead of the requested <code>fill</code>. The transpose kernels now receive <code>na_rm</code> and the resolved <code>fill_val</code> and substitute them while the tile is built. The general path was not affected; both paths now produce identical output. Repro: <code>dcast(data.frame(id=c(1,1,2,2), variable=c("x","y","x","y"), value=c(1,NA,3,4)), id="id", variable="variable", value="value", na.rm=TRUE, fill=-1)</code> now returns <code>(1,"y") = -1</code>.</p></li>
+<li><p><strong><code><a href="../reference/dcast.html">dcast()</a></code>: duplicate <code>(id, variable)</code> pairs now resolve consistently with the documented “last occurrence wins” rule.</strong> The block path previously kept the <em>first</em> occurrence of a duplicated block; the general path kept the <em>last</em>. The block path now keeps the last occurrence, matching <code><a href="../reference/dcast.html">dcast()</a></code>’s documentation and <code><a href="https://rdrr.io/pkg/reshape2/man/cast.html" class="external-link">reshape2::dcast()</a></code>. This only affects non-canonical inputs (canonical <code><a href="../reference/melt.html">melt()</a></code> output has no duplicates); canonical round-trips are unchanged.</p></li>
+</ul></div>
+<div class="section level3">
 <h3 id="new-functions-0-1-7">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-1-7"></a></h3>
 <div class="section level4">
 <h4 id="cleaning-0-1-7">Cleaning<a class="anchor" aria-label="anchor" href="#cleaning-0-1-7"></a></h4>

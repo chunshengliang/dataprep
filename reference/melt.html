@@ -66,7 +66,11 @@ column names, and two storage layouts (row-major or column-major).</p>
     <p></p>
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
 <dd><p>A data frame to reshape. Numeric, integer, logical,
-    character, and factor columns are supported.</p></dd>
+    character, and factor columns are accepted as id columns. Factor
+    columns used as <code>measure.vars</code> cannot be cast to numeric, so
+    their cells are written as <code>NA</code> in the value column; pass
+    <code>measure.vars</code> as <code>character</code> or <code>numeric</code> to
+    avoid this.</p></dd>
 
   <dt id="arg-id">id<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
 <dd><p>Identifier columns. Character names, integer indices, a
@@ -119,8 +123,9 @@ column names, and two storage layouts (row-major or column-major).</p>
 <dd><p>Logical; if <code>TRUE</code>, prints timing messages.</p></dd>
 
   <dt id="arg-parallel-threshold">parallel_threshold<a class="anchor" aria-label="anchor" href="#arg-parallel-threshold"></a></dt>
-<dd><p>Minimum number of output elements before
-    automatic parallelism is enabled. Default <code>5e6</code>.</p></dd>
+<dd><p>Minimum number of output elements, i.e.\
+    <code>nrow(data) * length(measure.vars)</code>, before automatic
+    parallelism is enabled. Default <code>5e6</code>.</p></dd>
 
   <dt id="arg-id-vars">id.vars<a class="anchor" aria-label="anchor" href="#arg-id-vars"></a></dt>
 <dd><p>Alias of <code>id</code>, provided for reshape2 / data.table
