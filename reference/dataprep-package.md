@@ -5,8 +5,8 @@ and time-series data. Most heavy routines are implemented in C++ via
 'Rcpp', with optional OpenMP parallelization and SIMD acceleration (AVX2
 / AVX-512) on supported hardware. The 0.1.7 release rewrites the
 cleaning routines in C++ and delivers a 1.1–1146× speedup over 0.1.5.
-The 'melt()' and 'dcast()' reshaping functions achieve a 0.5–1187×
-speedup for 'melt()' and a 2.0–639× speedup for 'dcast()' relative to
+The 'melt()' and 'dcast()' reshaping functions achieve a 0.6–2197×
+speedup for 'melt()' and a 2.0–677× speedup for 'dcast()' relative to
 every one of the seven major alternatives in the R and Python
 ecosystems, at every tested scale (from 1,000 to 100,000,000 rows), and
 produce output identical to 'reshape2', 'data.table', 'tidyr', 'pandas',

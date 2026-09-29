@@ -234,8 +234,8 @@ or who only use `dataprep` for descriptive statistics (`descdata`,
 `na_diagnose`, `percdata`, `percplot`, `descplot`), there is no
 behaviour change. Those functions have been re-implemented in 0.1.7 for
 speed (`melt` and `dcast`) or reorganised internally (`data_report`,
-`dry_run`), but the output on every tested input is byte-identical to
-0.1.5 except where noted in the news file.
+`dry_run`), but the output on every tested input is identical to 0.1.5
+except where noted in the news file.
 
 ## Performance reference
 
