@@ -243,7 +243,7 @@ levels). On the Ubuntu host the corresponding cell reaches 531×.
 
 ## Summary of speedups
 
-Speedup is defined as `competitor median / dataprep median`. Each table
+Speedup is defined as `competitor mean / dataprep mean`. Each table
 summarises every benchmark cell on that host, across all seven
 competitors (`reshape2`, `data.table`, `tidyr`, `pandas`, `polars`,
 `dask`, `duckdb`).

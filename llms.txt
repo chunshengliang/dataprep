@@ -245,8 +245,8 @@ relative ranking of the engines is identical on both; the absolute
 multipliers scale with the hardware. On a typical 8–16-core workstation
 the same comparisons remain within 10–100×.
 
-All numbers below are medians in milliseconds. Each cell is written as
-`time (speedup×)`, where `time` is the median for that engine and
+All numbers below are means in milliseconds. Each cell is written as
+`time (speedup×)`, where `time` is the mean for that engine and
 `speedup×` is `time / dataprep_time`. The `dataprep` column itself is
 the baseline, so it has no multiplier.
 
@@ -416,7 +416,7 @@ the baseline, so it has no multiplier.
 
 ### Summary of speedups
 
-Speedup is defined as `competitor median / dataprep median`. Each table
+Speedup is defined as `competitor mean / dataprep mean`. Each table
 summarises every benchmark cell on that host, across all seven
 competitors (`reshape2`, `data.table`, `tidyr`, `pandas`, `polars`,
 `dask`, `duckdb`). Cell labels are written as

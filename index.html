@@ -376,7 +376,7 @@
 </tbody>
 </table>
 <p>The two hosts differ in core count, cache size and memory bandwidth. The relative ranking of the engines is identical on both; the absolute multipliers scale with the hardware. On a typical 8–16-core workstation the same comparisons remain within 10–100×.</p>
-<p>All numbers below are medians in milliseconds. Each cell is written as <code>time (speedup×)</code>, where <code>time</code> is the median for that engine and <code>speedup×</code> is <code>time / dataprep_time</code>. The <code>dataprep</code> column itself is the baseline, so it has no multiplier.</p>
+<p>All numbers below are means in milliseconds. Each cell is written as <code>time (speedup×)</code>, where <code>time</code> is the mean for that engine and <code>speedup×</code> is <code>time / dataprep_time</code>. The <code>dataprep</code> column itself is the baseline, so it has no multiplier.</p>
 </div>
 <div class="section level3">
 <h3 id="melt--ubuntu-2510">
@@ -1669,7 +1669,7 @@
 <div class="section level3">
 <h3 id="summary-of-speedups">Summary of speedups<a class="anchor" aria-label="anchor" href="#summary-of-speedups"></a>
 </h3>
-<p>Speedup is defined as <code>competitor median / dataprep median</code>. Each table summarises every benchmark cell on that host, across all seven competitors (<code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, <code>duckdb</code>). Cell labels are written as <code>n_rows × n_cols × n_id × n_val</code> for <code><a href="reference/melt.html">melt()</a></code> and <code>n_long × n_id × n_levels</code> for <code><a href="reference/dcast.html">dcast()</a></code>.</p>
+<p>Speedup is defined as <code>competitor mean / dataprep mean</code>. Each table summarises every benchmark cell on that host, across all seven competitors (<code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, <code>duckdb</code>). Cell labels are written as <code>n_rows × n_cols × n_id × n_val</code> for <code><a href="reference/melt.html">melt()</a></code> and <code>n_long × n_id × n_levels</code> for <code><a href="reference/dcast.html">dcast()</a></code>.</p>
 <p><strong>Ubuntu 25.10</strong></p>
 <table class="table">
 <colgroup>
