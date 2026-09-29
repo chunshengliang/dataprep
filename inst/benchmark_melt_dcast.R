@@ -877,21 +877,23 @@ if (.run_bench) {
   }
 
   bench_reset_disabled("dcast")
-  for (lv in c(10L, 100L, 1000L)) {
+  for (lv in c(100L, 1000L, 10000L)) {
     run_dcast_cell(1e6, n_id = 1L, n_levels = lv,
-                   label = sprintf("Dcast: n_long=1e6, %s + %d lvl",
+                   label = sprintf("Dcast: n_long=%s, %s + %d lvl",
+                                   format(1e6, big.mark = ","),
                                    id_desc(1L), lv))
   }
 
   bench_reset_disabled("dcast")
-  for (ni in c(1L, 2L, 10L, 100L)) {
+  for (ni in c(2L, 10L, 100L)) {
     run_dcast_cell(1e6, n_id = ni, n_levels = 10L,
-                   label = sprintf("Dcast: n_long=1e6, %s + 10 lvl",
+                   label = sprintf("Dcast: n_long=%s, %s + 10 lvl",
+                                   format(1e6, big.mark = ","),
                                    id_desc(ni)))
   }
 
   bench_reset_disabled("dcast")
-  for (nl in 10^(4:8)) {
+  for (nl in setdiff(10^(4:8), 1e6)) {
     run_dcast_cell(nl, n_id = 1L, n_levels = 100L,
                    label = sprintf("Dcast: n_long=%s, %s + 100 lvl",
                                    format(nl, big.mark = ","), id_desc(1L)))
