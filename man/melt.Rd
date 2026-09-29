@@ -61,39 +61,39 @@ backend (\code{melt_cpp}) has been benchmarked against \strong{all
 seven major alternatives} in the R and Python ecosystems:
 \code{reshape2}, \code{data.table}, \code{tidyr}, \code{pandas},
 \code{polars}, \code{dask}, and \code{duckdb}. Every cell is
-measured with \code{microbenchmark} using an adaptive \code{times}
+measured with a C++ steady-clock timer and an adaptive \code{times}
 rule.
 
 \strong{Speed-up relative to each competitor spans
-\code{0.5x} to \code{1187x}.} The median across all tested cells
-and all competitors is \code{10.3x} on Ubuntu 25.10 and
+\code{0.6x} to \code{2197x}.} The median across all tested cells
+and all competitors is \code{12.0x} on Ubuntu 25.10 and
 \code{5.7x} on Windows 11 Pro for Workstations; the mean is
-\code{58.5x} and \code{44.2x}, respectively. The largest gaps
+\code{77.9x} and \code{44.4x}, respectively. The largest gaps
 appear on wide tables (many value columns, few rows); the smallest
 gaps appear on small tables where initialization overhead dominates.
 
-Representative cells (medians; numbers in parentheses are the
+Representative cells (means; numbers in parentheses are the
 speed-up of \code{melt()} relative to that competitor) taken from
 the Ubuntu 25.10 host:
 
 \itemize{
   \item \strong{1e6 rows, 1 id, 9 value columns} ---
-        \code{3.68 ms} vs \code{7.90 ms} (\code{data.table},
-        \code{2.1x}), \code{76.8 ms} (\code{tidyr}, \code{20.9x}),
-        \code{642 ms} (\code{duckdb}, \code{174x}).
+        \code{2.18 ms} vs \code{9.44 ms} (\code{data.table},
+        \code{4.3x}), \code{73.3 ms} (\code{tidyr}, \code{33.7x}),
+        \code{650 ms} (\code{duckdb}, \code{298.7x}).
   \item \strong{1e7 rows, 1 id, 9 value columns} ---
-        \code{37.9 ms} vs \code{372 ms} (\code{data.table},
-        \code{9.8x}), \code{1111 ms} (\code{tidyr}, \code{29.3x}),
-        \code{6423 ms} (\code{duckdb}, \code{169x}).
+        \code{26.3 ms} vs \code{364 ms} (\code{data.table},
+        \code{13.8x}), \code{1079 ms} (\code{tidyr}, \code{41.0x}),
+        \code{6345 ms} (\code{duckdb}, \code{241.0x}).
   \item \strong{1e3 rows, 1 id, 10000 value columns} ---
-        \code{3.62 ms} vs \code{9.66 ms} (\code{data.table},
-        \code{2.7x}), \code{16.3 ms} (\code{polars}, \code{4.5x}),
-        \code{4292 ms} (\code{dask}, \strong{\code{1187x}}).
+        \code{2.03 ms} vs \code{12.8 ms} (\code{data.table},
+        \code{6.3x}), \code{20.4 ms} (\code{polars}, \code{10.1x}),
+        \code{4451 ms} (\code{dask}, \strong{\code{2197.2x}}).
   \item \strong{1e3 rows, 10 id, 10000 value columns} ---
-        \code{25.2 ms} vs \code{59.4 ms} (\code{polars},
-        \code{2.4x}), \code{169 ms} (\code{data.table},
-        \code{6.7x}), \code{22456 ms} (\code{dask},
-        \strong{\code{891x}}).
+        \code{23.0 ms} vs \code{61.3 ms} (\code{polars},
+        \code{2.7x}), \code{181 ms} (\code{data.table},
+        \code{7.9x}), \code{20809 ms} (\code{dask},
+        \strong{\code{903.6x}}).
 }
 
 The speed-up comes from three design choices:

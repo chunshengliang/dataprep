@@ -88,11 +88,11 @@ every tested alternative. The speed-up relative to \code{reshape2},
 \code{data.table}, \code{tidyr}, \code{pandas}, \code{polars},
 \code{dask}, and \code{duckdb} spans \code{2.0x} (against
 \code{reshape2} on 1e3 rows and 10 levels, Ubuntu 25.10) to
-\code{639x} (against \code{duckdb} on 1e8 rows and 100 levels,
+\code{677x} (against \code{duckdb} on 1e8 rows and 100 levels,
 Windows 11 Pro for Workstations). The median across all tested
-cells and all competitors is \code{49.7x} on Ubuntu 25.10 and
-\code{47.7x} on Windows 11 Pro for Workstations; the mean is
-\code{94.7x} and \code{81.6x}, respectively.
+cells and all competitors is \code{54.0x} on Ubuntu 25.10 and
+\code{41.6x} on Windows 11 Pro for Workstations; the mean is
+\code{96.5x} and \code{74.3x}, respectively.
 }
 \value{
 A wide-format data frame with one row per unique \code{id}

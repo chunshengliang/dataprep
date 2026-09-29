@@ -47,7 +47,7 @@
 #' \code{polars}, \code{dask}, \code{duckdb}), every cell has
 #' \code{dcast()} ahead of every other engine. The narrowest cell
 #' in the entire benchmark suite is \code{1e6 rows x 100 id
-#' columns}, where \code{polars} reaches 7.9x on Ubuntu and 4.5x on
+#' columns}, where \code{polars} reaches 7.4x on Ubuntu and 3.5x on
 #' Windows but still remains behind \code{dcast()}.
 #'
 #' @param data           data.frame in long format.
