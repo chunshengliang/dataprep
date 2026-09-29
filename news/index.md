@@ -381,26 +381,26 @@ hand.
   ships a `formula` interface (`id1 + id2 ~ variable`), `value.var` as
   an alias of `value`, and `fun.aggregate` for reducing duplicate
   `(id, variable)` pairs, plus `fill`, `na.rm`, `cores`, and `verbose`.
-- [`dataprep()`](https://chunshengliang.github.io/dataprep/reference/dataprep.md),
-  [`shorvalu()`](https://chunshengliang.github.io/dataprep/reference/shorvalu.md),
-  [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.md),
-  [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md),
-  [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md),
-  [`prep_fit()`](https://chunshengliang.github.io/dataprep/reference/prep_fit.md),
+- [`dataprep()`](https://chunshengliang.github.io/dataprep/reference/dataprep.html),
+  [`shorvalu()`](https://chunshengliang.github.io/dataprep/reference/shorvalu.html),
+  [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.html),
+  [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.html),
+  [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html),
+  [`prep_fit()`](https://chunshengliang.github.io/dataprep/reference/prep_fit.html),
   and
-  [`prep_transform()`](https://chunshengliang.github.io/dataprep/reference/prep_transform.md)
+  [`prep_transform()`](https://chunshengliang.github.io/dataprep/reference/prep_transform.html)
   gain a `cores` argument for OpenMP control (the cleaning functions
-  [`obsedele()`](https://chunshengliang.github.io/dataprep/reference/obsedele.md),
-  [`condextr()`](https://chunshengliang.github.io/dataprep/reference/condextr.md),
-  [`percoutl()`](https://chunshengliang.github.io/dataprep/reference/percoutl.md),
+  [`obsedele()`](https://chunshengliang.github.io/dataprep/reference/obsedele.html),
+  [`condextr()`](https://chunshengliang.github.io/dataprep/reference/condextr.html),
+  [`percoutl()`](https://chunshengliang.github.io/dataprep/reference/percoutl.html),
   and
-  [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.md)
+  [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.html)
   already accepted `cores` since 0.1.5; their backends now route it to
   OpenMP as well). The global option `options(dataprep.cores = ...)` is
   respected by
-  [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
+  [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.html)
   and
-  [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md).
+  [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html).
 - [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.html)
   now accepts `stats` as either numeric indices or character names.
 - [`percplot()`](https://chunshengliang.github.io/dataprep/reference/percplot.html)
