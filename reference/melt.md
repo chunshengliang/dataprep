@@ -104,31 +104,31 @@ major alternatives** in the R and Python ecosystems: `reshape2`,
 cell is measured with a C++ steady-clock timer and an adaptive `times`
 rule.
 
-**Speed-up relative to each competitor spans `0.6x` to `2197x`.** The
-median across all tested cells and all competitors is `12.0x` on Ubuntu
-25.10 and `5.7x` on Windows 11 Pro for Workstations; the mean is `77.9x`
-and `44.4x`, respectively. The largest gaps appear on wide tables (many
+**Speed-up relative to each competitor spans `0.6x` to `1628.9x`.** The
+median across all tested cells and all competitors is `11.3x` on Ubuntu
+25.10 and `5.6x` on Windows 11 Pro for Workstations; the mean is `67.8x`
+and `46.6x`, respectively. The largest gaps appear on wide tables (many
 value columns, few rows); the smallest gaps appear on small tables where
 initialization overhead dominates.
 
 Representative cells (means; numbers in parentheses are the speed-up of
 `melt()` relative to that competitor) taken from the Ubuntu 25.10 host:
 
-- **1e6 rows, 1 id, 9 value columns** — `2.18 ms` vs `9.44 ms`
-  (`data.table`, `4.3x`), `73.3 ms` (`tidyr`, `33.7x`), `650 ms`
-  (`duckdb`, `298.7x`).
+- **1e6 rows, 1 id, 9 value columns** — `3.474 ms` vs `9.646 ms`
+  (`data.table`, `2.8x`), `80.014 ms` (`tidyr`, `23.0x`), `648.895 ms`
+  (`duckdb`, `186.8x`).
 
-- **1e7 rows, 1 id, 9 value columns** — `26.3 ms` vs `364 ms`
-  (`data.table`, `13.8x`), `1079 ms` (`tidyr`, `41.0x`), `6345 ms`
-  (`duckdb`, `241.0x`).
+- **1e7 rows, 1 id, 9 value columns** — `33.412 ms` vs `365.065 ms`
+  (`data.table`, `10.9x`), `1083.987 ms` (`tidyr`, `32.4x`),
+  `6389.564 ms` (`duckdb`, `191.2x`).
 
-- **1e3 rows, 1 id, 10000 value columns** — `2.03 ms` vs `12.8 ms`
-  (`data.table`, `6.3x`), `20.4 ms` (`polars`, `10.1x`), `4451 ms`
-  (`dask`, **`2197.2x`**).
+- **1e3 rows, 1 id, 10000 value columns** — `2.295 ms` vs `12.415 ms`
+  (`data.table`, `5.4x`), `19.408 ms` (`polars`, `8.5x`), `3737.866 ms`
+  (`dask`, **`1628.9x`**).
 
-- **1e3 rows, 10 id, 10000 value columns** — `23.0 ms` vs `61.3 ms`
-  (`polars`, `2.7x`), `181 ms` (`data.table`, `7.9x`), `20809 ms`
-  (`dask`, **`903.6x`**).
+- **1e3 rows, 10 id, 10000 value columns** — `25.009 ms` vs `71.605 ms`
+  (`polars`, `2.9x`), `182.019 ms` (`data.table`, `7.3x`),
+  `23777.051 ms` (`dask`, **`950.7x`**).
 
 The speed-up comes from three design choices:
 

@@ -120,12 +120,12 @@ for the benchmark tables.
 
 On the canonical long-to-wide shape, `dcast()` is faster than every
 tested alternative. The speed-up relative to `reshape2`, `data.table`,
-`tidyr`, `pandas`, `polars`, `dask`, and `duckdb` spans `2.0x` (against
-`reshape2` on 1e3 rows and 10 levels, Ubuntu 25.10) to `677x` (against
+`tidyr`, `pandas`, `polars`, `dask`, and `duckdb` spans `1.9x` (against
+`reshape2` on 1e3 rows and 10 levels, Ubuntu 25.10) to `799.8x` (against
 `duckdb` on 1e8 rows and 100 levels, Windows 11 Pro for Workstations).
-The median across all tested cells and all competitors is `54.0x` on
-Ubuntu 25.10 and `41.6x` on Windows 11 Pro for Workstations; the mean is
-`96.5x` and `74.3x`, respectively.
+The median across all tested cells and all competitors is `46.5x` on
+Ubuntu 25.10 and `41.4x` on Windows 11 Pro for Workstations; the mean is
+`90.2x` and `76.6x`, respectively.
 
 ## Value
 
