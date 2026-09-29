@@ -378,9 +378,9 @@ hand.
   `parallel_threshold`. `id.vars` is an alias of `id` for reshape2 /
   data.table compatibility.
 - [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.html)
-  ships a `formula` interface (), `value.var` as an alias of `value`,
-  and `fun.aggregate` for reducing duplicate `(id, variable)` pairs,
-  plus `fill`, `na.rm`, `cores`, and `verbose`.
+  ships a `formula` interface (`id1 + id2 ~ variable`), `value.var` as
+  an alias of `value`, and `fun.aggregate` for reducing duplicate
+  `(id, variable)` pairs, plus `fill`, `na.rm`, `cores`, and `verbose`.
 - [`dataprep()`](https://chunshengliang.github.io/dataprep/reference/dataprep.md),
   [`shorvalu()`](https://chunshengliang.github.io/dataprep/reference/shorvalu.md),
   [`descdata()`](https://chunshengliang.github.io/dataprep/reference/descdata.md),
