@@ -225,7 +225,6 @@ static void fill_avx512(double* __restrict__ d, double v, size_t n) {
 
 static void (*fill_double_ptr)(double*, double, size_t) = fill_scalar;
 static bool g_have_avx512 = false;
-static bool g_have_avx2   = false;
 
 static void init_cpu_features() {
   static bool done = false;
@@ -238,10 +237,8 @@ static void init_cpu_features() {
       __builtin_cpu_supports("avx512dq")) {
     fill_double_ptr = fill_avx512;
     g_have_avx512 = true;
-    g_have_avx2   = true;
   } else if (__builtin_cpu_supports("avx2")) {
     fill_double_ptr = fill_avx2;
-    g_have_avx2 = true;
   }
 #endif
 }
@@ -966,9 +963,9 @@ SEXP dcast_cpp(SEXP data, SEXP id = R_NilValue,
   hint_readonly(val_col);
   for (int idx : id_cols) hint_readonly(VECTOR_ELT(data, idx));
 
-  bool use_parallel = false;
   int  actual_threads = 1;
 #ifdef _OPENMP
+  bool use_parallel = false;
   int hw = omp_get_max_threads();
   int target = 1;
   if (cores > 0) {

@@ -26,7 +26,7 @@ library(dataprep)
 
 ## Overview
 
-`dataprep` 0.1.7 ships two reshaping backends, `melt()` and
+`dataprep` 0.1.8 ships two reshaping backends, `melt()` and
 `dcast()`, benchmarked here against all seven major alternatives
 in the R and Python ecosystems:
 
@@ -146,12 +146,12 @@ especially the 1629× and 800× figures — should be interpreted as
 "best-case on a very large machine". On a typical 8–16-core
 workstation the same comparisons are within 10–100×.
 
-## Cleaning pipeline (dataprep 0.1.5 → 0.1.7)
+## Cleaning pipeline (dataprep 0.1.5 → 0.1.8)
 
-The 0.1.7 release rewrites every heavy cleaning routine in C++. The
+The 0.1.8 release rewrites every heavy cleaning routine in C++. The
 table below compares against 0.1.5 on three dataset sizes from the
 same source (SMEAR I Varrio forest). All numbers are speed-up
-ratios (0.1.5 time / 0.1.7 time) on Ubuntu 25.10.
+ratios (0.1.5 time / 0.1.8 time) on Ubuntu 25.10.
 
 | Function | 500 rows | 7,640 rows | 49,422 rows |
 |---|---:|---:|---:|
@@ -172,12 +172,12 @@ both versions and the new code path has little room for improvement.
 > crash when `cores > 16`, because its `parallel::makeCluster()`
 > path gave each worker a full copy of the data. The benchmark
 > above used `cores = 16` for both versions to keep the comparison
-> fair. 0.1.7 loads the package on each worker, exports the input
+> fair. 0.1.8 loads the package on each worker, exports the input
 > data once per worker, and runs each `(interval, times)` case as a
 > separate task, so `cores = 64` is safe. The practical speed-up
 > on a many-core host is larger. Also note that the optimal
 > parameter values returned by `optisolu()` may differ slightly
-> between 0.1.5 and 0.1.7.
+> between 0.1.5 and 0.1.8.
 
 ## `melt()` — wide to long
 

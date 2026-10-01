@@ -236,7 +236,7 @@ percplot(
   `vignette("dataprep-performance")`. Benchmark tables and
   8-engine consistency checks.
 
-* **Upgrading from 0.1.5 to 0.1.7** —
+* **Upgrading from 0.1.5 to 0.1.8** —
   `vignette("dataprep-migration")`. Behaviour changes and the
   migration checklist.
 

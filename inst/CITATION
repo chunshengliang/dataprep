@@ -39,11 +39,11 @@ bibentry(
   title       = "dataprep: Efficient and Flexible Data Preprocessing Tools",
   author      = person("Chun-Sheng", "Liang"),
   year        = 2026,
-  note        = "R package version 0.1.7",
+  note        = "R package version 0.1.8",
   url         = "https://github.com/chunshengliang/dataprep",
   textVersion = paste(
     "Liang, C.-S. (2026). dataprep: Efficient and Flexible Data",
-    "Preprocessing Tools. R package version 0.1.7.",
+    "Preprocessing Tools. R package version 0.1.8.",
     "https://github.com/chunshengliang/dataprep"
   )
 )

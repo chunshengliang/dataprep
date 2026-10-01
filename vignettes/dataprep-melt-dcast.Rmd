@@ -27,7 +27,7 @@ set.seed(1)
 
 ## Why another reshape implementation
 
-`melt()` and `dcast()` in `dataprep` 0.1.7 are drop-in replacements
+`melt()` and `dcast()` in `dataprep` 0.1.8 are drop-in replacements
 for `reshape2::melt` / `reshape2::dcast`, but the underlying code is
 written in C++ with SIMD (AVX2 / AVX-512) and optional OpenMP
 parallelism. Both functions produce output identical to
@@ -192,7 +192,7 @@ Output vectors larger than 512 KB are allocated through
 so the kernel can back them with 2 MB pages. This reduces
 first-touch page faults on the 1e8-row case. There is no custom
 `R_allocator_t`, no `MAP_POPULATE`, and no free pool: those were
-described in earlier drafts but are not part of the shipped 0.1.7
+described in earlier drafts but are not part of the shipped 0.1.8
 backend.
 
 ### 4. Fast paths for small inputs

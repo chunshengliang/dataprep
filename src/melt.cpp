@@ -737,62 +737,6 @@ DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
 
 static R_xlen_t (*count_keep_int_ptr)(const int*, R_xlen_t, bool) = count_keep_int_scalar;
 
-// ============================================================================
-// ISA primitive 9: fill_i32_helper (normal-store fill)
-// ============================================================================
-static void fill_i32_helper_scalar(int* p, int v, size_t n) {
-  for (size_t i = 0; i < n; ++i) p[i] = v;
-}
-
-#if DATAPREP_ARCH_X86
-DATAPREP_TARGET("sse4.2")
-  static void fill_i32_helper_sse42(int* p, int v, size_t n) {
-    size_t i = 0;
-    const __m128i vv = _mm_set1_epi32(v);
-    for (; i + 16 <= n; i += 16) {
-      _mm_storeu_si128((__m128i*)(p + i),      vv);
-      _mm_storeu_si128((__m128i*)(p + i + 4),  vv);
-      _mm_storeu_si128((__m128i*)(p + i + 8),  vv);
-      _mm_storeu_si128((__m128i*)(p + i + 12), vv);
-    }
-    for (; i + 4 <= n; i += 4) _mm_storeu_si128((__m128i*)(p + i), vv);
-    for (; i < n; ++i) p[i] = v;
-  }
-
-DATAPREP_TARGET("avx2")
-  static void fill_i32_helper_avx2(int* p, int v, size_t n) {
-    size_t i = 0;
-    const __m256i vv = _mm256_set1_epi32(v);
-    for (; i + 32 <= n; i += 32) {
-      _mm256_storeu_si256((__m256i*)(p + i),      vv);
-      _mm256_storeu_si256((__m256i*)(p + i + 8),  vv);
-      _mm256_storeu_si256((__m256i*)(p + i + 16), vv);
-      _mm256_storeu_si256((__m256i*)(p + i + 24), vv);
-    }
-    for (; i + 8 <= n; i += 8) _mm256_storeu_si256((__m256i*)(p + i), vv);
-    for (; i < n; ++i) p[i] = v;
-  }
-
-DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static void fill_i32_helper_avx512(int* p, int v, size_t n) {
-    size_t i = 0;
-    const __m512i vv = _mm512_set1_epi32(v);
-    for (; i + 64 <= n; i += 64) {
-      _mm512_storeu_si512((__m512i*)(p + i),      vv);
-      _mm512_storeu_si512((__m512i*)(p + i + 16), vv);
-      _mm512_storeu_si512((__m512i*)(p + i + 32), vv);
-      _mm512_storeu_si512((__m512i*)(p + i + 48), vv);
-    }
-    for (; i + 16 <= n; i += 16) _mm512_storeu_si512((__m512i*)(p + i), vv);
-    for (; i < n; ++i) p[i] = v;
-  }
-#endif
-
-static void (*fill_i32_helper_ptr)(int*, int, size_t) = fill_i32_helper_scalar;
-static inline void fill_i32_helper(int* p, int v, size_t n) {
-  fill_i32_helper_ptr(p, v, n);
-}
-
 static inline void fill_int_exact(int* dst, int v, int n) {
   for (int i = 0; i < n; ++i) dst[i] = v;
 }
@@ -821,7 +765,6 @@ static void init_cpu_features() {
     int2double_ptr          = int2double_avx512;
     count_keep_double_ptr   = count_keep_double_avx512;
     count_keep_int_ptr      = count_keep_int_avx512;
-    fill_i32_helper_ptr     = fill_i32_helper_avx512;
     return;
   }
   if (__builtin_cpu_supports("avx2")) {
@@ -833,7 +776,6 @@ static void init_cpu_features() {
     int2double_ptr          = int2double_avx2;
     count_keep_double_ptr   = count_keep_double_avx2;
     count_keep_int_ptr      = count_keep_int_avx2;
-    fill_i32_helper_ptr     = fill_i32_helper_avx2;
     return;
   }
   if (__builtin_cpu_supports("sse4.2")) {
@@ -845,7 +787,6 @@ static void init_cpu_features() {
     int2double_ptr          = int2double_sse42;
     count_keep_double_ptr   = count_keep_double_sse42;
     count_keep_int_ptr      = count_keep_int_sse42;
-    fill_i32_helper_ptr     = fill_i32_helper_sse42;
     return;
   }
 #endif
@@ -950,9 +891,11 @@ static thread_local Scratch g_scratch;
 
 // ============================================================================
 // Thread cap: physical cores only for memory-bound workloads.
+// Only defined when OpenMP is available: all call sites live inside
+// #ifdef _OPENMP blocks, so a non-OpenMP build simply never sees this.
 // ============================================================================
-static int get_thread_cap() {
 #ifdef _OPENMP
+static int get_thread_cap() {
   static const int cap = []() DATAPREP_COLD {
     int n = omp_get_num_procs();
     if (n < 1) n = 1;
@@ -968,10 +911,8 @@ static int get_thread_cap() {
     return n;
   }();
   return cap;
-#else
-  return 1;
-#endif
 }
+#endif
 
 static inline size_t sizeof_sexp(SEXPTYPE t) {
   switch (t) {

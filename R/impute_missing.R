@@ -21,7 +21,7 @@ impute_missing <- function(data, cols = NULL, method = "linear",
   method <- match.arg(method, c("linear", "locf", "nocb", "mean", "median"))
 
   if (!is.null(max_gap)) {
-    warning("max_gap is not implemented in dataprep 0.1.7 and will be ignored.")
+    warning("max_gap is not implemented in dataprep 0.1.8 and will be ignored.")
   }
 
   if (is.vector(data) && !is.list(data)) {

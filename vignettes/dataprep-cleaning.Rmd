@@ -114,7 +114,7 @@ in gaps that are too long for `shorvalu` to interpolate.
 
 ## Overview
 
-The 0.1.7 cleaning pipeline consists of four sequential steps:
+The 0.1.8 cleaning pipeline consists of four sequential steps:
 
 1. **Variable deletion** (`varidele`): drop columns whose missing
    fraction is above a threshold.
@@ -136,15 +136,15 @@ is designed around the same physical constraint: a valid substitute
 for a missing value only exists if there is an observed value
 within `half` minutes on at least one side.
 
-## Why `obsedele` changed in 0.1.7
+## Why `obsedele` changed in 0.1.8
 
-Two behaviour changes were made in 0.1.7; both are bug fixes, but
+Two behaviour changes were made in 0.1.8; both are bug fixes, but
 they change row counts on real data.
 
 **Change 1 — each column is scanned independently.** The 0.1.5
 implementation collapsed all selected columns into one long vector
 before computing missing runs, which merged `NA` runs across columns
-and over-deleted boundary rows. The 0.1.7 C++ backend
+and over-deleted boundary rows. The 0.1.8 C++ backend
 (`obsedele_cpp`) scans each column separately: a row is deleted
 only when *any* selected column has a missing run longer than
 `half` minutes on both sides.
@@ -529,7 +529,7 @@ knitr::include_graphics("figures/Time_Series_Interpolation_Final.png")
   (median + mean for every cell), the 8-engine consistency
   checks, and the reproducible runner.
 
-* **Upgrading from 0.1.5 to 0.1.7** —
+* **Upgrading from 0.1.5 to 0.1.8** —
   `vignette("dataprep-migration")`. Behaviour changes, quantified
   effect on a real dataset, and a migration checklist.
 

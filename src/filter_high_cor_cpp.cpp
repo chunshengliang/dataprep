@@ -29,10 +29,9 @@ LogicalVector filter_high_cor_cpp(NumericMatrix x, double cutoff,
         const double* xi = x.begin() + (R_xlen_t)i * n;
 
         int ci = 0;
-        double si = 0.0;
         for (int k = 0; k < n; ++k) {
             double v = xi[k];
-            if (!R_IsNA(v) && !R_IsNaN(v)) { si += v; ++ci; }
+            if (!R_IsNA(v) && !R_IsNaN(v)) { ++ci; }
         }
         if (ci < 2) { sd_zero[i] = 1; continue; }
 
