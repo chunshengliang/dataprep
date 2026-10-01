@@ -7,7 +7,7 @@ steps while preventing data leakage.
 
 - [`dataprep-package`](https://chunshengliang.github.io/dataprep/reference/dataprep-package.md)
   : dataprep: Fast, Efficient, and Versatile Data Preprocessing and
-  Reshaping with C++, OpenMP & SIMD
+  Reshaping with 'C++', 'OpenMP' & 'SIMD'
 - [`dataprep()`](https://chunshengliang.github.io/dataprep/reference/dataprep.md)
   : Data preprocessing with multiple steps in one function
 - [`prep_fit()`](https://chunshengliang.github.io/dataprep/reference/prep_fit.md)

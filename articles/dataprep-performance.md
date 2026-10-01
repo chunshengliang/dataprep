@@ -7,7 +7,7 @@ library(dataprep)
 
 ## Overview
 
-`dataprep` 0.1.7 ships two reshaping backends,
+`dataprep` 0.1.8 ships two reshaping backends,
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 and
 [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md),
@@ -127,12 +127,12 @@ ranking is robust; the absolute multipliers — especially the 1629× and
 machine”. On a typical 8–16-core workstation the same comparisons are
 within 10–100×.
 
-## Cleaning pipeline (dataprep 0.1.5 → 0.1.7)
+## Cleaning pipeline (dataprep 0.1.5 → 0.1.8)
 
-The 0.1.7 release rewrites every heavy cleaning routine in C++. The
+The 0.1.8 release rewrites every heavy cleaning routine in C++. The
 table below compares against 0.1.5 on three dataset sizes from the same
 source (SMEAR I Varrio forest). All numbers are speed-up ratios (0.1.5
-time / 0.1.7 time) on Ubuntu 25.10.
+time / 0.1.8 time) on Ubuntu 25.10.
 
 | Function   | 500 rows | 7,640 rows | 49,422 rows |
 |------------|---------:|-----------:|------------:|
@@ -153,13 +153,13 @@ little room for improvement.
 > when `cores > 16`, because its
 > [`parallel::makeCluster()`](https://rdrr.io/r/parallel/makeCluster.html)
 > path gave each worker a full copy of the data. The benchmark above
-> used `cores = 16` for both versions to keep the comparison fair. 0.1.7
+> used `cores = 16` for both versions to keep the comparison fair. 0.1.8
 > loads the package on each worker, exports the input data once per
 > worker, and runs each `(interval, times)` case as a separate task, so
 > `cores = 64` is safe. The practical speed-up on a many-core host is
 > larger. Also note that the optimal parameter values returned by
 > [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.md)
-> may differ slightly between 0.1.5 and 0.1.7.
+> may differ slightly between 0.1.5 and 0.1.8.
 
 ## `melt()` — wide to long
 
@@ -485,7 +485,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] ggplot2_4.0.3  dataprep_0.1.7
+#> [1] ggplot2_4.0.3  dataprep_0.1.8
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    

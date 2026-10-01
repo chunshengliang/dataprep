@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.7</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -94,7 +94,7 @@ and scaling are often implemented as one-shot functions. If you apply
 them to training and test data separately, the test set ends up using
 its own statistics, which leaks information from the test set into the
 pipeline.</p>
-<p><code>dataprep</code> 0.1.7 solves this with a two-step
+<p><code>dataprep</code> 0.1.8 solves this with a two-step
 interface:</p>
 <ul>
 <li><p><code><a href="../reference/prep_fit.html">prep_fit()</a></code> estimates every parameter (missing
@@ -376,7 +376,7 @@ for a compact output.</p>
 <span><span class="co">#&gt; 4 6495.960 926.9235</span></span>
 <span><span class="co">#&gt; 5 6474.645 927.0629</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Time used by data_report: 0.00588 secs</span></span>
+<span><span class="co">#&gt; Time used by data_report: 0.0102 secs</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="fu"><a href="../reference/data_report.html">data_report</a></span><span class="op">(</span><span class="va">data1</span>, cols <span class="op">=</span> <span class="fl">3</span><span class="op">:</span><span class="fl">7</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -460,7 +460,7 @@ real dataset.</p></li>
 <li><p><strong>Performance and cross-engine consistency</strong> —
 <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code>. Full benchmark tables and
 8-engine consistency checks.</p></li>
-<li><p><strong>Upgrading from 0.1.5 to 0.1.7</strong> —
+<li><p><strong>Upgrading from 0.1.5 to 0.1.8</strong> —
 <code><a href="../articles/dataprep-migration.html">vignette("dataprep-migration")</a></code>. Behaviour changes and the
 migration checklist.</p></li>
 <li><p><strong>Fast reshaping</strong> —
@@ -493,7 +493,7 @@ migration checklist.</p></li>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] dataprep_0.1.7</span></span>
+<span><span class="co">#&gt; [1] dataprep_0.1.8</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] vctrs_0.7.3       cli_3.6.6         knitr_1.52        rlang_1.3.0      </span></span>

@@ -11,7 +11,7 @@ set.seed(1)
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 and
 [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md)
-in `dataprep` 0.1.7 are drop-in replacements for
+in `dataprep` 0.1.8 are drop-in replacements for
 [`reshape2::melt`](https://rdrr.io/pkg/reshape2/man/melt.html) /
 [`reshape2::dcast`](https://rdrr.io/pkg/reshape2/man/cast.html), but the
 underlying code is written in C++ with SIMD (AVX2 / AVX-512) and
@@ -223,7 +223,7 @@ Output vectors larger than 512 KB are allocated through
 kernel can back them with 2 MB pages. This reduces first-touch page
 faults on the 1e8-row case. There is no custom `R_allocator_t`, no
 `MAP_POPULATE`, and no free pool: those were described in earlier drafts
-but are not part of the shipped 0.1.7 backend.
+but are not part of the shipped 0.1.8 backend.
 
 ### 4. Fast paths for small inputs
 
@@ -491,7 +491,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] dataprep_0.1.7
+#> [1] dataprep_0.1.8
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    

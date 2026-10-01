@@ -1,4 +1,4 @@
-# dataprep: upgrading from 0.1.5 to 0.1.7
+# dataprep: upgrading from 0.1.5 to 0.1.8
 
 ``` r
 
@@ -15,11 +15,11 @@ the last section before upgrading.
 ## Interface changes
 
 Besides the behaviour changes above, several functions changed their
-argument interface between 0.1.5 and 0.1.7. The old `start` / `end` pair
+argument interface between 0.1.5 and 0.1.8. The old `start` / `end` pair
 was replaced by a single `cols` argument (character names, integer
 indices, or logical mask):
 
-| Function   | 0.1.5 arguments     | 0.1.7 arguments       |
+| Function   | 0.1.5 arguments     | 0.1.8 arguments       |
 |------------|---------------------|-----------------------|
 | `varidele` | `start`, `end`      | `cols`                |
 | `obsedele` | `start`, `end`      | `cols`                |
@@ -35,7 +35,7 @@ indices, or logical mask):
 | `melt`     | `cols` (id columns) | `id` / `measure.vars` |
 
 A call such as `varidele(data, 3, 15)` was interpreted as
-`start = 3, end = 15` in 0.1.5, but in 0.1.7 it is parsed as `cols = 3`
+`start = 3, end = 15` in 0.1.5, but in 0.1.8 it is parsed as `cols = 3`
 (the `15` is dropped or becomes `fraction`). You must rewrite it as
 `varidele(data, cols = 3:15)`. The same applies to every function in the
 table.
@@ -45,14 +45,14 @@ table.
   collapsed all selected columns into one long vector before computing
   missing runs; this changed `NA` run boundaries and could both
   over-delete boundary rows and retain rows that should have been
-  deleted. The 0.1.7 implementation scans each column independently: a
+  deleted. The 0.1.8 implementation scans each column independently: a
   row is deleted when *any* selected column has a missing run longer
   than `half` minutes on both sides.
 
 - **`half` is now always in minutes, and the boundary is inclusive.** In
   0.1.5, `half` counted grid rows in units of `by`: with
   `by = "5 min", half = 30` the effective window was 150 minutes. In
-  0.1.7, `half` is always in minutes, independent of `by`. Rows whose
+  0.1.8, `half` is always in minutes, independent of `by`. Rows whose
   nearest anchor is exactly `half` minutes away are retained (“within
   `half` minutes” is a `<=` condition).
 
@@ -60,13 +60,13 @@ table.
   **no longer crashes with `cores > 16`.** The 0.1.5
   [`parallel::makeCluster()`](https://rdrr.io/r/parallel/makeCluster.html)
   path exhausted memory when the worker processes each received a full
-  copy of the input. The 0.1.7 implementation loads the package on each
+  copy of the input. The 0.1.8 implementation loads the package on each
   worker, exports the input data only once per worker, and runs each
   `(interval, times)` case in a separate task, so `cores = 64` and
   `cores = NULL` (automatic) are both safe. Note that the optimal
   parameter values returned by
   [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.md)
-  may differ slightly between 0.1.5 and 0.1.7 because the underlying
+  may differ slightly between 0.1.5 and 0.1.8 because the underlying
   outlier-marking and observation-deletion backends have changed. Re-run
   [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.md)
   after upgrading if exact parameter values matter.
@@ -98,7 +98,7 @@ obsedele(df, cols = "x", half = 30)
 
 The three interior rows are each 10, 20, or 30 minutes from the nearest
 valid anchor. Under 0.1.5 the third row was deleted because the delete
-condition was inclusive (`dl >= half`); under 0.1.7 it is retained
+condition was inclusive (`dl >= half`); under 0.1.8 it is retained
 because the delete condition is strict (`dl > half && dr > half`), so
 `dl == half` satisfies “within `half` minutes”.
 
@@ -119,7 +119,7 @@ nrow(obsedele(df, cols = c("x", "y"), half = 60))
 
 Under 0.1.5, the `x` and `y` `NA` runs were merged before computing the
 run length. This changed the run boundaries and could either over-delete
-rows or retain rows that should have been deleted. Under 0.1.7 the two
+rows or retain rows that should have been deleted. Under 0.1.8 the two
 channels are checked independently: a row is deleted when *any* selected
 column has a run longer than `half` minutes on both sides.
 
@@ -133,10 +133,10 @@ three generations:
 |----|----|----|
 | 0.1.0 | Borrowed running mean: expand the series onto a regular grid with [`tidyr::complete()`](https://tidyr.tidyverse.org/reference/complete.html), compute a 59-minute centred moving average on a temporary column, and use its emptiness pattern to flag long runs. | `O(grid length)` per subset |
 | 0.1.5 | Run-length encoding: use [`data.table::rleid()`](https://rdrr.io/pkg/data.table/man/rleid.html) and `rowid()` to collapse consecutive `NA`s into runs. The retention threshold was `half * num` grid rows, where `num` is the leading number in the `by` string: with `by = "5 min", half = 30` this was a 150-minute window. | `O(n)` time, `O(n)` temporary storage |
-| 0.1.7 | Anchor scan: for each missing value, look up the nearest non-missing anchor on each side and compare the two time distances directly. No grid, no run-length state. | `O(n)` time, `O(1)` extra allocation per column |
+| 0.1.8 | Anchor scan: for each missing value, look up the nearest non-missing anchor on each side and compare the two time distances directly. No grid, no run-length state. | `O(n)` time, `O(1)` extra allocation per column |
 
 Each generation produces the same deletion decision on the same input,
-but the constant factors shrink. The 0.1.7 anchor scan is the first
+but the constant factors shrink. The 0.1.8 anchor scan is the first
 version that is fast enough to run interactively on full-year data: on
 SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels),
 [`obsedele()`](https://chunshengliang.github.io/dataprep/reference/obsedele.md)
@@ -151,7 +151,7 @@ for the full benchmark.
 On SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels, 10-minute
 sampling), running the same pipeline with the same parameters:
 
-| Stage            |              0.1.5 |              0.1.7 |   Δ |
+| Stage            |              0.1.5 |              0.1.8 |   Δ |
 |------------------|-------------------:|-------------------:|----:|
 | `varidele`       | 25 columns deleted | 25 columns deleted |   0 |
 | `obsedele`       | 1,494 rows deleted | 1,496 rows deleted |  +2 |
@@ -167,18 +167,18 @@ one sampling interval of `half` minutes.
 
 The six differing rows fall into two groups:
 
-- **Rows kept by 0.1.7, deleted by 0.1.5 (3 rows).** These are rows
+- **Rows kept by 0.1.8, deleted by 0.1.5 (3 rows).** These are rows
   whose nearest anchor is exactly `half` minutes away. Under the 0.1.5
-  delete condition (`dl >= half`) they were deleted; under the 0.1.7
+  delete condition (`dl >= half`) they were deleted; under the 0.1.8
   condition (`dl > half && dr > half`) they are retained. Each of these
   rows has a valid anchor within one sampling interval of `half`, so
   retaining them is consistent with the physical constraint described in
   [`vignette("dataprep-philosophy")`](https://chunshengliang.github.io/dataprep/articles/dataprep-philosophy.md).
 
-- **Rows deleted by 0.1.7, kept by 0.1.5 (3 rows, overlapping with the
+- **Rows deleted by 0.1.8, kept by 0.1.5 (3 rows, overlapping with the
   above).** These are rows that pass the check on some columns but fail
   on at least one. Under 0.1.5 the merge-columns approach effectively
-  widened the anchor window on these rows; under 0.1.7 each column is
+  widened the anchor window on these rows; under 0.1.8 each column is
   checked independently, so the row is deleted. These rows would have
   been interpolated across a gap longer than `half` minutes in at least
   one channel, which contradicts the design.
@@ -206,14 +206,14 @@ affected by the change, but the row indices that fed into them are.
 If you were limiting
 [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.md)
 to `cores <= 16` as a workaround for the 0.1.5 crash, remove the cap.
-0.1.7 accepts up to 64. Also re-run
+0.1.8 accepts up to 64. Also re-run
 [`optisolu()`](https://chunshengliang.github.io/dataprep/reference/optisolu.md)
 because the returned optimal parameters may differ slightly from 0.1.5.
 
 If downstream behaviour depends on specific boundary rows, verify the
 difference with
 [`dplyr::anti_join()`](https://dplyr.tidyverse.org/reference/filter-joins.html)
-between the 0.1.5 and 0.1.7 outputs. The example below shows how.
+between the 0.1.5 and 0.1.8 outputs. The example below shows how.
 
 ``` r
 
@@ -232,17 +232,17 @@ and
 [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md),
 or who only use `dataprep` for descriptive statistics (`descdata`,
 `na_diagnose`, `percdata`, `percplot`, `descplot`), there is no
-behaviour change. Those functions have been re-implemented in 0.1.7 for
+behaviour change. Those functions have been re-implemented in 0.1.8 for
 speed (`melt` and `dcast`) or reorganised internally (`data_report`,
 `dry_run`), but the output on every tested input is identical to 0.1.5
 except where noted in the news file.
 
 ## Performance reference
 
-The 0.1.7 release rewrites every heavy cleaning routine in C++. The
+The 0.1.8 release rewrites every heavy cleaning routine in C++. The
 table below compares against 0.1.5 on three dataset sizes from the same
 source (SMEAR I Varrio forest). All numbers are speed-up ratios (0.1.5
-time / 0.1.7 time); a value below 1.0× means 0.1.7 is slightly slower on
+time / 0.1.8 time); a value below 1.0× means 0.1.8 is slightly slower on
 that cell.
 
 | Function   | 500 rows | 7,640 rows | 49,422 rows (Ubuntu 25.10) |
@@ -262,7 +262,7 @@ little room for improvement.
 
 > **Note on `optisolu` cores.** The 0.1.5 implementation could crash
 > when `cores > 16`. The benchmark above used `cores = 16` for both
-> versions to keep the comparison fair. 0.1.7 loads the package on each
+> versions to keep the comparison fair. 0.1.8 loads the package on each
 > worker, exports the input data once per worker, and runs each
 > `(interval, times)` case as a separate task, so `cores = 64` is safe.
 > The practical speed-up on a many-core host is larger than the table
@@ -329,7 +329,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] dataprep_0.1.7
+#> [1] dataprep_0.1.8
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] vctrs_0.7.3       cli_3.6.6         knitr_1.52        rlang_1.3.0      

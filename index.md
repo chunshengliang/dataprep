@@ -21,7 +21,7 @@ DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/chunshengliang/d
 ## In one paragraph
 
 `dataprep` provides an opinionated, high-performance pipeline for
-cleaning tabular and time-series data. The 0.1.7 release rewrites the
+cleaning tabular and time-series data. The 0.1.8 release rewrites the
 cleaning routines in C++ and delivers a speedup over 0.1.5 that ranges
 from about **1.0×** (for `varidele` on some full-year data) to about
 **1146×** (for `condextr` on full-year Ubuntu data). The
@@ -59,7 +59,7 @@ tabular and time-series data:
 - **Fit / transform interfaces** (`prep_fit`, `prep_transform`) that
   prevent data leakage during preprocessing.
 
-Most heavy routines are written in C++ with Rcpp. Since 0.1.7, many
+Most heavy routines are written in C++ with Rcpp. Since 0.1.8, many
 operations are parallelized with OpenMP and vectorized with AVX2 /
 AVX-512 when the hardware supports it.
 
@@ -610,7 +610,7 @@ for the full reasoning.
   `obsedele` / `condextr` / `shorvalu`.
 - **Performance and cross-engine consistency** — full benchmark tables
   and consistency checks.
-- **Upgrading from 0.1.5 to 0.1.7** — behaviour changes and migration
+- **Upgrading from 0.1.5 to 0.1.8** — behaviour changes and migration
   checklist.
 - **Leakage-free workflow** —
   [`prep_fit()`](https://chunshengliang.github.io/dataprep/reference/prep_fit.md)

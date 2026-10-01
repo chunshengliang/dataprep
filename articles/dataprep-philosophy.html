@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.7</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,7 +198,7 @@ the row to be deleted. If a valid anchor exists on either side within
 <div class="section level2">
 <h2 id="how-it-is-implemented-anchor-based-scan">How it is implemented: anchor-based scan<a class="anchor" aria-label="anchor" href="#how-it-is-implemented-anchor-based-scan"></a>
 </h2>
-<p>The 0.1.7 C++ backend (<code>obsedele_cpp</code>) implements the
+<p>The 0.1.8 C++ backend (<code>obsedele_cpp</code>) implements the
 criterion directly, with an anchor-based scan. The algorithm for one
 <strong>subset</strong> (a group, or a time period between two gaps) and
 one column is:</p>
@@ -235,7 +235,7 @@ sampling on a 1-minute grid, <code>L</code> is roughly 10× the
 observation count. The anchor scan never materialises a grid.</p></li>
 <li><p><strong>Runs at full memory bandwidth.</strong> Both the anchor
 list and the per-row distance computation are simple sequential scans
-over a single column. This is what allows the 0.1.7 implementation to
+over a single column. This is what allows the 0.1.8 implementation to
 process the full year of SMEAR I Varrio data (49,422 rows × 61 channels)
 in 0.05 s on Ubuntu 25.10, against 11.6 s in 0.1.5, and in 0.035 s
 against 22.5 s on Windows 11 Pro for Workstations.</p></li>
@@ -281,7 +281,7 @@ then compare each run length to the number of grid points covered by
 <code>O(n)</code> time, <code>O(n)</code> temporary storage</td>
 </tr>
 <tr class="odd">
-<td>0.1.7</td>
+<td>0.1.8</td>
 <td>Anchor scan: for each missing value, look up the nearest non-missing
 anchor on each side and compare the two time distances directly. No
 grid, no run-length state.</td>
@@ -292,7 +292,7 @@ column</td>
 </tbody>
 </table>
 <p>Each generation produces the same deletion decision on the same
-input, but the constant factors shrink. The 0.1.7 anchor scan is the
+input, but the constant factors shrink. The 0.1.8 anchor scan is the
 first version that is fast enough to run interactively on full-year
 data.</p>
 </div>
@@ -302,7 +302,7 @@ data.</p>
 <p>A one-sided criterion would delete rows at the boundary of every run,
 even when the surviving side has a valid anchor right next to the row.
 The 0.1.5 implementation effectively did this by merging columns before
-computing runs, which over-deleted boundary rows. The 0.1.7 rewrite
+computing runs, which over-deleted boundary rows. The 0.1.8 rewrite
 scans each column independently and requires <em>both</em> distances to
 exceed <code>half</code> before deletion. See
 <code><a href="../articles/dataprep-migration.html">vignette("dataprep-migration")</a></code> for the full upgrade
@@ -608,7 +608,7 @@ real dataset.</p></li>
 <li><p><strong>Performance and cross-engine consistency</strong> —
 <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code>. Benchmark tables and
 8-engine consistency checks.</p></li>
-<li><p><strong>Upgrading from 0.1.5 to 0.1.7</strong> —
+<li><p><strong>Upgrading from 0.1.5 to 0.1.8</strong> —
 <code><a href="../articles/dataprep-migration.html">vignette("dataprep-migration")</a></code>. Behaviour changes and the
 migration checklist.</p></li>
 <li><p><strong>Leakage-free workflow</strong> —
@@ -650,7 +650,7 @@ China (No. 12301674).</p>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] dataprep_0.1.7</span></span>
+<span><span class="co">#&gt; [1] dataprep_0.1.8</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    </span></span>

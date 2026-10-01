@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.7</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -160,7 +160,7 @@ modifies values; use <code>data1</code> only for read-only demos
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>The 0.1.7 cleaning pipeline consists of four sequential steps:</p>
+<p>The 0.1.8 cleaning pipeline consists of four sequential steps:</p>
 <ol style="list-style-type: decimal">
 <li><p><strong>Variable deletion</strong> (<code>varidele</code>): drop
 columns whose missing fraction is above a threshold.</p></li>
@@ -181,14 +181,14 @@ substitute for a missing value only exists if there is an observed value
 within <code>half</code> minutes on at least one side.</p>
 </div>
 <div class="section level2">
-<h2 id="why-obsedele-changed-in-0-1-7">Why <code>obsedele</code> changed in 0.1.7<a class="anchor" aria-label="anchor" href="#why-obsedele-changed-in-0-1-7"></a>
+<h2 id="why-obsedele-changed-in-0-1-8">Why <code>obsedele</code> changed in 0.1.8<a class="anchor" aria-label="anchor" href="#why-obsedele-changed-in-0-1-8"></a>
 </h2>
-<p>Two behaviour changes were made in 0.1.7; both are bug fixes, but
+<p>Two behaviour changes were made in 0.1.8; both are bug fixes, but
 they change row counts on real data.</p>
 <p><strong>Change 1 — each column is scanned independently.</strong> The
 0.1.5 implementation collapsed all selected columns into one long vector
 before computing missing runs, which merged <code>NA</code> runs across
-columns and over-deleted boundary rows. The 0.1.7 C++ backend
+columns and over-deleted boundary rows. The 0.1.8 C++ backend
 (<code>obsedele_cpp</code>) scans each column separately: a row is
 deleted only when <em>any</em> selected column has a missing run longer
 than <code>half</code> minutes on both sides.</p>
@@ -613,7 +613,7 @@ constraint.</p></li>
 <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code>. Full benchmark tables
 (median + mean for every cell), the 8-engine consistency checks, and the
 reproducible runner.</p></li>
-<li><p><strong>Upgrading from 0.1.5 to 0.1.7</strong> —
+<li><p><strong>Upgrading from 0.1.5 to 0.1.8</strong> —
 <code><a href="../articles/dataprep-migration.html">vignette("dataprep-migration")</a></code>. Behaviour changes,
 quantified effect on a real dataset, and a migration checklist.</p></li>
 <li><p><strong>Fast reshaping with <code><a href="../reference/melt.html">melt()</a></code> and
@@ -649,7 +649,7 @@ quantified effect on a real dataset, and a migration checklist.</p></li>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] dataprep_0.1.7</span></span>
+<span><span class="co">#&gt; [1] dataprep_0.1.8</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    </span></span>

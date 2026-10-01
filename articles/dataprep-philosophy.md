@@ -119,7 +119,7 @@ valid anchor exists on either side within `half`, the row is retained.
 
 ## How it is implemented: anchor-based scan
 
-The 0.1.7 C++ backend (`obsedele_cpp`) implements the criterion
+The 0.1.8 C++ backend (`obsedele_cpp`) implements the criterion
 directly, with an anchor-based scan. The algorithm for one **subset** (a
 group, or a time period between two gaps) and one column is:
 
@@ -149,7 +149,7 @@ earlier releases, but the algorithm has three practical advantages:
 
 - **Runs at full memory bandwidth.** Both the anchor list and the
   per-row distance computation are simple sequential scans over a single
-  column. This is what allows the 0.1.7 implementation to process the
+  column. This is what allows the 0.1.8 implementation to process the
   full year of SMEAR I Varrio data (49,422 rows × 61 channels) in 0.05 s
   on Ubuntu 25.10, against 11.6 s in 0.1.5, and in 0.035 s against 22.5
   s on Windows 11 Pro for Workstations.
@@ -168,10 +168,10 @@ three generations:
 |----|----|----|
 | 0.1.0 | Borrowed running mean: expand the series onto a regular grid with [`tidyr::complete()`](https://tidyr.tidyverse.org/reference/complete.html), compute a 59-minute centred moving average on a temporary column, and use its emptiness pattern to flag long runs. | `O(grid length)` per subset |
 | 0.1.5 | Run-length encoding: use [`data.table::rleid()`](https://rdrr.io/pkg/data.table/man/rleid.html) and `rowid()` to collapse consecutive `NA`s into runs, then compare each run length to the number of grid points covered by `half` minutes. | `O(n)` time, `O(n)` temporary storage |
-| 0.1.7 | Anchor scan: for each missing value, look up the nearest non-missing anchor on each side and compare the two time distances directly. No grid, no run-length state. | `O(n)` time, `O(1)` extra allocation per column |
+| 0.1.8 | Anchor scan: for each missing value, look up the nearest non-missing anchor on each side and compare the two time distances directly. No grid, no run-length state. | `O(n)` time, `O(1)` extra allocation per column |
 
 Each generation produces the same deletion decision on the same input,
-but the constant factors shrink. The 0.1.7 anchor scan is the first
+but the constant factors shrink. The 0.1.8 anchor scan is the first
 version that is fast enough to run interactively on full-year data.
 
 ## Why “both sides” and not “one side”?
@@ -179,7 +179,7 @@ version that is fast enough to run interactively on full-year data.
 A one-sided criterion would delete rows at the boundary of every run,
 even when the surviving side has a valid anchor right next to the row.
 The 0.1.5 implementation effectively did this by merging columns before
-computing runs, which over-deleted boundary rows. The 0.1.7 rewrite
+computing runs, which over-deleted boundary rows. The 0.1.8 rewrite
 scans each column independently and requires *both* distances to exceed
 `half` before deletion. See
 [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md)
@@ -438,7 +438,7 @@ each function is called.
   [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
   Benchmark tables and 8-engine consistency checks.
 
-- **Upgrading from 0.1.5 to 0.1.7** —
+- **Upgrading from 0.1.5 to 0.1.8** —
   [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md).
   Behaviour changes and the migration checklist.
 
@@ -483,7 +483,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] dataprep_0.1.7
+#> [1] dataprep_0.1.8
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    

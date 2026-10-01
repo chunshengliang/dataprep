@@ -39,13 +39,13 @@ https://doi.org/10.1016/j.scitotenv.2020.140923
     }
 
 Liang, C.-S. (2026). dataprep: Efficient and Flexible Data Preprocessing
-Tools. R package version 0.1.7.
+Tools. R package version 0.1.8.
 https://github.com/chunshengliang/dataprep
 
     @Manual{dataprep_pkg,
       title = {dataprep: Efficient and Flexible Data Preprocessing Tools},
       author = {Chun-Sheng Liang},
       year = {2026},
-      note = {R package version 0.1.7},
+      note = {R package version 0.1.8},
       url = {https://github.com/chunshengliang/dataprep},
     }

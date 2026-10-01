@@ -1,21 +1,21 @@
-# dataprep: Fast, Efficient, and Versatile Data Preprocessing and Reshaping with C++, OpenMP & SIMD
+# dataprep: Fast, Efficient, and Versatile Data Preprocessing and Reshaping with 'C++', 'OpenMP' & 'SIMD'
 
 Fast, efficient, and versatile preprocessing and reshaping of tabular
-and time-series data. Most heavy routines are implemented in C++ via
-'Rcpp', with optional OpenMP parallelization and SIMD acceleration (AVX2
-/ AVX-512) on supported hardware. The 0.1.7 release rewrites the
-cleaning routines in C++ and delivers a 1.1–1146× speedup over 0.1.5.
-The 'melt()' and 'dcast()' reshaping functions achieve a 0.6×–1628.9×
-speedup for 'melt()' and a 1.9×–799.8× speedup for 'dcast()' relative to
-every one of the seven major alternatives in the R and Python
-ecosystems, at every tested scale (from 1,000 to 100,000,000 rows), and
-produce output identical to 'reshape2', 'data.table', 'tidyr', 'pandas',
-'polars', 'dask', and 'duckdb'. Core preprocessing steps include
-variable deletion by missing fraction, observation deletion by
-consecutive missing runs, point-by-point weighted outlier removal via
-conditional extremum, traditional percentile-based outlier removal, and
-linear interpolation within short time periods. The package also
-provides fast reshaping, descriptive statistics, missing-value
+and time-series data. Most heavy routines are implemented in 'C++' via
+'Rcpp', with optional 'OpenMP' parallelization and 'SIMD' acceleration
+('AVX2' / 'AVX-512') on supported hardware. The 0.1.8 release rewrites
+the cleaning routines in 'C++' and delivers a 1.1–1146× speedup over
+0.1.5. The 'melt()' and 'dcast()' reshaping functions achieve a
+0.6×–1628.9× speedup for 'melt()' and a 1.9×–799.8× speedup for
+'dcast()' relative to every one of the seven major alternatives in the R
+and Python ecosystems, at every tested scale (from 1,000 to 100,000,000
+rows), and produce output identical to 'reshape2', 'data.table',
+'tidyr', 'pandas', 'polars', 'dask', and 'duckdb'. Core preprocessing
+steps include variable deletion by missing fraction, observation
+deletion by consecutive missing runs, point-by-point weighted outlier
+removal via conditional extremum, traditional percentile-based outlier
+removal, and linear interpolation within short time periods. The package
+also provides fast reshaping, descriptive statistics, missing-value
 diagnosis, multiple imputation strategies, winsorization, several
 outlier detection methods (IQR, MAD, percentile), data transformation
 and standardization, categorical encoding, duplicate removal, data

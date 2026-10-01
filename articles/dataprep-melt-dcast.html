@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.7</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -82,7 +82,7 @@
 <h2 id="why-another-reshape-implementation">Why another reshape implementation<a class="anchor" aria-label="anchor" href="#why-another-reshape-implementation"></a>
 </h2>
 <p><code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> in <code>dataprep</code>
-0.1.7 are drop-in replacements for <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code> /
+0.1.8 are drop-in replacements for <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code> /
 <code><a href="https://rdrr.io/pkg/reshape2/man/cast.html" class="external-link">reshape2::dcast</a></code>, but the underlying code is written in C++
 with SIMD (AVX2 / AVX-512) and optional OpenMP parallelism. Both
 functions produce output identical to <code>reshape2</code>,
@@ -305,7 +305,7 @@ region to guarantee visibility.</p>
 MB pages. This reduces first-touch page faults on the 1e8-row case.
 There is no custom <code>R_allocator_t</code>, no
 <code>MAP_POPULATE</code>, and no free pool: those were described in
-earlier drafts but are not part of the shipped 0.1.7 backend.</p>
+earlier drafts but are not part of the shipped 0.1.8 backend.</p>
 </div>
 <div class="section level3">
 <h3 id="fast-paths-for-small-inputs">4. Fast paths for small inputs<a class="anchor" aria-label="anchor" href="#fast-paths-for-small-inputs"></a>
@@ -701,7 +701,7 @@ input), <code>dataprep</code> is the only engine that completes within
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] dataprep_0.1.7</span></span>
+<span><span class="co">#&gt; [1] dataprep_0.1.8</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    </span></span>

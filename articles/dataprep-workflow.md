@@ -21,7 +21,7 @@ scaling are often implemented as one-shot functions. If you apply them
 to training and test data separately, the test set ends up using its own
 statistics, which leaks information from the test set into the pipeline.
 
-`dataprep` 0.1.7 solves this with a two-step interface:
+`dataprep` 0.1.8 solves this with a two-step interface:
 
 - [`prep_fit()`](https://chunshengliang.github.io/dataprep/reference/prep_fit.md)
   estimates every parameter (missing fraction, outlier thresholds,
@@ -278,7 +278,7 @@ data_report(data1, cols = 3:7, verbose = TRUE)
 #> 4 6495.960 926.9235
 #> 5 6474.645 927.0629
 #> 
-#> Time used by data_report: 0.00588 secs
+#> Time used by data_report: 0.0102 secs
 invisible(data_report(data1, cols = 3:7))
 ```
 
@@ -364,7 +364,7 @@ and full AVX-512. Full hardware details are in `README.md`.
   [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
   Full benchmark tables and 8-engine consistency checks.
 
-- **Upgrading from 0.1.5 to 0.1.7** —
+- **Upgrading from 0.1.5 to 0.1.8** —
   [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md).
   Behaviour changes and the migration checklist.
 
@@ -397,7 +397,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] dataprep_0.1.7
+#> [1] dataprep_0.1.8
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] vctrs_0.7.3       cli_3.6.6         knitr_1.52        rlang_1.3.0      

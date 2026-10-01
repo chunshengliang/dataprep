@@ -33,7 +33,7 @@ obsedele(
 
 - by:
 
-  Time unit used only to validate the internal `step_sec`. The 0.1.7
+  Time unit used only to validate the internal `step_sec`. The 0.1.8
   anchor-based scan does not use a regular grid, so this argument does
   not affect the result.
 

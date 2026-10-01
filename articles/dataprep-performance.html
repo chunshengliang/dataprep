@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.7</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -80,7 +80,7 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><code>dataprep</code> 0.1.7 ships two reshaping backends,
+<p><code>dataprep</code> 0.1.8 ships two reshaping backends,
 <code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code>, benchmarked here against
 all seven major alternatives in the R and Python ecosystems:</p>
 <ul>
@@ -210,12 +210,12 @@ large machine”. On a typical 8–16-core workstation the same comparisons
 are within 10–100×.</p>
 </div>
 <div class="section level2">
-<h2 id="cleaning-pipeline-dataprep-0-1-5-0-1-7">Cleaning pipeline (dataprep 0.1.5 → 0.1.7)<a class="anchor" aria-label="anchor" href="#cleaning-pipeline-dataprep-0-1-5-0-1-7"></a>
+<h2 id="cleaning-pipeline-dataprep-0-1-5-0-1-8">Cleaning pipeline (dataprep 0.1.5 → 0.1.8)<a class="anchor" aria-label="anchor" href="#cleaning-pipeline-dataprep-0-1-5-0-1-8"></a>
 </h2>
-<p>The 0.1.7 release rewrites every heavy cleaning routine in C++. The
+<p>The 0.1.8 release rewrites every heavy cleaning routine in C++. The
 table below compares against 0.1.5 on three dataset sizes from the same
 source (SMEAR I Varrio forest). All numbers are speed-up ratios (0.1.5
-time / 0.1.7 time) on Ubuntu 25.10.</p>
+time / 0.1.8 time) on Ubuntu 25.10.</p>
 <table class="table">
 <thead><tr class="header">
 <th>Function</th>
@@ -269,12 +269,12 @@ has little room for improvement.</p>
 implementation could crash when <code>cores &gt; 16</code>, because its
 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path gave each worker a full copy
 of the data. The benchmark above used <code>cores = 16</code> for both
-versions to keep the comparison fair. 0.1.7 loads the package on each
+versions to keep the comparison fair. 0.1.8 loads the package on each
 worker, exports the input data once per worker, and runs each
 <code>(interval, times)</code> case as a separate task, so
 <code>cores = 64</code> is safe. The practical speed-up on a many-core
 host is larger. Also note that the optimal parameter values returned by
-<code><a href="../reference/optisolu.html">optisolu()</a></code> may differ slightly between 0.1.5 and 0.1.7.</p>
+<code><a href="../reference/optisolu.html">optisolu()</a></code> may differ slightly between 0.1.5 and 0.1.8.</p>
 </blockquote>
 </div>
 <div class="section level2">
@@ -1886,7 +1886,7 @@ not run them. To enable:</p>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] ggplot2_4.0.3  dataprep_0.1.7</span></span>
+<span><span class="co">#&gt; [1] ggplot2_4.0.3  dataprep_0.1.8</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    </span></span>

@@ -12,7 +12,7 @@
 - [dataprep: performance and cross-engine
   consistency](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md):
 - [dataprep: upgrading from 0.1.5 to
-  0.1.7](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md):
+  0.1.8](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md):
 
 ### Reshaping
 

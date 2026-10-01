@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>dataprep: upgrading from 0.1.5 to 0.1.7 • dataprep</title>
+<title>dataprep: upgrading from 0.1.5 to 0.1.8 • dataprep</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -18,7 +18,7 @@
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="dataprep: upgrading from 0.1.5 to 0.1.7">
+<meta property="og:title" content="dataprep: upgrading from 0.1.5 to 0.1.8">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.7</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,7 +66,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>dataprep: upgrading from 0.1.5 to 0.1.7</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>dataprep: upgrading from 0.1.5 to 0.1.8</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/chunshengliang/dataprep/blob/main/vignettes/dataprep-migration.Rmd" class="external-link"><code>vignettes/dataprep-migration.Rmd</code></a></small>
@@ -89,14 +89,14 @@ comparison in the last section before upgrading.</p>
 <h2 id="interface-changes">Interface changes<a class="anchor" aria-label="anchor" href="#interface-changes"></a>
 </h2>
 <p>Besides the behaviour changes above, several functions changed their
-argument interface between 0.1.5 and 0.1.7. The old <code>start</code> /
+argument interface between 0.1.5 and 0.1.8. The old <code>start</code> /
 <code>end</code> pair was replaced by a single <code>cols</code>
 argument (character names, integer indices, or logical mask):</p>
 <table class="table">
 <thead><tr class="header">
 <th>Function</th>
 <th>0.1.5 arguments</th>
-<th>0.1.7 arguments</th>
+<th>0.1.8 arguments</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
@@ -187,7 +187,7 @@ argument (character names, integer indices, or logical mask):</p>
 </tbody>
 </table>
 <p>A call such as <code>varidele(data, 3, 15)</code> was interpreted as
-<code>start = 3, end = 15</code> in 0.1.5, but in 0.1.7 it is parsed as
+<code>start = 3, end = 15</code> in 0.1.5, but in 0.1.8 it is parsed as
 <code>cols = 3</code> (the <code>15</code> is dropped or becomes
 <code>fraction</code>). You must rewrite it as
 <code>varidele(data, cols = 3:15)</code>. The same applies to every
@@ -197,7 +197,7 @@ function in the table.</p>
 independently.</strong> The 0.1.5 implementation collapsed all selected
 columns into one long vector before computing missing runs; this changed
 <code>NA</code> run boundaries and could both over-delete boundary rows
-and retain rows that should have been deleted. The 0.1.7 implementation
+and retain rows that should have been deleted. The 0.1.8 implementation
 scans each column independently: a row is deleted when <em>any</em>
 selected column has a missing run longer than <code>half</code> minutes
 on both sides.</p></li>
@@ -205,20 +205,20 @@ on both sides.</p></li>
 boundary is inclusive.</strong> In 0.1.5, <code>half</code> counted grid
 rows in units of <code>by</code>: with
 <code>by = "5 min", half = 30</code> the effective window was 150
-minutes. In 0.1.7, <code>half</code> is always in minutes, independent
+minutes. In 0.1.8, <code>half</code> is always in minutes, independent
 of <code>by</code>. Rows whose nearest anchor is exactly
 <code>half</code> minutes away are retained (“within <code>half</code>
 minutes” is a <code>&lt;=</code> condition).</p></li>
 <li><p><code><a href="../reference/optisolu.html">optisolu()</a></code> <strong>no longer crashes with
 <code>cores &gt; 16</code>.</strong> The 0.1.5
 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path exhausted memory when the
-worker processes each received a full copy of the input. The 0.1.7
+worker processes each received a full copy of the input. The 0.1.8
 implementation loads the package on each worker, exports the input data
 only once per worker, and runs each <code>(interval, times)</code> case
 in a separate task, so <code>cores = 64</code> and
 <code>cores = NULL</code> (automatic) are both safe. Note that the
 optimal parameter values returned by <code><a href="../reference/optisolu.html">optisolu()</a></code> may differ
-slightly between 0.1.5 and 0.1.7 because the underlying outlier-marking
+slightly between 0.1.5 and 0.1.8 because the underlying outlier-marking
 and observation-deletion backends have changed. Re-run
 <code><a href="../reference/optisolu.html">optisolu()</a></code> after upgrading if exact parameter values
 matter.</p></li>
@@ -247,7 +247,7 @@ value only at the two ends:</p>
 <span><span class="co">#&gt; 5 2024-01-01 00:40:00  5</span></span></code></pre></div>
 <p>The three interior rows are each 10, 20, or 30 minutes from the
 nearest valid anchor. Under 0.1.5 the third row was deleted because the
-delete condition was inclusive (<code>dl &gt;= half</code>); under 0.1.7
+delete condition was inclusive (<code>dl &gt;= half</code>); under 0.1.8
 it is retained because the delete condition is strict
 (<code>dl &gt; half &amp;&amp; dr &gt; half</code>), so
 <code>dl == half</code> satisfies “within <code>half</code>
@@ -268,7 +268,7 @@ minutes”.</p>
 <p>Under 0.1.5, the <code>x</code> and <code>y</code> <code>NA</code>
 runs were merged before computing the run length. This changed the run
 boundaries and could either over-delete rows or retain rows that should
-have been deleted. Under 0.1.7 the two channels are checked
+have been deleted. Under 0.1.8 the two channels are checked
 independently: a row is deleted when <em>any</em> selected column has a
 run longer than <code>half</code> minutes on both sides.</p>
 </div>
@@ -311,7 +311,7 @@ window.</td>
 <code>O(n)</code> time, <code>O(n)</code> temporary storage</td>
 </tr>
 <tr class="odd">
-<td>0.1.7</td>
+<td>0.1.8</td>
 <td>Anchor scan: for each missing value, look up the nearest non-missing
 anchor on each side and compare the two time distances directly. No
 grid, no run-length state.</td>
@@ -322,7 +322,7 @@ column</td>
 </tbody>
 </table>
 <p>Each generation produces the same deletion decision on the same
-input, but the constant factors shrink. The 0.1.7 anchor scan is the
+input, but the constant factors shrink. The 0.1.8 anchor scan is the
 first version that is fast enough to run interactively on full-year
 data: on SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels),
 <code><a href="../reference/obsedele.html">obsedele()</a></code> now runs in 0.05 s against 11.6 s in 0.1.5 on
@@ -340,7 +340,7 @@ sampling), running the same pipeline with the same parameters:</p>
 <thead><tr class="header">
 <th>Stage</th>
 <th align="right">0.1.5</th>
-<th align="right">0.1.7</th>
+<th align="right">0.1.8</th>
 <th align="right">Δ</th>
 </tr></thead>
 <tbody>
@@ -386,19 +386,19 @@ one sampling interval of <code>half</code> minutes.</p>
 </h2>
 <p>The six differing rows fall into two groups:</p>
 <ul>
-<li><p><strong>Rows kept by 0.1.7, deleted by 0.1.5 (3 rows).</strong>
+<li><p><strong>Rows kept by 0.1.8, deleted by 0.1.5 (3 rows).</strong>
 These are rows whose nearest anchor is exactly <code>half</code> minutes
 away. Under the 0.1.5 delete condition (<code>dl &gt;= half</code>) they
-were deleted; under the 0.1.7 condition
+were deleted; under the 0.1.8 condition
 (<code>dl &gt; half &amp;&amp; dr &gt; half</code>) they are retained.
 Each of these rows has a valid anchor within one sampling interval of
 <code>half</code>, so retaining them is consistent with the physical
 constraint described in
 <code><a href="../articles/dataprep-philosophy.html">vignette("dataprep-philosophy")</a></code>.</p></li>
-<li><p><strong>Rows deleted by 0.1.7, kept by 0.1.5 (3 rows, overlapping
+<li><p><strong>Rows deleted by 0.1.8, kept by 0.1.5 (3 rows, overlapping
 with the above).</strong> These are rows that pass the check on some
 columns but fail on at least one. Under 0.1.5 the merge-columns approach
-effectively widened the anchor window on these rows; under 0.1.7 each
+effectively widened the anchor window on these rows; under 0.1.8 each
 column is checked independently, so the row is deleted. These rows would
 have been interpolated across a gap longer than <code>half</code>
 minutes in at least one channel, which contradicts the design.</p></li>
@@ -421,12 +421,12 @@ on the new training data. The stored thresholds are not affected by the
 change, but the row indices that fed into them are.</label></p></li>
 <li><p><label><input type="checkbox">If you were limiting
 <code><a href="../reference/optisolu.html">optisolu()</a></code> to <code>cores &lt;= 16</code> as a workaround
-for the 0.1.5 crash, remove the cap. 0.1.7 accepts up to 64. Also re-run
+for the 0.1.5 crash, remove the cap. 0.1.8 accepts up to 64. Also re-run
 <code><a href="../reference/optisolu.html">optisolu()</a></code> because the returned optimal parameters may
 differ slightly from 0.1.5.</label></p></li>
 <li><p><label><input type="checkbox">If downstream behaviour depends
 on specific boundary rows, verify the difference with
-<code><a href="https://dplyr.tidyverse.org/reference/filter-joins.html" class="external-link">dplyr::anti_join()</a></code> between the 0.1.5 and 0.1.7 outputs. The
+<code><a href="https://dplyr.tidyverse.org/reference/filter-joins.html" class="external-link">dplyr::anti_join()</a></code> between the 0.1.5 and 0.1.8 outputs. The
 example below shows how.</label></p></li>
 </ul>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -443,7 +443,7 @@ example below shows how.</label></p></li>
 or who only use <code>dataprep</code> for descriptive statistics
 (<code>descdata</code>, <code>na_diagnose</code>, <code>percdata</code>,
 <code>percplot</code>, <code>descplot</code>), there is no behaviour
-change. Those functions have been re-implemented in 0.1.7 for speed
+change. Those functions have been re-implemented in 0.1.8 for speed
 (<code>melt</code> and <code>dcast</code>) or reorganised internally
 (<code>data_report</code>, <code>dry_run</code>), but the output on
 every tested input is identical to 0.1.5 except where noted in the news
@@ -452,10 +452,10 @@ file.</p>
 <div class="section level2">
 <h2 id="performance-reference">Performance reference<a class="anchor" aria-label="anchor" href="#performance-reference"></a>
 </h2>
-<p>The 0.1.7 release rewrites every heavy cleaning routine in C++. The
+<p>The 0.1.8 release rewrites every heavy cleaning routine in C++. The
 table below compares against 0.1.5 on three dataset sizes from the same
 source (SMEAR I Varrio forest). All numbers are speed-up ratios (0.1.5
-time / 0.1.7 time); a value below 1.0× means 0.1.7 is slightly slower on
+time / 0.1.8 time); a value below 1.0× means 0.1.8 is slightly slower on
 that cell.</p>
 <table class="table">
 <thead><tr class="header">
@@ -509,7 +509,7 @@ has little room for improvement.</p>
 <p><strong>Note on <code>optisolu</code> cores.</strong> The 0.1.5
 implementation could crash when <code>cores &gt; 16</code>. The
 benchmark above used <code>cores = 16</code> for both versions to keep
-the comparison fair. 0.1.7 loads the package on each worker, exports the
+the comparison fair. 0.1.8 loads the package on each worker, exports the
 input data once per worker, and runs each <code>(interval, times)</code>
 case as a separate task, so <code>cores = 64</code> is safe. The
 practical speed-up on a many-core host is larger than the table above.
@@ -576,7 +576,7 @@ real dataset.</p></li>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] dataprep_0.1.7</span></span>
+<span><span class="co">#&gt; [1] dataprep_0.1.8</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] vctrs_0.7.3       cli_3.6.6         knitr_1.52        rlang_1.3.0      </span></span>

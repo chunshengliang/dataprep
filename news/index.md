@@ -1,6 +1,6 @@
 # Changelog
 
-## dataprep 0.1.7
+## dataprep 0.1.8
 
 ### Upgrading from 0.1.5? Read this first
 
@@ -14,14 +14,14 @@ below before upgrading.
     collapsed all selected columns into one long vector before computing
     missing runs; this changed NA run boundaries and could both
     over-delete boundary rows and retain rows that should have been
-    deleted. The 0.1.7 implementation scans each column independently: a
+    deleted. The 0.1.8 implementation scans each column independently: a
     row is deleted when *any* selected column has a missing run longer
     than `half` minutes on both sides.
 
 2.  **`half` is now always in minutes, and the boundary is inclusive.**
     In 0.1.5, `half` counted grid rows in units of `by`: with
     `by = "5 min", half = 30` the effective window was 150 minutes. In
-    0.1.7, `half` is always in minutes, independent of `by`. Rows whose
+    0.1.8, `half` is always in minutes, independent of `by`. Rows whose
     nearest anchor is exactly `half` minutes away are retained
     (`within half minutes` is a `<=` condition).
 
@@ -29,7 +29,7 @@ below before upgrading.
     no longer crashes with `cores > 16`.** The 0.1.5
     [`parallel::makeCluster()`](https://rdrr.io/r/parallel/makeCluster.html)
     path exhausted memory when the worker processes each received a full
-    copy of the input. The 0.1.7 implementation loads the package on
+    copy of the input. The 0.1.8 implementation loads the package on
     each worker, exports the input data only once per worker, and runs
     each `(interval, times)` case in a separate task, so `cores = 64`
     and `cores = NULL` (automatic) are both safe.
@@ -39,7 +39,7 @@ below before upgrading.
 On SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels, 10-minute
 sampling), running the same pipeline with the same parameters:
 
-| Stage            |              0.1.5 |              0.1.7 |      Δ |
+| Stage            |              0.1.5 |              0.1.8 |      Δ |
 |------------------|-------------------:|-------------------:|-------:|
 | `varidele`       | 25 columns deleted | 25 columns deleted |      0 |
 | `obsedele`       | 1,494 rows deleted | 1,496 rows deleted |     +2 |
@@ -116,7 +116,7 @@ identical; the absolute multipliers scale with the hardware.
 
 ### Performance summary
 
-#### Cleaning pipeline (dataprep 0.1.5 → 0.1.7)
+#### Cleaning pipeline (dataprep 0.1.5 → 0.1.8)
 
 Speedup relative to 0.1.5 on the same input, same parameters. Values
 below 1.0× mean the new implementation is marginally slower on that
@@ -139,7 +139,7 @@ little room for improvement.
 
 > **Note on `optisolu` cores.** The 0.1.5 implementation could crash
 > when `cores > 16`. The benchmark above used `cores = 16` for both
-> versions to keep the comparison fair. 0.1.7 loads the package on each
+> versions to keep the comparison fair. 0.1.8 loads the package on each
 > worker, exports the input data once per worker, and runs each
 > `(interval, times)` case as a separate task, so `cores = 64` is safe.
 > The practical speed-up on a many-core host is **larger** than the
@@ -230,7 +230,7 @@ The reproducible runner is shipped under `inst/`.
 
 #### `obsedele()` semantics
 
-The 0.1.7 C++ backend (`obsedele_cpp`) implements the retention
+The 0.1.8 C++ backend (`obsedele_cpp`) implements the retention
 criterion with an **anchor-based scan**: for each missing value and each
 selected column, the time distance to the nearest non-missing anchor on
 the left and on the right is computed directly. A row is deleted when
@@ -252,7 +252,7 @@ This is mathematically identical to the running-mean criterion used in
 The 0.1.5
 [`parallel::makeCluster()`](https://rdrr.io/r/parallel/makeCluster.html)
 path gave each worker a full copy of the input. With `cores > 16` and
-large data this exhausted memory and aborted the R session. The 0.1.7
+large data this exhausted memory and aborted the R session. The 0.1.8
 implementation shares read-only data across workers and accepts up to 64
 cores safely.
 
@@ -450,7 +450,7 @@ Seven vignettes ship with the package:
 - [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md)
   — full benchmark tables and 8-engine consistency checks.
 - [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md)
-  — 0.1.5 → 0.1.7 upgrade guide.
+  — 0.1.5 → 0.1.8 upgrade guide.
 - [`vignette("dataprep-workflow")`](https://chunshengliang.github.io/dataprep/articles/dataprep-workflow.md)
   — leakage-free preprocessing with
   [`prep_fit()`](https://chunshengliang.github.io/dataprep/reference/prep_fit.md)
@@ -493,7 +493,7 @@ statistics because every element access re-enters the virtual-object
 layer, which shifts the cost from `dataprep` to the caller’s analysis
 code.
 
-The shipped 0.1.7 backends therefore keep the standard allocation path,
+The shipped 0.1.8 backends therefore keep the standard allocation path,
 and the reported speed-ups stand as measured:
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 spans 0.6×–1628.9× and
@@ -502,7 +502,7 @@ spans 1.9×–799.8× across the two reference hosts, with the sub-1.0×
 [`melt()`](https://chunshengliang.github.io/dataprep/reference/melt.md)
 cells confined to the 1e7-row (Ubuntu) and 1e5-row (Windows) shapes with
 10 id columns, where `polars` is faster than `dataprep`. On the cleaning
-pipeline the 0.1.5 → 0.1.7 speed-ups of 1.1×–1146× stand as reported;
+pipeline the 0.1.5 → 0.1.8 speed-ups of 1.1×–1146× stand as reported;
 `Rf_allocVector3` and ALTREP were not evaluated there.
 
 ### Environment variables (optional)
