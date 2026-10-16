@@ -68,7 +68,7 @@ ggplot(bench, aes(median, mean)) +
   geom_point(alpha = 0.45, size = 1.4) +
   scale_x_log10() +
   scale_y_log10() +
-  facet_wrap(~ tool, ncol = 4) +
+  facet_wrap(~ tool, ncol = 3) +
   labs(x = "median (ms, log scale)",
        y = "mean (ms, log scale)") +
   theme_bw(base_size = 10)
@@ -81,7 +81,7 @@ exceptions are the few `dask` and `duckdb` cells in the 1e3 × 10000
 shape, where a single slow iteration pulls the mean up by up to 50 %;
 those are also the cells where the two statistics disagree the most on
 the speed-up ratio. For the `dataprep` column itself the two statistics
-never differ by more than a few percent, which is why the mean-based
+never differ by more than a few percent, which is why the median-based
 numbers quoted throughout this vignette are representative of the steady
 state.
 
