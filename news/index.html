@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,19 +39,42 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.8" id="dataprep-018">dataprep 0.1.8<a class="anchor" aria-label="anchor" href="#dataprep-018"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.8.1" id="dataprep-0181">dataprep 0.1.8.1<a class="anchor" aria-label="anchor" href="#dataprep-0181"></a></h2>
 <div class="section level3">
-<h3 id="upgrading-from-read-this-first-0-1-8">Upgrading from 0.1.5? Read this first<a class="anchor" aria-label="anchor" href="#upgrading-from-read-this-first-0-1-8"></a></h3>
+<h3 id="reshaping-backends-0-1-8-1">Reshaping backends<a class="anchor" aria-label="anchor" href="#reshaping-backends-0-1-8-1"></a></h3>
+<ul><li>
+<code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> receive further C++ / SIMD / OpenMP optimisations.</li>
+<li>Benchmark harness updated to v15:
+<ul><li>warmup excluded;</li>
+<li>adaptive iterations;</li>
+<li>sentinel vector;</li>
+<li>mixed-type id columns by default;</li>
+<li>median is the primary metric;</li>
+<li>
+<code>collapse</code> added as the 9th engine;</li>
+<li>aggregated dcast consistency and benchmark added.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-0-1-8-1">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-1-8-1"></a></h3>
+<ul><li>
+<code>README.md</code>, <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code>, <code><a href="../articles/dataprep-melt-dcast.html">vignette("dataprep-melt-dcast")</a></code>, <code>man/melt.Rd</code>, and <code>man/dcast.Rd</code> updated to 0.1.8.1.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.8.1" id="dataprep-0181-1">dataprep 0.1.8.1<a class="anchor" aria-label="anchor" href="#dataprep-0181-1"></a></h2>
+<div class="section level3">
+<h3 id="upgrading-from-read-this-first-0-1-8-1">Upgrading from 0.1.5? Read this first<a class="anchor" aria-label="anchor" href="#upgrading-from-read-this-first-0-1-8-1"></a></h3>
 <p>Three behaviour changes affect row and column counts. All three are bug fixes, but each one changes the output on real data. If your downstream analysis depends on exact row counts, read the quantified comparison below before upgrading.</p>
-<ol style="list-style-type: decimal"><li><p><strong><code><a href="../reference/obsedele.html">obsedele()</a></code> now scans each column independently.</strong> The 0.1.5 implementation collapsed all selected columns into one long vector before computing missing runs; this changed NA run boundaries and could both over-delete boundary rows and retain rows that should have been deleted. The 0.1.8 implementation scans each column independently: a row is deleted when <em>any</em> selected column has a missing run longer than <code>half</code> minutes on both sides.</p></li>
-<li><p><strong><code>half</code> is now always in minutes, and the boundary is inclusive.</strong> In 0.1.5, <code>half</code> counted grid rows in units of <code>by</code>: with <code>by = "5 min", half = 30</code> the effective window was 150 minutes. In 0.1.8, <code>half</code> is always in minutes, independent of <code>by</code>. Rows whose nearest anchor is exactly <code>half</code> minutes away are retained (<code>within half minutes</code> is a <code>&lt;=</code> condition).</p></li>
-<li><p><strong><code><a href="../reference/optisolu.html">optisolu()</a></code> no longer crashes with <code>cores &gt; 16</code>.</strong> The 0.1.5 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path exhausted memory when the worker processes each received a full copy of the input. The 0.1.8 implementation loads the package on each worker, exports the input data only once per worker, and runs each <code>(interval, times)</code> case in a separate task, so <code>cores = 64</code> and <code>cores = NULL</code> (automatic) are both safe.</p></li>
+<ol style="list-style-type: decimal"><li><p><strong><code><a href="../reference/obsedele.html">obsedele()</a></code> now scans each column independently.</strong> The 0.1.5 implementation collapsed all selected columns into one long vector before computing missing runs; this changed NA run boundaries and could both over-delete boundary rows and retain rows that should have been deleted. The 0.1.8.1 implementation scans each column independently: a row is deleted when <em>any</em> selected column has a missing run longer than <code>half</code> minutes on both sides.</p></li>
+<li><p><strong><code>half</code> is now always in minutes, and the boundary is inclusive.</strong> In 0.1.5, <code>half</code> counted grid rows in units of <code>by</code>: with <code>by = "5 min", half = 30</code> the effective window was 150 minutes. In 0.1.8.1, <code>half</code> is always in minutes, independent of <code>by</code>. Rows whose nearest anchor is exactly <code>half</code> minutes away are retained (<code>within half minutes</code> is a <code>&lt;=</code> condition).</p></li>
+<li><p><strong><code><a href="../reference/optisolu.html">optisolu()</a></code> no longer crashes with <code>cores &gt; 16</code>.</strong> The 0.1.5 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path exhausted memory when the worker processes each received a full copy of the input. The 0.1.8.1 implementation loads the package on each worker, exports the input data only once per worker, and runs each <code>(interval, times)</code> case in a separate task, so <code>cores = 64</code> and <code>cores = NULL</code> (automatic) are both safe.</p></li>
 </ol><div class="section level4">
-<h4 id="quantified-effect-on-a-full-year-dataset-0-1-8">Quantified effect on a full-year dataset<a class="anchor" aria-label="anchor" href="#quantified-effect-on-a-full-year-dataset-0-1-8"></a></h4>
+<h4 id="quantified-effect-on-a-full-year-dataset-0-1-8-1">Quantified effect on a full-year dataset<a class="anchor" aria-label="anchor" href="#quantified-effect-on-a-full-year-dataset-0-1-8-1"></a></h4>
 <p>On SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels, 10-minute sampling), running the same pipeline with the same parameters:</p>
 <table class="table"><thead><tr><th>Stage</th>
 <th align="right">0.1.5</th>
-<th align="right">0.1.8</th>
+<th align="right">0.1.8.1</th>
 <th align="right">Δ</th>
 </tr></thead><tbody><tr><td><code>varidele</code></td>
 <td align="right">25 columns deleted</td>
@@ -79,10 +102,10 @@
 </div>
 </div>
 <div class="section level3">
-<h3 id="test-environments-0-1-8">Test environments<a class="anchor" aria-label="anchor" href="#test-environments-0-1-8"></a></h3>
+<h3 id="test-environments-0-1-8-1">Test environments<a class="anchor" aria-label="anchor" href="#test-environments-0-1-8-1"></a></h3>
 <p>Two reference hosts were used. Their relative ranking of the engines is identical; the absolute multipliers scale with the hardware.</p>
 <div class="section level4">
-<h4 id="reference-host-a--ubuntu-0-1-8">Reference host A — Ubuntu 25.10<a class="anchor" aria-label="anchor" href="#reference-host-a--ubuntu-0-1-8"></a></h4>
+<h4 id="reference-host-a--ubuntu-0-1-8-1">Reference host A — Ubuntu 25.10<a class="anchor" aria-label="anchor" href="#reference-host-a--ubuntu-0-1-8-1"></a></h4>
 <table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Component</th>
 <th>Value</th>
 </tr></thead><tbody><tr><td>OS</td>
@@ -131,7 +154,7 @@
 <td>1.5.5</td>
 </tr></tbody></table></div>
 <div class="section level4">
-<h4 id="reference-host-b--windows-pro-for-workstations-0-1-8">Reference host B — Windows 11 Pro for Workstations<a class="anchor" aria-label="anchor" href="#reference-host-b--windows-pro-for-workstations-0-1-8"></a></h4>
+<h4 id="reference-host-b--windows-pro-for-workstations-0-1-8-1">Reference host B — Windows 11 Pro for Workstations<a class="anchor" aria-label="anchor" href="#reference-host-b--windows-pro-for-workstations-0-1-8-1"></a></h4>
 <table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Component</th>
 <th>Value</th>
 </tr></thead><tbody><tr><td>OS</td>
@@ -181,9 +204,9 @@
 </tr></tbody></table></div>
 </div>
 <div class="section level3">
-<h3 id="performance-summary-0-1-8">Performance summary<a class="anchor" aria-label="anchor" href="#performance-summary-0-1-8"></a></h3>
+<h3 id="performance-summary-0-1-8-1">Performance summary<a class="anchor" aria-label="anchor" href="#performance-summary-0-1-8-1"></a></h3>
 <div class="section level4">
-<h4 id="cleaning-pipeline-dataprep--0-1-8">Cleaning pipeline (dataprep 0.1.5 → 0.1.8)<a class="anchor" aria-label="anchor" href="#cleaning-pipeline-dataprep--0-1-8"></a></h4>
+<h4 id="cleaning-pipeline-dataprep--0-1-8-1">Cleaning pipeline (dataprep 0.1.5 → 0.1.8.1)<a class="anchor" aria-label="anchor" href="#cleaning-pipeline-dataprep--0-1-8-1"></a></h4>
 <p>Speedup relative to 0.1.5 on the same input, same parameters. Values below 1.0× mean the new implementation is marginally slower on that cell.</p>
 <table class="table"><thead><tr><th>Function</th>
 <th align="right">500 rows</th>
@@ -211,269 +234,299 @@
 <td align="right">247×</td>
 </tr></tbody></table><p>On Windows 11 Pro for Workstations, the same full-year pipeline gives <code>obsedele</code> ≈ 648×, <code>condextr</code> ≈ 839×, <code>shorvalu</code> ≈ 81×, <code>optisolu</code> ≈ 25× (at <code>cores = 32</code>), and the integrated <code>dataprep</code> call ≈ 173×. <code>varidele</code> is around 1.17× on this cell; this is expected, since <code>varidele</code> is a single <code>colMeans(is.na(.))</code> in both versions and the new code path has little room for improvement.</p>
 <blockquote>
-<p><strong>Note on <code>optisolu</code> cores.</strong> The 0.1.5 implementation could crash when <code>cores &gt; 16</code>. The benchmark above used <code>cores = 16</code> for both versions to keep the comparison fair. 0.1.8 loads the package on each worker, exports the input data once per worker, and runs each <code>(interval, times)</code> case as a separate task, so <code>cores = 64</code> is safe. The practical speed-up on a many-core host is <strong>larger</strong> than the table above.</p>
+<p><strong>Note on <code>optisolu</code> cores.</strong> The 0.1.5 implementation could crash when <code>cores &gt; 16</code>. The benchmark above used <code>cores = 16</code> for both versions to keep the comparison fair. 0.1.8.1 loads the package on each worker, exports the input data once per worker, and runs each <code>(interval, times)</code> case as a separate task, so <code>cores = 64</code> is safe. The practical speed-up on a many-core host is <strong>larger</strong> than the table above.</p>
 </blockquote>
 </div>
 <div class="section level4">
-<h4 id="melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-8">
-<code>melt()</code> — speed-up vs every one of the 7 major alternatives<a class="anchor" aria-label="anchor" href="#melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-8"></a></h4>
-<p>Speed-ups relative to each competitor span <strong>0.6×–1628.9×</strong> across both hosts. The sub-1.0× cells are concentrated at 1e7 rows with 10 id columns (Ubuntu) and 1e5 rows with 10 id columns (Windows), where <code>polars</code> is faster than <code>dataprep</code>; every other cell has <code>dataprep</code> ahead of or on par with the fastest competitor.</p>
-<p>Means in milliseconds (Ubuntu 25.10):</p>
-<table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>rows</th>
-<th>val</th>
-<th>dataprep</th>
-<th>reshape2</th>
-<th>data.table</th>
-<th>tidyr</th>
-<th>pandas</th>
-<th>polars</th>
-<th>dask</th>
-<th>duckdb</th>
+<h4 id="melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-8-1">
+<code>melt()</code> — speed-up vs every one of the 8 major alternatives<a class="anchor" aria-label="anchor" href="#melt--speed-up-vs-every-one-of-the-major-alternatives-0-1-8-1"></a></h4>
+<p>Speed-ups relative to each competitor span <strong>0.3×–1750.0×</strong> across both hosts. The sub-1.0× cells are concentrated on the <code>1 id + 9 val</code> and <code>10 id + 9 val</code> shapes at 1e5–1e7 rows, where <code>polars</code> is faster than <code>dataprep</code>.</p>
+<p>Medians in milliseconds (Ubuntu 25.10):</p>
+<table style="width:100%;" class="table"><colgroup><col width="6%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"></colgroup><thead><tr><th>rows</th>
+<th align="right">val</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
 </tr></thead><tbody><tr><td>1e3</td>
-<td>9</td>
-<td>0.173</td>
-<td>0.378 (2.2×)</td>
-<td>0.257 (1.5×)</td>
-<td>2.788 (16.1×)</td>
-<td>2.128 (12.3×)</td>
-<td>0.645 (3.7×)</td>
-<td>15.786 (91.3×)</td>
-<td>4.489 (26.0×)</td>
+<td align="right">9</td>
+<td align="right">0.152</td>
+<td align="right">0.410 (2.7×)</td>
+<td align="right">0.260 (1.7×)</td>
+<td align="right">2.805 (18.4×)</td>
+<td align="right">0.175 (1.1×)</td>
+<td align="right">2.195 (14.4×)</td>
+<td align="right">0.594 (3.9×)</td>
+<td align="right">15.1 (99.0×)</td>
+<td align="right">5.435 (35.7×)</td>
 </tr><tr><td>1e6</td>
-<td>9</td>
-<td>3.474</td>
-<td>18.797 (5.4×)</td>
-<td>9.646 (2.8×)</td>
-<td>80.014 (23.0×)</td>
-<td>61.686 (17.8×)</td>
-<td>14.671 (4.2×)</td>
-<td>47.584 (13.7×)</td>
-<td>648.895 (186.8×)</td>
+<td align="right">9</td>
+<td align="right">1.441</td>
+<td align="right">8.145 (5.7×)</td>
+<td align="right">7.937 (5.5×)</td>
+<td align="right">65.8 (45.7×)</td>
+<td align="right">6.542 (4.5×)</td>
+<td align="right">60.7 (42.2×)</td>
+<td align="right">10.6 (7.4×)</td>
+<td align="right">46.1 (32.0×)</td>
+<td align="right">758.1 (526.2×)</td>
 </tr><tr><td>1e7</td>
-<td>9</td>
-<td>33.412</td>
-<td>364.564 (10.9×)</td>
-<td>365.065 (10.9×)</td>
-<td>1083.987 (32.4×)</td>
-<td>710.806 (21.3×)</td>
-<td>139.959 (4.2×)</td>
-<td>482.693 (14.4×)</td>
-<td>6389.564 (191.2×)</td>
+<td align="right">9</td>
+<td align="right">38.0</td>
+<td align="right">368.8 (9.7×)</td>
+<td align="right">368.8 (9.7×)</td>
+<td align="right">1094 (28.7×)</td>
+<td align="right">317.2 (8.3×)</td>
+<td align="right">718.5 (18.9×)</td>
+<td align="right">93.0 (2.4×)</td>
+<td align="right">507.2 (13.3×)</td>
+<td align="right">7418 (195.0×)</td>
 </tr><tr><td>1e8</td>
-<td>9</td>
-<td>276.295</td>
-<td>3579.061 (13.0×)</td>
-<td>3571.833 (12.9×)</td>
-<td>12126.897 (43.9×)</td>
-<td>7463.089 (27.0×)</td>
-<td>3121.344 (11.3×)</td>
-<td>4756.547 (17.2×)</td>
-<td>71947.305 (260.4×)</td>
+<td align="right">9</td>
+<td align="right">398.6</td>
+<td align="right">3592 (9.0×)</td>
+<td align="right">3584 (9.0×)</td>
+<td align="right">11788 (29.6×)</td>
+<td align="right">3632 (9.1×)</td>
+<td align="right">7388 (18.5×)</td>
+<td align="right">2597 (6.5×)</td>
+<td align="right">4550 (11.4×)</td>
+<td align="right">87982 (220.7×)</td>
 </tr><tr><td>1e3</td>
-<td>10000</td>
-<td>2.295</td>
-<td>93.092 (40.6×)</td>
-<td>12.415 (5.4×)</td>
-<td>104.924 (45.7×)</td>
-<td>495.659 (216.0×)</td>
-<td>19.408 (8.5×)</td>
-<td>3737.866 (1628.9×)</td>
-<td>1919.247 (836.4×)</td>
-</tr></tbody></table><p>Means in milliseconds (Windows 11 Pro for Workstations):</p>
-<table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>rows</th>
-<th>val</th>
-<th>dataprep</th>
-<th>reshape2</th>
-<th>data.table</th>
-<th>tidyr</th>
-<th>pandas</th>
-<th>polars</th>
-<th>dask</th>
-<th>duckdb</th>
+<td align="right">10000</td>
+<td align="right">2.176</td>
+<td align="right">78.3 (36.0×)</td>
+<td align="right">9.710 (4.5×)</td>
+<td align="right">93.5 (43.0×)</td>
+<td align="right">9.285 (4.3×)</td>
+<td align="right">501.2 (230.3×)</td>
+<td align="right">16.3 (7.5×)</td>
+<td align="right">3809 (1750.0×)</td>
+<td align="right">2048 (940.9×)</td>
+</tr></tbody></table><p>Medians in milliseconds (Windows 11 Pro for Workstations):</p>
+<table style="width:100%;" class="table"><colgroup><col width="6%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"></colgroup><thead><tr><th>rows</th>
+<th align="right">val</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
 </tr></thead><tbody><tr><td>1e3</td>
-<td>9</td>
-<td>0.286</td>
-<td>0.647 (2.3×)</td>
-<td>0.468 (1.6×)</td>
-<td>4.048 (14.2×)</td>
-<td>3.365 (11.8×)</td>
-<td>0.528 (1.8×)</td>
-<td>28.149 (98.4×)</td>
-<td>8.201 (28.7×)</td>
+<td align="right">9</td>
+<td align="right">0.300</td>
+<td align="right">0.693 (2.3×)</td>
+<td align="right">0.516 (1.7×)</td>
+<td align="right">4.015 (13.4×)</td>
+<td align="right">0.313 (1.0×)</td>
+<td align="right">3.570 (11.9×)</td>
+<td align="right">0.597 (2.0×)</td>
+<td align="right">29.3 (97.7×)</td>
+<td align="right">7.877 (26.3×)</td>
 </tr><tr><td>1e6</td>
-<td>9</td>
-<td>10.515</td>
-<td>26.197 (2.5×)</td>
-<td>24.209 (2.3×)</td>
-<td>160.785 (15.3×)</td>
-<td>214.683 (20.4×)</td>
-<td>21.721 (2.1×)</td>
-<td>181.218 (17.2×)</td>
-<td>1537.791 (146.2×)</td>
+<td align="right">9</td>
+<td align="right">18.0</td>
+<td align="right">23.9 (1.3×)</td>
+<td align="right">23.6 (1.3×)</td>
+<td align="right">157.4 (8.7×)</td>
+<td align="right">23.2 (1.3×)</td>
+<td align="right">182.8 (10.2×)</td>
+<td align="right">17.8 (1.0×)</td>
+<td align="right">185.9 (10.3×)</td>
+<td align="right">1546 (85.9×)</td>
 </tr><tr><td>1e7</td>
-<td>9</td>
-<td>77.008</td>
-<td>245.861 (3.2×)</td>
-<td>247.910 (3.2×)</td>
-<td>1561.960 (20.3×)</td>
-<td>1925.931 (25.0×)</td>
-<td>275.120 (3.6×)</td>
-<td>1499.583 (19.5×)</td>
-<td>14517.337 (188.5×)</td>
+<td align="right">9</td>
+<td align="right">152.7</td>
+<td align="right">236.9 (1.6×)</td>
+<td align="right">238.0 (1.6×)</td>
+<td align="right">1501 (9.8×)</td>
+<td align="right">235.1 (1.5×)</td>
+<td align="right">1885 (12.3×)</td>
+<td align="right">162.5 (1.1×)</td>
+<td align="right">1515 (9.9×)</td>
+<td align="right">14435 (94.5×)</td>
 </tr><tr><td>1e8</td>
-<td>9</td>
-<td>935.148</td>
-<td>2636.186 (2.8×)</td>
-<td>2534.491 (2.7×)</td>
-<td>16599.644 (17.8×)</td>
-<td>19578.283 (20.9×)</td>
-<td>4263.390 (4.6×)</td>
-<td>14714.823 (15.7×)</td>
-<td>148009.529 (158.3×)</td>
+<td align="right">9</td>
+<td align="right">1773</td>
+<td align="right">3295 (1.9×)</td>
+<td align="right">2419 (1.4×)</td>
+<td align="right">20809 (11.7×)</td>
+<td align="right">2516 (1.4×)</td>
+<td align="right">22699 (12.8×)</td>
+<td align="right">5510 (3.1×)</td>
+<td align="right">15429 (8.7×)</td>
+<td align="right">161372 (91.0×)</td>
 </tr><tr><td>1e3</td>
-<td>10000</td>
-<td>11.569</td>
-<td>161.647 (14.0×)</td>
-<td>34.383 (3.0×)</td>
-<td>203.580 (17.6×)</td>
-<td>1410.476 (121.9×)</td>
-<td>36.412 (3.1×)</td>
-<td>10333.080 (893.2×)</td>
-<td>5310.694 (459.0×)</td>
-</tr></tbody></table><p>The <strong>median</strong> speed-up across all melt cells and all competitors is 11.3× on Ubuntu and 5.6× on Windows. The <strong>mean</strong> is 67.8× and 46.6× respectively. The median is pulled down by the 1e5-row small tables; at larger scales the speed-up is much higher.</p>
+<td align="right">10000</td>
+<td align="right">31.7</td>
+<td align="right">168.6 (5.3×)</td>
+<td align="right">32.7 (1.0×)</td>
+<td align="right">201.7 (6.4×)</td>
+<td align="right">34.7 (1.1×)</td>
+<td align="right">1412 (44.6×)</td>
+<td align="right">30.0 (0.9×)</td>
+<td align="right">10253 (323.6×)</td>
+<td align="right">5112 (161.4×)</td>
+</tr></tbody></table><p>The <strong>median</strong> speed-up across all melt cells and all competitors is 9.6× on Ubuntu and 3.7× on Windows. The <strong>mean</strong> is 71.0× and 31.8× respectively.</p>
 </div>
 <div class="section level4">
-<h4 id="dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-8">
-<code>dcast()</code> — speed-up vs every one of the 7 major alternatives<a class="anchor" aria-label="anchor" href="#dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-8"></a></h4>
-<p>Speed-ups relative to each competitor span <strong>1.9×–799.8×</strong> across both hosts. Every cell has <code>dataprep</code> ahead of every other engine.</p>
-<p>Means in milliseconds (Ubuntu 25.10):</p>
-<table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>n_long</th>
-<th>levels</th>
-<th>dataprep</th>
-<th>reshape2</th>
-<th>data.table</th>
-<th>tidyr</th>
-<th>pandas</th>
-<th>polars</th>
-<th>dask</th>
-<th>duckdb</th>
-</tr></thead><tbody><tr><td>1e6</td>
-<td>10</td>
-<td>1.654</td>
-<td>151.826 (91.8×)</td>
-<td>328.980 (198.9×)</td>
-<td>44.728 (27.0×)</td>
-<td>56.741 (34.3×)</td>
-<td>105.018 (63.5×)</td>
-<td>78.217 (47.3×)</td>
-<td>155.880 (94.3×)</td>
-</tr><tr><td>1e6</td>
-<td>100</td>
-<td>1.415</td>
-<td>101.438 (71.7×)</td>
-<td>329.202 (232.6×)</td>
-<td>42.047 (29.7×)</td>
-<td>53.686 (37.9×)</td>
-<td>173.478 (122.6×)</td>
-<td>74.540 (52.7×)</td>
-<td>178.421 (126.0×)</td>
-</tr><tr><td>1e7</td>
-<td>100</td>
-<td>5.073</td>
-<td>2016.036 (397.4×)</td>
-<td>575.604 (113.5×)</td>
-<td>660.455 (130.2×)</td>
-<td>816.883 (161.0×)</td>
-<td>506.557 (99.9×)</td>
-<td>1002.368 (197.6×)</td>
-<td>1669.419 (329.1×)</td>
-</tr><tr><td>1e8</td>
-<td>100</td>
-<td>40.680</td>
-<td>16963.494 (417.0×)</td>
-<td>18866.887 (463.8×)</td>
-<td>8100.475 (199.1×)</td>
-<td>9529.877 (234.3×)</td>
-<td>2460.625 (60.5×)</td>
-<td>12764.776 (313.8×)</td>
-<td>17616.392 (433.1×)</td>
-</tr></tbody></table><p>Means in milliseconds (Windows 11 Pro for Workstations):</p>
-<table style="width:100%;" class="table"><colgroup><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"><col width="10%"></colgroup><thead><tr><th>n_long</th>
-<th>levels</th>
-<th>dataprep</th>
-<th>reshape2</th>
-<th>data.table</th>
-<th>tidyr</th>
-<th>pandas</th>
-<th>polars</th>
-<th>dask</th>
-<th>duckdb</th>
-</tr></thead><tbody><tr><td>1e6</td>
-<td>10</td>
-<td>3.426</td>
-<td>281.533 (82.2×)</td>
-<td>148.638 (43.4×)</td>
-<td>93.290 (27.2×)</td>
-<td>251.508 (73.4×)</td>
-<td>44.604 (13.0×)</td>
-<td>346.422 (101.1×)</td>
-<td>391.237 (114.2×)</td>
-</tr><tr><td>1e6</td>
-<td>100</td>
-<td>4.049</td>
-<td>173.399 (42.8×)</td>
-<td>169.140 (41.8×)</td>
-<td>91.050 (22.5×)</td>
-<td>229.426 (56.7×)</td>
-<td>56.026 (13.8×)</td>
-<td>332.823 (82.2×)</td>
-<td>800.504 (197.7×)</td>
-</tr><tr><td>1e7</td>
-<td>100</td>
-<td>38.527</td>
-<td>3197.642 (83.0×)</td>
-<td>1100.505 (28.6×)</td>
-<td>1359.999 (35.3×)</td>
-<td>2337.317 (60.7×)</td>
-<td>814.529 (21.1×)</td>
-<td>3014.871 (78.3×)</td>
-<td>7495.310 (194.5×)</td>
-</tr><tr><td>1e8</td>
-<td>100</td>
-<td>107.287</td>
-<td>23690.584 (220.8×)</td>
-<td>14715.772 (137.2×)</td>
-<td>14245.599 (132.8×)</td>
-<td>25843.625 (240.9×)</td>
-<td>6222.505 (58.0×)</td>
-<td>33050.665 (308.1×)</td>
-<td>85804.834 (799.8×)</td>
-</tr></tbody></table><p>The <strong>median</strong> speed-up across all dcast cells and all competitors is 46.5× on Ubuntu and 41.4× on Windows. The <strong>mean</strong> is 90.2× and 76.6× respectively. On the 1e8-row cells (8 GB of input), <code>dataprep</code> completes in <strong>40–214 ms</strong> while several competitors exceed 12 s on Ubuntu and 12 s on Windows.</p>
+<h4 id="dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-8-1">
+<code>dcast()</code> — speed-up vs every one of the 8 major alternatives<a class="anchor" aria-label="anchor" href="#dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-8-1"></a></h4>
+<p>Speed-ups relative to each competitor span <strong>0.9×–1849.5×</strong> across both hosts. Every cell has <code>dataprep</code> ahead of every other engine, with the single exception of the smallest Windows case (<code>n_long = 1,000</code>, 1 id, 10 levels), where <code>collapse</code> is about 8 % faster.</p>
+<p>Medians in milliseconds (Ubuntu 25.10):</p>
+<table class="table"><colgroup><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"></colgroup><thead><tr><th align="right">n_long</th>
+<th align="right">levels</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
+</tr></thead><tbody><tr><td align="right">1e6</td>
+<td align="right">10</td>
+<td align="right">1.075</td>
+<td align="right">139.2 (129.5×)</td>
+<td align="right">323.7 (301.0×)</td>
+<td align="right">46.5 (43.3×)</td>
+<td align="right">4.917 (4.6×)</td>
+<td align="right">56.4 (52.5×)</td>
+<td align="right">94.2 (87.6×)</td>
+<td align="right">81.7 (76.0×)</td>
+<td align="right">242.0 (225.0×)</td>
+</tr><tr><td align="right">1e6</td>
+<td align="right">100</td>
+<td align="right">0.585</td>
+<td align="right">102.8 (175.6×)</td>
+<td align="right">346.7 (592.4×)</td>
+<td align="right">44.2 (75.5×)</td>
+<td align="right">5.021 (8.6×)</td>
+<td align="right">54.7 (93.5×)</td>
+<td align="right">176.1 (300.9×)</td>
+<td align="right">76.2 (130.3×)</td>
+<td align="right">258.8 (442.2×)</td>
+</tr><tr><td align="right">1e7</td>
+<td align="right">100</td>
+<td align="right">3.845</td>
+<td align="right">2016 (524.4×)</td>
+<td align="right">595.9 (155.0×)</td>
+<td align="right">684.3 (178.0×)</td>
+<td align="right">52.7 (13.7×)</td>
+<td align="right">742.5 (193.1×)</td>
+<td align="right">474.5 (123.4×)</td>
+<td align="right">941.3 (244.8×)</td>
+<td align="right">2505 (651.5×)</td>
+</tr><tr><td align="right">1e8</td>
+<td align="right">100</td>
+<td align="right">37.9</td>
+<td align="right">16777 (443.0×)</td>
+<td align="right">18782 (495.9×)</td>
+<td align="right">8285 (218.8×)</td>
+<td align="right">499.3 (13.2×)</td>
+<td align="right">9587 (253.1×)</td>
+<td align="right">2509 (66.3×)</td>
+<td align="right">12155 (320.9×)</td>
+<td align="right">24486 (646.5×)</td>
+</tr></tbody></table><p>Medians in milliseconds (Windows 11 Pro for Workstations):</p>
+<table class="table"><colgroup><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"><col width="9%"></colgroup><thead><tr><th align="right">n_long</th>
+<th align="right">levels</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
+</tr></thead><tbody><tr><td align="right">1e6</td>
+<td align="right">10</td>
+<td align="right">2.977</td>
+<td align="right">239.6 (80.5×)</td>
+<td align="right">154.7 (52.0×)</td>
+<td align="right">112.8 (37.9×)</td>
+<td align="right">14.2 (4.8×)</td>
+<td align="right">239.5 (80.5×)</td>
+<td align="right">53.0 (17.8×)</td>
+<td align="right">359.4 (120.8×)</td>
+<td align="right">385.6 (129.6×)</td>
+</tr><tr><td align="right">1e6</td>
+<td align="right">100</td>
+<td align="right">3.999</td>
+<td align="right">173.3 (43.3×)</td>
+<td align="right">179.5 (44.9×)</td>
+<td align="right">82.1 (20.5×)</td>
+<td align="right">14.2 (3.6×)</td>
+<td align="right">226.4 (56.6×)</td>
+<td align="right">71.8 (18.0×)</td>
+<td align="right">308.5 (77.1×)</td>
+<td align="right">800.0 (200.0×)</td>
+</tr><tr><td align="right">1e7</td>
+<td align="right">100</td>
+<td align="right">32.7</td>
+<td align="right">2855 (87.3×)</td>
+<td align="right">1119 (34.2×)</td>
+<td align="right">1220 (37.3×)</td>
+<td align="right">156.7 (4.8×)</td>
+<td align="right">2259 (69.1×)</td>
+<td align="right">1217 (37.2×)</td>
+<td align="right">2967 (90.7×)</td>
+<td align="right">7389 (226.0×)</td>
+</tr><tr><td align="right">1e8</td>
+<td align="right">100</td>
+<td align="right">105.9</td>
+<td align="right">22379 (211.3×)</td>
+<td align="right">14723 (139.0×)</td>
+<td align="right">12879 (121.6×)</td>
+<td align="right">1477 (13.9×)</td>
+<td align="right">25000 (236.0×)</td>
+<td align="right">8290 (78.3×)</td>
+<td align="right">31519 (297.5×)</td>
+<td align="right">82310 (777.0×)</td>
+</tr></tbody></table><p>The <strong>median</strong> speed-up across all dcast cells and all competitors is 74.5× on Ubuntu and 42.2× on Windows. The <strong>mean</strong> is 128.9× and 91.1× respectively.</p>
 </div>
 <div class="section level4">
-<h4 id="cross-engine-consistency-0-1-8">Cross-engine consistency<a class="anchor" aria-label="anchor" href="#cross-engine-consistency-0-1-8"></a></h4>
-<p><code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> produce output <strong>numerically identical</strong> to <code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code> on every tested shape, within <code>tol = 1e-12</code>.</p>
+<h4 id="aggregated-dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-8-1">Aggregated <code>dcast()</code> — speed-up vs every one of the 8 major alternatives<a class="anchor" aria-label="anchor" href="#aggregated-dcast--speed-up-vs-every-one-of-the-major-alternatives-0-1-8-1"></a></h4>
+<p>Speed-ups relative to each competitor span <strong>2.0×–872.4×</strong> across both hosts. Five aggregation functions (<code>sum</code>, <code>mean</code>, <code>min</code>, <code>max</code>, <code>count</code>) and five scales (1e4 to 1e8 rows) are tested.</p>
+<p>The <strong>median</strong> speed-up across all aggregated dcast cells and all competitors is 27.4× on Ubuntu and 17.9× on Windows. The <strong>mean</strong> is 68.6× and 61.8× respectively.</p>
+</div>
+<div class="section level4">
+<h4 id="cross-engine-consistency-0-1-8-1">Cross-engine consistency<a class="anchor" aria-label="anchor" href="#cross-engine-consistency-0-1-8-1"></a></h4>
+<p><code><a href="../reference/melt.html">melt()</a></code>, <code><a href="../reference/dcast.html">dcast()</a></code>, and aggregated <code><a href="../reference/dcast.html">dcast()</a></code> produce output <strong>numerically identical</strong> to <code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>collapse</code>, <code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code> on every tested shape. <code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> are pure data movement, so their output is <strong>bit-identical</strong>; aggregated <code><a href="../reference/dcast.html">dcast()</a></code> matches to <code>tol = 1e-10</code> because <code>sum</code> and <code>mean</code> accumulate in different orders across engines.</p>
 <table class="table"><thead><tr><th>Operation</th>
 <th align="right">Cells tested</th>
 <th align="right">Engines</th>
 <th>Pairwise</th>
 </tr></thead><tbody><tr><td><code>melt</code></td>
 <td align="right">4 shapes</td>
-<td align="right">8</td>
+<td align="right">9</td>
 <td>all consistent</td>
 </tr><tr><td><code>dcast</code></td>
 <td align="right">4 shapes</td>
-<td align="right">8</td>
+<td align="right">9</td>
 <td>all consistent</td>
-</tr></tbody></table><p>Full tables — including <code>mean</code>, <code>median</code>, and the full per-competitor gradient — are in <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code>. The reproducible runner is shipped under <code>inst/</code>.</p>
-</div>
+</tr><tr><td><code>dcast(agg)</code></td>
+<td align="right">2 shapes × 5 aggs</td>
+<td align="right">9</td>
+<td>all consistent</td>
+</tr></tbody></table></div>
 </div>
 <div class="section level3">
-<h3 id="behaviour-changes-0-1-8">Behaviour changes<a class="anchor" aria-label="anchor" href="#behaviour-changes-0-1-8"></a></h3>
+<h3 id="behaviour-changes-0-1-8-1">Behaviour changes<a class="anchor" aria-label="anchor" href="#behaviour-changes-0-1-8-1"></a></h3>
 <div class="section level4">
-<h4 id="obsedele-semantics-0-1-8">
-<code>obsedele()</code> semantics<a class="anchor" aria-label="anchor" href="#obsedele-semantics-0-1-8"></a></h4>
-<p>The 0.1.8 C++ backend (<code>obsedele_cpp</code>) implements the retention criterion with an <strong>anchor-based scan</strong>: for each missing value and each selected column, the time distance to the nearest non-missing anchor on the left and on the right is computed directly. A row is deleted when <strong>any</strong> selected column has <strong>both</strong> distances exceeding <code>half</code> minutes.</p>
+<h4 id="obsedele-semantics-0-1-8-1">
+<code>obsedele()</code> semantics<a class="anchor" aria-label="anchor" href="#obsedele-semantics-0-1-8-1"></a></h4>
+<p>The 0.1.8.1 C++ backend (<code>obsedele_cpp</code>) implements the retention criterion with an <strong>anchor-based scan</strong>: for each missing value and each selected column, the time distance to the nearest non-missing anchor on the left and on the right is computed directly. A row is deleted when <strong>any</strong> selected column has <strong>both</strong> distances exceeding <code>half</code> minutes.</p>
 <p>This is mathematically identical to the running-mean criterion used in 0.1.0 and the <code>rleid</code>-based criterion used in 0.1.5, but:</p>
 <ul><li>
 <strong>Scans each column independently.</strong> The 0.1.5 implementation merged columns before computing runs, which changed run boundaries and could both over-delete and under-delete boundary rows.</li>
@@ -483,31 +536,31 @@
 <strong>Parallelises over columns with OpenMP</strong> without any shared mutable state.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="optisolu-multi-core-safety-0-1-8">
-<code>optisolu()</code> multi-core safety<a class="anchor" aria-label="anchor" href="#optisolu-multi-core-safety-0-1-8"></a></h4>
-<p>The 0.1.5 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path gave each worker a full copy of the input. With <code>cores &gt; 16</code> and large data this exhausted memory and aborted the R session. The 0.1.8 implementation shares read-only data across workers and accepts up to 64 cores safely.</p>
+<h4 id="optisolu-multi-core-safety-0-1-8-1">
+<code>optisolu()</code> multi-core safety<a class="anchor" aria-label="anchor" href="#optisolu-multi-core-safety-0-1-8-1"></a></h4>
+<p>The 0.1.5 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path gave each worker a full copy of the input. With <code>cores &gt; 16</code> and large data this exhausted memory and aborted the R session. The 0.1.8.1 implementation shares read-only data across workers and accepts up to 64 cores safely.</p>
 </div>
 <div class="section level4">
-<h4 id="melt-new-major-and-asfactor-arguments-0-1-8">
-<code>melt()</code> new <code>major</code> and <code>as.factor</code> arguments<a class="anchor" aria-label="anchor" href="#melt-new-major-and-asfactor-arguments-0-1-8"></a></h4>
+<h4 id="melt-new-major-and-asfactor-arguments-0-1-8-1">
+<code>melt()</code> new <code>major</code> and <code>as.factor</code> arguments<a class="anchor" aria-label="anchor" href="#melt-new-major-and-asfactor-arguments-0-1-8-1"></a></h4>
 <p>The <code>major</code> argument is now honoured strictly. <code>NULL</code> (default) is equivalent to <code>"col"</code>: column-major, identical to <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code>. <code>major = "row"</code> produces tidyr-compatible row ordering. The earlier implementation could switch automatically based on input shape, and the tiny fast path silently ignored <code>major</code>; both are fixed. There is no longer any automatic switching.</p>
 <p>A new <code>as.factor</code> argument controls the type of the <code>variable</code> column. <code>NULL</code> (default) uses <code>TRUE</code> for <code>major = "col"</code> and <code>FALSE</code> for <code>major = "row"</code>. Explicit <code>TRUE</code> / <code>FALSE</code> overrides that default. The return value is always a plain <code>data.frame</code>; no <code>tibble</code> attributes are attached.</p>
 </div>
 <div class="section level4">
-<h4 id="prep_fit--prep_transform-degenerate-columns-0-1-8">
-<code>prep_fit()</code> / <code>prep_transform()</code> degenerate columns<a class="anchor" aria-label="anchor" href="#prep_fit--prep_transform-degenerate-columns-0-1-8"></a></h4>
+<h4 id="prep_fit--prep_transform-degenerate-columns-0-1-8-1">
+<code>prep_fit()</code> / <code>prep_transform()</code> degenerate columns<a class="anchor" aria-label="anchor" href="#prep_fit--prep_transform-degenerate-columns-0-1-8-1"></a></h4>
 <p>A constant training column has <code>sd = 0</code>, <code>IQR = 0</code>, or <code>max - min = 0</code>. <code><a href="../reference/prep_fit.html">prep_fit()</a></code> now stores <code>1</code> as the scale value for such columns, so the transform becomes <code>x - center</code>. <code><a href="../reference/prep_transform.html">prep_transform()</a></code> additionally guards against <code>scale_val == 0</code> in case a plan is edited by hand.</p>
 </div>
 </div>
 <div class="section level3">
-<h3 id="bug-fixes-0-1-8">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-8"></a></h3>
+<h3 id="bug-fixes-0-1-8-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-8-1"></a></h3>
 <ul><li><p><strong><code><a href="../reference/dcast.html">dcast()</a></code>: <code>na.rm = TRUE</code> combined with an explicit non-<code>NA</code> <code>fill</code> no longer loses the <code>fill</code> value.</strong> On the block-path (canonical melt output), the tile transpose wrote the input values unconditionally after the fill pass, so cells whose input was <code>NA</code>/<code>NaN</code> ended up as <code>NA</code> instead of the requested <code>fill</code>. The transpose kernels now receive <code>na_rm</code> and the resolved <code>fill_val</code> and substitute them while the tile is built. The general path was not affected; both paths now produce identical output. Repro: <code>dcast(data.frame(id=c(1,1,2,2), variable=c("x","y","x","y"), value=c(1,NA,3,4)), id="id", variable="variable", value="value", na.rm=TRUE, fill=-1)</code> now returns <code>(1,"y") = -1</code>.</p></li>
 <li><p><strong><code><a href="../reference/dcast.html">dcast()</a></code>: duplicate <code>(id, variable)</code> pairs now resolve consistently with the documented “last occurrence wins” rule.</strong> The block path previously kept the <em>first</em> occurrence of a duplicated block; the general path kept the <em>last</em>. The block path now keeps the last occurrence, matching <code><a href="../reference/dcast.html">dcast()</a></code>’s documentation and <code><a href="https://rdrr.io/pkg/reshape2/man/cast.html" class="external-link">reshape2::dcast()</a></code>. This only affects non-canonical inputs (canonical <code><a href="../reference/melt.html">melt()</a></code> output has no duplicates); canonical round-trips are unchanged.</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="new-functions-0-1-8">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-1-8"></a></h3>
+<h3 id="new-functions-0-1-8-1">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-1-8-1"></a></h3>
 <div class="section level4">
-<h4 id="cleaning-0-1-8">Cleaning<a class="anchor" aria-label="anchor" href="#cleaning-0-1-8"></a></h4>
+<h4 id="cleaning-0-1-8-1">Cleaning<a class="anchor" aria-label="anchor" href="#cleaning-0-1-8-1"></a></h4>
 <ul><li>
 <a href="https://chunshengliang.github.io/dataprep/reference/balance_panel.html"><code>balance_panel()</code></a> — balance an unbalanced panel by filling or completing.</li>
 <li>
@@ -532,7 +585,7 @@
 <a href="https://chunshengliang.github.io/dataprep/reference/zerona.html"><code>zerona()</code></a> — replace zeros with NA.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="imputation-and-transformation-0-1-8">Imputation and transformation<a class="anchor" aria-label="anchor" href="#imputation-and-transformation-0-1-8"></a></h4>
+<h4 id="imputation-and-transformation-0-1-8-1">Imputation and transformation<a class="anchor" aria-label="anchor" href="#imputation-and-transformation-0-1-8-1"></a></h4>
 <ul><li>
 <a href="https://chunshengliang.github.io/dataprep/reference/impute_missing.html"><code>impute_missing()</code></a> — linear / LOCF / NOCB / mean / median.</li>
 <li>
@@ -541,7 +594,7 @@
 <a href="https://chunshengliang.github.io/dataprep/reference/transform_data.html"><code>transform_data()</code></a> — log / sqrt / Box-Cox / Yeo-Johnson and z-score / min-max / robust scaling.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="diagnostics-and-reporting-0-1-8">Diagnostics and reporting<a class="anchor" aria-label="anchor" href="#diagnostics-and-reporting-0-1-8"></a></h4>
+<h4 id="diagnostics-and-reporting-0-1-8-1">Diagnostics and reporting<a class="anchor" aria-label="anchor" href="#diagnostics-and-reporting-0-1-8-1"></a></h4>
 <ul><li>
 <a href="https://chunshengliang.github.io/dataprep/reference/na_diagnose.html"><code>na_diagnose()</code></a> — missing-value run statistics.</li>
 <li>
@@ -550,7 +603,7 @@
 <a href="https://chunshengliang.github.io/dataprep/reference/dry_run.html"><code>dry_run()</code></a> — simulate preprocessing without changing data.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="time-series-0-1-8">Time series<a class="anchor" aria-label="anchor" href="#time-series-0-1-8"></a></h4>
+<h4 id="time-series-0-1-8-1">Time series<a class="anchor" aria-label="anchor" href="#time-series-0-1-8-1"></a></h4>
 <ul><li>
 <a href="https://chunshengliang.github.io/dataprep/reference/create_lags.html"><code>create_lags()</code></a> — grouped lag / lead columns.</li>
 <li>
@@ -571,20 +624,20 @@
 <a href="https://chunshengliang.github.io/dataprep/reference/drift_detect.html"><code>drift_detect()</code></a> — rolling drift detection.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="sampling-and-workflow-0-1-8">Sampling and workflow<a class="anchor" aria-label="anchor" href="#sampling-and-workflow-0-1-8"></a></h4>
+<h4 id="sampling-and-workflow-0-1-8-1">Sampling and workflow<a class="anchor" aria-label="anchor" href="#sampling-and-workflow-0-1-8-1"></a></h4>
 <ul><li>
 <a href="https://chunshengliang.github.io/dataprep/reference/sample_data.html"><code>sample_data()</code></a> — simple and stratified sampling.</li>
 <li>
 <a href="https://chunshengliang.github.io/dataprep/reference/prep_fit.html"><code>prep_fit()</code></a> / <a href="https://chunshengliang.github.io/dataprep/reference/prep_transform.html"><code>prep_transform()</code></a> — fit / transform style preprocessing plan that prevents data leakage.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="reshaping-0-1-8">Reshaping<a class="anchor" aria-label="anchor" href="#reshaping-0-1-8"></a></h4>
+<h4 id="reshaping-0-1-8-1">Reshaping<a class="anchor" aria-label="anchor" href="#reshaping-0-1-8-1"></a></h4>
 <ul><li>
 <a href="https://chunshengliang.github.io/dataprep/reference/dcast.html"><code>dcast()</code></a> — long-to-wide reshaping, paired with <a href="https://chunshengliang.github.io/dataprep/reference/melt.html"><code>melt()</code></a>.</li>
 </ul></div>
 </div>
 <div class="section level3">
-<h3 id="api-changes-0-1-8">API changes<a class="anchor" aria-label="anchor" href="#api-changes-0-1-8"></a></h3>
+<h3 id="api-changes-0-1-8-1">API changes<a class="anchor" aria-label="anchor" href="#api-changes-0-1-8-1"></a></h3>
 <ul><li>Argument <code>cols</code> now consistently accepts names, integer indices, or logical masks across the package.</li>
 <li>All exported functions gain a <code>verbose = FALSE</code> argument that controls progress and timing messages.</li>
 <li>Functions that operate on a time column accept <code>date_col = NULL</code>; when <code>NULL</code>, the first column matching <code>date</code>, <code>Date</code>, or <code>DATE</code> is used.</li>
@@ -602,16 +655,16 @@
 <a href="https://chunshengliang.github.io/dataprep/reference/descplot.html"><code>descplot()</code></a> and <a href="https://chunshengliang.github.io/dataprep/reference/percplot.html"><code>percplot()</code></a> gain a <code>num_xaxis</code> argument that overrides the automatic choice between log and linear x-axis scales when column names are numeric.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="documentation-0-1-8">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-1-8"></a></h3>
+<h3 id="documentation-0-1-8-1-1">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-1-8-1-1"></a></h3>
 <p>Seven vignettes ship with the package:</p>
 <ul><li>
 <code><a href="../articles/dataprep-philosophy.html">vignette("dataprep-philosophy")</a></code> — design philosophy and preprocessing methodology.</li>
 <li>
 <code><a href="../articles/dataprep-cleaning.html">vignette("dataprep-cleaning")</a></code> — step-by-step walkthrough of the four cleaning steps.</li>
 <li>
-<code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code> — full benchmark tables and 8-engine consistency checks.</li>
+<code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code> — full benchmark tables and 9-engine consistency checks.</li>
 <li>
-<code><a href="../articles/dataprep-migration.html">vignette("dataprep-migration")</a></code> — 0.1.5 → 0.1.8 upgrade guide.</li>
+<code><a href="../articles/dataprep-migration.html">vignette("dataprep-migration")</a></code> — 0.1.5 → 0.1.8.1 upgrade guide.</li>
 <li>
 <code><a href="../articles/dataprep-workflow.html">vignette("dataprep-workflow")</a></code> — leakage-free preprocessing with <code><a href="../reference/prep_fit.html">prep_fit()</a></code> / <code><a href="../reference/prep_transform.html">prep_transform()</a></code>.</li>
 <li>
@@ -620,17 +673,17 @@
 <code><a href="../articles/dataprep-plots.html">vignette("dataprep-plots")</a></code> — descriptive statistics and diagnostic plots.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="performance-notes-0-1-8">Performance notes<a class="anchor" aria-label="anchor" href="#performance-notes-0-1-8"></a></h3>
+<h3 id="performance-notes-0-1-8-1">Performance notes<a class="anchor" aria-label="anchor" href="#performance-notes-0-1-8-1"></a></h3>
 <p>Three benchmark cells sit close to, or marginally behind, the fastest competitor — <code><a href="../reference/dcast.html">dcast()</a></code> at 100 id columns, <code><a href="../reference/melt.html">melt()</a></code> at 1e7 rows × 10 id columns, and <code><a href="../reference/varidele.html">varidele()</a></code> on full-year data — and all three share the same root cause: the affected internal buffers (the 96-bit fingerprint table, the per-id-column id blocks, and the <code>is.na</code> scratch matrix) are allocated with <code>Rf_allocVector</code>, which routes through R’s default <code>malloc</code>-based allocator and therefore cannot be directed to hugepages, a per-process free pool, or a NUMA-aware arena, so first-touch page faults dominate those cells. Two possible fixes were prototyped on the reshaping backends and both were measured to close the gap: routing those buffers through <code>Rf_allocVector3</code> with a hypothetical custom <code>R_allocator_t</code> adds a further few-fold speed-up on top of the existing hundred-fold to thousand-fold margins, and returning <strong>ALTREP</strong> virtual objects from <code><a href="../reference/melt.html">melt()</a></code> / <code><a href="../reference/dcast.html">dcast()</a></code> — a lazy <code>variable</code> column and a deferred id block, so that large parts of the output are never materialised — adds another order of magnitude (tens of times) on the wide-table shapes. Neither is used in this release. <code>Rf_allocVector3</code> is not recommended by CRAN, and an ALTREP return value, while fast to produce, is slow for downstream complex statistics because every element access re-enters the virtual-object layer, which shifts the cost from <code>dataprep</code> to the caller’s analysis code.</p>
-<p>The shipped 0.1.8 backends therefore keep the standard allocation path, and the reported speed-ups stand as measured: <code><a href="../reference/melt.html">melt()</a></code> spans 0.6×–1628.9× and <code><a href="../reference/dcast.html">dcast()</a></code> spans 1.9×–799.8× across the two reference hosts, with the sub-1.0× <code><a href="../reference/melt.html">melt()</a></code> cells confined to the 1e7-row (Ubuntu) and 1e5-row (Windows) shapes with 10 id columns, where <code>polars</code> is faster than <code>dataprep</code>. On the cleaning pipeline the 0.1.5 → 0.1.8 speed-ups of 1.1×–1146× stand as reported; <code>Rf_allocVector3</code> and ALTREP were not evaluated there.</p>
+<p>The shipped 0.1.8.1 backends therefore keep the standard allocation path, and the reported speed-ups stand as measured: <code><a href="../reference/melt.html">melt()</a></code> spans 0.3×–1750.0×, <code><a href="../reference/dcast.html">dcast()</a></code> spans 0.9×–1849.5×, and aggregated <code><a href="../reference/dcast.html">dcast()</a></code> spans 2.0×–872.4× across the two reference hosts, with the sub-1.0× <code><a href="../reference/melt.html">melt()</a></code> cells confined to the 1e7-row (Ubuntu) and 1e5-row (Windows) shapes with 10 id columns, where <code>polars</code> is faster than <code>dataprep</code>. On the cleaning pipeline the 0.1.5 → 0.1.8.1 speed-ups of 1.1×–1146× stand as reported; <code>Rf_allocVector3</code> and ALTREP were not evaluated there.</p>
 </div>
 <div class="section level3">
-<h3 id="environment-variables-optional-0-1-8">Environment variables (optional)<a class="anchor" aria-label="anchor" href="#environment-variables-optional-0-1-8"></a></h3>
+<h3 id="environment-variables-optional-0-1-8-1">Environment variables (optional)<a class="anchor" aria-label="anchor" href="#environment-variables-optional-0-1-8-1"></a></h3>
 <ul><li>
 <code>DATAPREP_RUN_BENCHMARK</code> = <code>1</code> enables the shipped benchmark scripts. They are disabled by default so that <code>R CMD check</code> does not execute them.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="see-also-0-1-8">See also<a class="anchor" aria-label="anchor" href="#see-also-0-1-8"></a></h3>
+<h3 id="see-also-0-1-8-1">See also<a class="anchor" aria-label="anchor" href="#see-also-0-1-8-1"></a></h3>
 <ul><li>
 <a href="https://chunshengliang.github.io/dataprep/articles/dataprep-philosophy.html">Design philosophy</a> — why the pipeline has the shape it does.</li>
 <li>

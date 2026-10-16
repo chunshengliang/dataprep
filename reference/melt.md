@@ -13,7 +13,7 @@ melt(data, id = NULL, measure.vars = NULL,
      variable.name = "variable", value.name = "value",
      na.rm = FALSE, cores = NULL, major = NULL,
      as.factor = NULL,
-     verbose = FALSE, parallel_threshold = 5e6, id.vars = NULL)
+     verbose = FALSE, parallel_threshold = 2e4, id.vars = NULL)
 ```
 
 ## Arguments
@@ -41,8 +41,11 @@ melt(data, id = NULL, measure.vars = NULL,
 
 - variable.name:
 
-  Name of the new column that stores the original column names of the
-  measure variables. Default `"variable"`. See `as.factor` for its type.
+  Length-1 character; name of the output column that records which
+  measure column each row came from. Defaults to `"variable"`. The
+  column is a `factor` whose levels are the names of the measure columns
+  when `as.factor` resolves to `TRUE` (the default for `major = "col"`),
+  and a `character` vector otherwise.
 
 - value.name:
 
@@ -73,10 +76,10 @@ melt(data, id = NULL, measure.vars = NULL,
 
 - as.factor:
 
-  Whether the `variable` column is a factor. `NULL` (default) uses
-  `TRUE` when `major` is `"col"` and `FALSE` when `major` is `"row"`.
-  Explicit `TRUE` / `FALSE` overrides that default. The return value is
-  always a plain `data.frame`; no `tibble` attributes are attached.
+  Logical or `NULL`. If `TRUE`, the `variable.name` column is returned
+  as a `factor`. If `FALSE`, it is returned as `character`. `NULL` (the
+  default) uses `TRUE` when `major` is `"col"` and `FALSE` when `major`
+  is `"row"`. Explicit `TRUE` or `FALSE` overrides that default.
 
 - verbose:
 
@@ -86,7 +89,7 @@ melt(data, id = NULL, measure.vars = NULL,
 
   Minimum number of output elements, i.e.\\
   `nrow(data) * length(measure.vars)`, before automatic parallelism is
-  enabled. Default `5e6`.
+  enabled. Default `2e4`.
 
 - id.vars:
 
@@ -95,40 +98,60 @@ melt(data, id = NULL, measure.vars = NULL,
 
 ## Details
 
-`melt()` is the fast, drop-in replacement for
-[`reshape2::melt`](https://rdrr.io/pkg/reshape2/man/melt.html) and
-[`tidyr::pivot_longer`](https://tidyr.tidyverse.org/reference/pivot_longer.html).
-The C++ backend (`melt_cpp`) has been benchmarked against **all seven
-major alternatives** in the R and Python ecosystems: `reshape2`,
-`data.table`, `tidyr`, `pandas`, `polars`, `dask`, and `duckdb`. Every
-cell is measured with a C++ steady-clock timer and an adaptive `times`
-rule.
+**Shape.** A `data.frame` with `n` rows and `k = length(measure.vars)`
+measure columns becomes a `data.frame` with `n * k` rows. Identity
+columns are replicated `k` times; a factor `variable` column records the
+source column; a `double` `value` column holds the stacked data.
 
-**Speed-up relative to each competitor spans `0.6x` to `1628.9x`.** The
-median across all tested cells and all competitors is `11.3x` on Ubuntu
-25.10 and `5.6x` on Windows 11 Pro for Workstations; the mean is `67.8x`
-and `46.6x`, respectively. The largest gaps appear on wide tables (many
-value columns, few rows); the smallest gaps appear on small tables where
-initialization overhead dominates.
+**Implementation.** The heavy lifting is done by a C++17 kernel compiled
+with OpenMP and dispatched to AVX-512 / AVX2 / SSE4.2 implementations of
+`memcpy`-like primitives at first use. Output buffers are pre-faulted
+via `madvise(MADV_HUGEPAGE)` on Linux and
+`mallopt(M_MMAP_THRESHOLD, ...)` on glibc. Threads scale with input size
+up to a hardware-aware cap; per-column write-combining-buffer pressure
+caps the thread count further when many measure columns are being
+written at once.
 
-Representative cells (means; numbers in parentheses are the speed-up of
-`melt()` relative to that competitor) taken from the Ubuntu 25.10 host:
+The general path uses a two-phase, cache-aware schedule. Phase A writes
+the value and variable columns with non-temporal stores. Phase B
+replicates the id columns with L2-sized blocking so that each worker has
+exactly one active non-temporal write stream at a time; this avoids
+saturating the x86 write-combining buffers when many id columns are
+present.
 
-- **1e6 rows, 1 id, 9 value columns** — `3.474 ms` vs `9.646 ms`
-  (`data.table`, `2.8x`), `80.014 ms` (`tidyr`, `23.0x`), `648.895 ms`
-  (`duckdb`, `186.8x`).
+**Fast paths.** Three code paths exist, chosen automatically: a
+tiny-input path for `nrow <= 2048` with at most 64 measure columns; a
+small-input path for at most 131072 output elements; and a general
+two-phase path for everything else. Passing `verbose = TRUE` disables
+the two fast paths so that all calls exercise the same kernel; this is
+intended for testing, not production.
 
-- **1e7 rows, 1 id, 9 value columns** — `33.412 ms` vs `365.065 ms`
-  (`data.table`, `10.9x`), `1083.987 ms` (`tidyr`, `32.4x`),
-  `6389.564 ms` (`duckdb`, `191.2x`).
+**Memory.** Peak memory is roughly `(n_id + 2) * n * k * 8` bytes plus
+the input. For very large inputs the R heap is briefly reserved with a
+same-sized sentinel so that glibc's `M_MMAP_THRESHOLD` rises before the
+output allocation; the sentinel is released before the C++ kernel runs.
 
-- **1e3 rows, 1 id, 10000 value columns** — `2.295 ms` vs `12.415 ms`
-  (`data.table`, `5.4x`), `19.408 ms` (`polars`, `8.5x`), `3737.866 ms`
-  (`dask`, **`1628.9x`**).
+**Benchmarks.** `melt()` is benchmarked against all eight major
+alternatives in the R and Python ecosystems: `reshape2`, `data.table`,
+`tidyr`, `collapse`, `pandas`, `polars`, `dask`, and `duckdb`. Every
+cell is measured with a C++ steady-clock timer. The first call is a
+warmup and is excluded from the reported statistics; an adaptive rule
+picks the number of timed iterations from the warmup time. Mixed-type id
+columns (integer / character alternation for `n_id >= 2`) are the
+default; set `DATAPREP_MIXED_TYPES=FALSE` to force the all-integer
+baseline.
 
-- **1e3 rows, 10 id, 10000 value columns** — `25.009 ms` vs `71.605 ms`
-  (`polars`, `2.9x`), `182.019 ms` (`data.table`, `7.3x`),
-  `23777.051 ms` (`dask`, **`950.7x`**).
+The median speed-up of `melt()` relative to each competitor spans
+`0.35x` to `1750x` on Ubuntu 25.10 and `0.62x` to `435x` on Windows 11
+Pro for Workstations. The median across all tested cells and all
+competitors is `9.64x` on Ubuntu 25.10 and `3.72x` on Windows 11 Pro for
+Workstations.
+
+The sub-1.0x cells are concentrated on the `1 id + 9 value` shape, where
+`polars` is faster than `melt()`:
+`polars @ rows=10,000,000, 10 id + 9 val` on Ubuntu (`0.35x`), and
+`polars @ rows=100,000, 10 id + 9 val` on Windows (`0.62x`). Every other
+cell has `melt()` ahead of or on par with the fastest competitor.
 
 The speed-up comes from three design choices:
 
@@ -160,8 +183,9 @@ The output is identical to
 [`reshape2::melt`](https://rdrr.io/pkg/reshape2/man/melt.html),
 [`data.table::melt`](https://rdrr.io/pkg/data.table/man/melt.data.table.html),
 [`tidyr::pivot_longer`](https://tidyr.tidyverse.org/reference/pivot_longer.html),
-`pandas.melt`, `polars.unpivot`, `dask`, and `duckdb UNPIVOT` on every
-tested shape, within `tol = 1e-12`. See
+`collapse::pivot(how = "longer")`, `pandas.melt`, `polars.unpivot`,
+`dask`, and `duckdb UNPIVOT` on every tested shape, within
+`tol = 1e-12`. See
 [`vignette("dataprep-melt-dcast")`](https://chunshengliang.github.io/dataprep/articles/dataprep-melt-dcast.md)
 for the implementation notes and
 [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md)
@@ -176,6 +200,10 @@ whose value is `NA` or `NaN` are dropped, so the row count is smaller
 and not known in advance. Columns are the ID columns, a column named
 `variable.name` (a factor when `as.factor` resolves to `TRUE`, otherwise
 a character vector), and a numeric column named `value.name`.
+
+When `as.factor = NULL` and `major = "row"`, the `variable` column is a
+`character` vector, matching
+[`tidyr::pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html).
 
 ## References
 

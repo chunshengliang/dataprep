@@ -19,7 +19,7 @@ output column in strictly sequential order."><meta property="og:image" content="
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -113,9 +113,15 @@ output column in strictly sequential order.</p>
 
   <dt id="arg-fun-aggregate">fun.aggregate<a class="anchor" aria-label="anchor" href="#arg-fun-aggregate"></a></dt>
 <dd><p>Optional function used to reduce duplicate
-    <code>(id, variable)</code> pairs. Called with a single argument
-    (the vector of values for that pair) plus <code>na.rm = TRUE</code>.
-    Without it, the last occurrence wins.</p></dd>
+    <code>(id, variable)</code> pairs.  The C++ backend recognises
+    <code><a href="https://rdrr.io/r/base/sum.html" class="external-link">base::sum</a></code>, <code><a href="https://rdrr.io/r/base/mean.html" class="external-link">base::mean</a></code>, <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::min</a></code>,
+    <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::max</a></code>, <code><a href="https://rdrr.io/r/base/length.html" class="external-link">base::length</a></code>, <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">stats::median</a></code>
+    (or <code>base::median</code>), and functions of the form
+    <code>function(x) x[1]</code> / <code>function(x) x[length(x)]</code>
+    for first / last, and routes them to a specialised kernel.
+    Any other function falls back to a base-R
+    <code><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">stats::aggregate()</a></code> pre-pass.  Without it, the last
+    occurrence wins.</p></dd>
 
   <dt id="arg-na-rm">na.rm<a class="anchor" aria-label="anchor" href="#arg-na-rm"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, rows whose value is <code>NA</code>
@@ -151,23 +157,51 @@ shuffle-friendly input, a 4-pass LSD radix sort over the packed
 keys replaces the hash table entirely; and when the block path is
 taken and the id column is a permutation of <code>1..n_blocks</code>, a
 direct-index shortcut bypasses both.</p>
-<p>The output is identical to <code><a href="https://rdrr.io/pkg/reshape2/man/cast.html" class="external-link">reshape2::dcast</a></code>,
-<code><a href="https://rdrr.io/pkg/data.table/man/dcast.data.table.html" class="external-link">data.table::dcast</a></code>, <code><a href="https://tidyr.tidyverse.org/reference/pivot_wider.html" class="external-link">tidyr::pivot_wider</a></code>,
-<code>pandas.pivot</code>, <code>polars.pivot</code>, <code>duckdb PIVOT</code>, and
-<code>dask</code> on every tested shape, within <code>tol = 1e-12</code>. See
-<code><a href="../articles/dataprep-melt-dcast.html">vignette("dataprep-melt-dcast")</a></code> for the implementation notes
-and <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code> for the benchmark
-tables.</p>
+<p>0.1.8.1 adds three implementation shortcuts: a zero-copy
+<code>dcast_fast_cpp</code> entry point used when the call shape is
+canonical; a 16x16 AVX-512 register transpose for
+<code>period == 16</code>; and a dedicated
+<code>dcast_aggregate_cpp</code> kernel for <code>fun.aggregate</code> that
+recognises <code>sum</code>, <code>mean</code>, <code>min</code>, <code>max</code>,
+<code>length</code>, <code>median</code>, <code>first</code>, and <code>last</code>.
+Output buffers use <code>MADV_HUGEPAGE</code> and, on Linux 6.1+,
+<code>MADV_POPULATE_WRITE</code> to avoid first-touch page faults;
+input columns are promoted with <code>MADV_COLLAPSE</code>.</p>
+<p>When <code>fun.aggregate</code> is supplied, <code>dcast()</code> routes to a
+fused C++ kernel that reads the long input once and writes the
+aggregated wide output directly, without materialising an
+intermediate long table. The output is identical to
+<code>reshape2::dcast(..., fun.aggregate = f)</code>,
+<code>data.table::dcast(..., fun.aggregate = f)</code>,
+<code>collapse::pivot(..., FUN = f)</code>,
+<code>tidyr::pivot_wider(..., values_fn = f)</code>,
+<code>pandas.pivot_table(..., aggfunc = f)</code>,
+<code>polars.pivot(..., aggregate_function = f)</code>,
+<code>dask.pivot_table(..., aggfunc = f)</code>, and
+<code>duckdb PIVOT ... USING f(value)</code> within <code>tol = 1e-10</code>
+on every tested shape.</p>
+<p><strong>Benchmarks.</strong>  <code>dcast()</code> is benchmarked against all
+eight major alternatives in the R and Python ecosystems:
+<code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>collapse</code>,
+<code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code>.
+Every cell is measured with a C++ steady-clock timer.  The first
+call is a warmup and is excluded from the reported statistics; an
+adaptive rule picks the number of timed iterations from the warmup
+time.  Mixed-type id columns (integer / character alternation for
+<code>n_id &gt;= 2</code>) are the default; set
+<code>DATAPREP_MIXED_TYPES=FALSE</code> to force the all-integer baseline.</p>
 <p>On the canonical long-to-wide shape, <code>dcast()</code> is faster than
-every tested alternative. The speed-up relative to <code>reshape2</code>,
-<code>data.table</code>, <code>tidyr</code>, <code>pandas</code>, <code>polars</code>,
-<code>dask</code>, and <code>duckdb</code> spans <code>1.9x</code> (against
-<code>reshape2</code> on 1e3 rows and 10 levels, Ubuntu 25.10) to
-<code>799.8x</code> (against <code>duckdb</code> on 1e8 rows and 100 levels,
-Windows 11 Pro for Workstations). The median across all tested
-cells and all competitors is <code>46.5x</code> on Ubuntu 25.10 and
-<code>41.4x</code> on Windows 11 Pro for Workstations; the mean is
-<code>90.2x</code> and <code>76.6x</code>, respectively.</p>
+every tested alternative in most cells.  The median speed-up
+relative to each competitor spans <code>1.82x</code> to <code>651.52x</code> on
+Ubuntu 25.10 (<code>median = 74.46x</code>) and <code>0.92x</code> to
+<code>1849.52x</code> on Windows 11 Pro for Workstations
+(<code>median = 42.22x</code>).  The single sub-1.0x cell is
+<code>collapse @ n_long=1,000, 1 id + 10 lvl</code> on Windows
+(<code>0.92x</code>).</p>
+<p>For aggregated <code>dcast()</code>, the median speed-up spans
+<code>2.32x</code> to <code>733.49x</code> on Ubuntu 25.10
+(<code>median = 27.41x</code>) and <code>1.99x</code> to <code>872.38x</code> on
+Windows 11 Pro for Workstations (<code>median = 17.93x</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>

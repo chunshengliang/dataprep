@@ -306,7 +306,7 @@ percplot(
   [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
   Benchmark tables and 8-engine consistency checks.
 
-- **Upgrading from 0.1.5 to 0.1.8** —
+- **Upgrading from 0.1.5 to 0.1.8.1** —
   [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md).
   Behaviour changes and the migration checklist.
 
@@ -339,7 +339,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] ggplot2_4.0.3  dataprep_0.1.8
+#> [1] ggplot2_4.0.3    dataprep_0.1.8.1
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    

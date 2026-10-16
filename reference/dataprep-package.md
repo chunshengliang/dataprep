@@ -3,7 +3,7 @@
 Fast, efficient, and versatile preprocessing and reshaping of tabular
 and time-series data. Most heavy routines are implemented in 'C++' via
 'Rcpp', with optional 'OpenMP' parallelization and 'SIMD' acceleration
-('AVX2' / 'AVX-512') on supported hardware. The 0.1.8 release rewrites
+('AVX2' / 'AVX-512') on supported hardware. The 0.1.8.1 release rewrites
 the cleaning routines in 'C++' and delivers a 1.1–1146× speedup over
 0.1.5. The 'melt()' and 'dcast()' reshaping functions achieve a
 0.6×–1628.9× speedup for 'melt()' and a 1.9×–799.8× speedup for

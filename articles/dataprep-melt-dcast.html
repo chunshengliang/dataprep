@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -82,14 +82,17 @@
 <h2 id="why-another-reshape-implementation">Why another reshape implementation<a class="anchor" aria-label="anchor" href="#why-another-reshape-implementation"></a>
 </h2>
 <p><code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> in <code>dataprep</code>
-0.1.8 are drop-in replacements for <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code> /
+0.1.8.1 are drop-in replacements for <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code> /
 <code><a href="https://rdrr.io/pkg/reshape2/man/cast.html" class="external-link">reshape2::dcast</a></code>, but the underlying code is written in C++
 with SIMD (AVX2 / AVX-512) and optional OpenMP parallelism. Both
 functions produce output identical to <code>reshape2</code>,
-<code>data.table</code>, <code>tidyr</code>, <code>pandas</code>,
-<code>polars</code>, <code>dask</code>, and <code>duckdb</code> on every
-tested shape, within <code>tol = 1e-12</code>.</p>
-<p>The speed-up relative to each of the seven alternatives spans:</p>
+<code>data.table</code>, <code>tidyr</code>, <code>collapse</code>,
+<code>pandas</code>, <code>polars</code>, <code>dask</code>, and
+<code>duckdb</code> on every tested shape. <code><a href="../reference/melt.html">melt()</a></code> and
+<code><a href="../reference/dcast.html">dcast()</a></code> are pure data movement, so the output is
+bit-identical.</p>
+<p>The speed-up relative to each of the <strong>eight</strong>
+alternatives spans:</p>
 <table class="table">
 <thead><tr class="header">
 <th>Operation</th>
@@ -98,26 +101,26 @@ tested shape, within <code>tol = 1e-12</code>.</p>
 <tbody>
 <tr class="odd">
 <td><code>melt</code></td>
-<td align="right">0.6–1628.9×</td>
+<td align="right">0.3×–1750.0×</td>
 </tr>
 <tr class="even">
 <td><code>dcast</code></td>
-<td align="right">1.9–799.8×</td>
+<td align="right">0.9×–1849.5×</td>
 </tr>
 </tbody>
 </table>
-<p>The median across all tested cells and all competitors is 11.3× on
-Ubuntu and 5.6× on Windows for <code>melt</code>, and 46.5× on Ubuntu
-and 41.4× on Windows for <code>dcast</code>. The mean is 67.8× and 46.6×
-for <code>melt</code>, and 90.2× and 76.6× for <code>dcast</code>,
+<p>The median across all tested cells and all competitors is 9.6× on
+Ubuntu and 3.7× on Windows for <code>melt</code>, and 74.5× on Ubuntu
+and 42.2× on Windows for <code>dcast</code>. The mean is 71.0× and 31.8×
+for <code>melt</code>, and 128.9× and 91.1× for <code>dcast</code>,
 respectively. The <code>melt</code> median is pulled down by the 1e5-row
 small tables; at larger scales the speed-up is much higher. Full tables
 — including mean, median, and per-competitor ranges — are in
 <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code> and
 <code>README.md</code>.</p>
 <p>The sub-1.0× cells are <code>polars</code> at 1e7 rows × 10 id + 9
-val on Ubuntu (0.6×), and <code>polars</code> at 1e5 rows × 10 id + 9
-val on Windows (0.7×). Every other cell has <code>dataprep</code> ahead
+val on Ubuntu (0.3×), and <code>polars</code> at 1e5 rows × 10 id + 9
+val on Windows (0.6×). Every other cell has <code>dataprep</code> ahead
 of or on par with the fastest competitor.</p>
 </div>
 <div class="section level2">
@@ -305,7 +308,7 @@ region to guarantee visibility.</p>
 MB pages. This reduces first-touch page faults on the 1e8-row case.
 There is no custom <code>R_allocator_t</code>, no
 <code>MAP_POPULATE</code>, and no free pool: those were described in
-earlier drafts but are not part of the shipped 0.1.8 backend.</p>
+earlier drafts but are not part of the shipped 0.1.8.1 backend.</p>
 </div>
 <div class="section level3">
 <h3 id="fast-paths-for-small-inputs">4. Fast paths for small inputs<a class="anchor" aria-label="anchor" href="#fast-paths-for-small-inputs"></a>
@@ -468,21 +471,32 @@ page.</p>
 <div class="section level2">
 <h2 id="where-the-gap-is-narrowest">Where the gap is narrowest<a class="anchor" aria-label="anchor" href="#where-the-gap-is-narrowest"></a>
 </h2>
-<p>The <code>dcast</code> 1e6 × 100 <code>id</code> cell is the only
-case in the entire benchmark suite where a competitor reaches a
-single-digit ratio: <code>polars</code> at 6.7× on Ubuntu and 2.6× on
-Windows. Both remain behind <code>dataprep</code>. This is because
-<code>polars</code>’s SIMD hash is competitive when the row key is very
-wide (100 columns), while <code>dcast_cpp</code>’s 96-bit fingerprint
-verification is <code>O(n_id)</code> per row in that regime.</p>
+<p>On <code><a href="../reference/melt.html">melt()</a></code>, the narrowest cells are the
+<code>10 id + 9 val</code> shapes at 1e7 rows on Ubuntu
+(<code>polars</code> at 0.3×) and 1e5 rows on Windows
+(<code>polars</code> at 0.6×). <code>polars</code>’s SIMD hash and
+native strided unpivot are competitive when the id block is wide and the
+output is long; every other <code><a href="../reference/melt.html">melt()</a></code> cell has
+<code>dataprep</code> ahead of or on par with the fastest
+competitor.</p>
+<p>On <code><a href="../reference/dcast.html">dcast()</a></code>, the narrowest cell is the smallest Windows
+case (<code>n_long = 1,000</code>, 1 id, 10 levels), where
+<code>collapse</code> is about 8 % faster (0.9×). Every other
+<code><a href="../reference/dcast.html">dcast()</a></code> cell has <code>dataprep</code> ahead of every other
+engine, including the aggregated <code><a href="../reference/dcast.html">dcast()</a></code> cells, where the
+closest competitor (<code>polars</code>) stays within 2.0×–3.5× on both
+hosts.</p>
 </div>
 <div class="section level2">
 <h2 id="cross-engine-consistency">Cross-engine consistency<a class="anchor" aria-label="anchor" href="#cross-engine-consistency"></a>
 </h2>
-<p><code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> produce output identical
-to <code>reshape2</code> (the reference implementation) on every tested
-cell. All pairs of engines agree pairwise within
-<code>tol = 1e-12</code>.</p>
+<p><code><a href="../reference/melt.html">melt()</a></code>, <code><a href="../reference/dcast.html">dcast()</a></code>, and aggregated
+<code><a href="../reference/dcast.html">dcast()</a></code> produce output identical to <code>reshape2</code>
+(the reference implementation) on every tested cell. <code><a href="../reference/melt.html">melt()</a></code>
+and <code><a href="../reference/dcast.html">dcast()</a></code> are pure data movement, so all pairs of engines
+agree <strong>exactly</strong>; aggregated <code><a href="../reference/dcast.html">dcast()</a></code> matches
+to <code>tol = 1e-10</code> because <code>sum</code> and
+<code>mean</code> accumulate in different orders across engines.</p>
 <div class="section level3">
 <h3 id="melt-consistency">
 <code>melt</code> consistency<a class="anchor" aria-label="anchor" href="#melt-consistency"></a>
@@ -500,35 +514,36 @@ cell. All pairs of engines agree pairwise within
 <td align="right">1,000</td>
 <td align="right">1</td>
 <td align="right">9</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 <tr class="even">
 <td align="right">100,000</td>
 <td align="right">1</td>
 <td align="right">9</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 <tr class="odd">
 <td align="right">1,000</td>
 <td align="right">1</td>
 <td align="right">100</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 <tr class="even">
 <td align="right">10,000</td>
 <td align="right">10</td>
 <td align="right">10</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 </tbody>
 </table>
 <p>Engines: <code>dataprep</code>, <code>reshape2</code>,
-<code>data.table</code>, <code>tidyr</code>, <code>pandas</code>,
-<code>polars</code>, <code>dask</code>, <code>duckdb</code>.</p>
+<code>data.table</code>, <code>tidyr</code>, <code>collapse</code>,
+<code>pandas</code>, <code>polars</code>, <code>dask</code>,
+<code>duckdb</code>.</p>
 </div>
 <div class="section level3">
 <h3 id="dcast-consistency">
@@ -547,38 +562,58 @@ cell. All pairs of engines agree pairwise within
 <td align="right">5,000</td>
 <td align="right">2</td>
 <td align="right">5</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 <tr class="even">
 <td align="right">50,000</td>
 <td align="right">1</td>
 <td align="right">50</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 <tr class="odd">
 <td align="right">50,000</td>
 <td align="right">10</td>
 <td align="right">10</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 <tr class="even">
 <td align="right">1,000,000</td>
 <td align="right">1</td>
 <td align="right">10</td>
-<td align="right">8/8</td>
+<td align="right">9/9</td>
 <td>all consistent</td>
 </tr>
 </tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="dcastagg-consistency">
+<code>dcast(agg)</code> consistency<a class="anchor" aria-label="anchor" href="#dcastagg-consistency"></a>
+</h3>
+<table class="table">
+<thead><tr class="header">
+<th align="right">cells</th>
+<th align="right">aggs</th>
+<th align="right">engines passed</th>
+<th>pairwise</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td align="right">2 shapes</td>
+<td align="right">sum, mean, min, max, count</td>
+<td align="right">9/9</td>
+<td>all consistent</td>
+</tr></tbody>
 </table>
 <p>The consistency scripts are shipped under <code>inst/</code>:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>DATAPREP_RUN_BENCHMARK <span class="op">=</span> <span class="st">"1"</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"benchmark_melt_dcast.R"</span>, package <span class="op">=</span> <span class="st">"dataprep"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">melt_all_engines</span><span class="op">(</span><span class="fl">10000L</span>, n_id <span class="op">=</span> <span class="fl">1L</span>, n_val <span class="op">=</span> <span class="fl">9L</span><span class="op">)</span></span>
-<span><span class="fu">dcast_all_engines</span><span class="op">(</span><span class="fl">1000L</span>, n_id <span class="op">=</span> <span class="fl">2L</span>, n_val <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">dcast_all_engines</span><span class="op">(</span><span class="fl">1000L</span>, n_id <span class="op">=</span> <span class="fl">2L</span>, n_val <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span>
+<span><span class="fu">dcast_agg_all_engines</span><span class="op">(</span><span class="fl">10000L</span>, n_levels <span class="op">=</span> <span class="fl">10L</span>, K <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -620,17 +655,24 @@ tables are in <code><a href="../articles/dataprep-performance.html">vignette("da
 <tbody>
 <tr class="odd">
 <td><code><a href="../reference/melt.html">melt()</a></code></td>
-<td align="right">0.6× (polars @ 1e7 × 19 × 10 × 9)</td>
-<td align="right">11.3×</td>
-<td align="right">67.8×</td>
-<td align="right">1628.9× (dask @ 1e3 × 10001 × 1 × 10000)</td>
+<td align="right">0.3× (polars @ 10M rows, 10 id + 9 val)</td>
+<td align="right">9.6×</td>
+<td align="right">71.0×</td>
+<td align="right">1750.0× (dask @ 1e3 rows, 1 id + 10000 val)</td>
 </tr>
 <tr class="even">
 <td><code><a href="../reference/dcast.html">dcast()</a></code></td>
-<td align="right">1.9× (reshape2 @ 1e3 × 1 × 10)</td>
-<td align="right">46.5×</td>
-<td align="right">90.2×</td>
-<td align="right">463.8× (data.table @ 1e8 × 1 × 100)</td>
+<td align="right">1.8× (collapse @ 10K rows, 1 id + 100 lvl)</td>
+<td align="right">74.5×</td>
+<td align="right">128.9×</td>
+<td align="right">651.5× (duckdb @ 10M rows, 1 id + 100 lvl)</td>
+</tr>
+<tr class="odd">
+<td><code>dcast(agg)</code></td>
+<td align="right">2.3× (polars @ 100M rows, count)</td>
+<td align="right">27.4×</td>
+<td align="right">68.6×</td>
+<td align="right">733.5× (reshape2 @ 10M rows, min)</td>
 </tr>
 </tbody>
 </table>
@@ -656,23 +698,32 @@ tables are in <code><a href="../articles/dataprep-performance.html">vignette("da
 <tbody>
 <tr class="odd">
 <td><code><a href="../reference/melt.html">melt()</a></code></td>
-<td align="right">0.7× (polars @ 1e5 × 19 × 10 × 9)</td>
-<td align="right">5.6×</td>
-<td align="right">46.6×</td>
-<td align="right">893.2× (dask @ 1e3 × 10001 × 1 × 10000)</td>
+<td align="right">0.6× (polars @ 100K rows, 10 id + 9 val)</td>
+<td align="right">3.7×</td>
+<td align="right">31.8×</td>
+<td align="right">435.2× (dask @ 1e3 rows, 10 id + 10000 val)</td>
 </tr>
 <tr class="even">
 <td><code><a href="../reference/dcast.html">dcast()</a></code></td>
-<td align="right">2.6× (polars @ 1e6 × 100 × 10)</td>
-<td align="right">41.4×</td>
-<td align="right">76.6×</td>
-<td align="right">799.8× (duckdb @ 1e8 × 1 × 100)</td>
+<td align="right">0.9× (collapse @ 1K rows, 1 id + 10 lvl)</td>
+<td align="right">42.2×</td>
+<td align="right">91.1×</td>
+<td align="right">1849.5× (duckdb @ 1M rows, 1 id + 10000 lvl)</td>
+</tr>
+<tr class="odd">
+<td><code>dcast(agg)</code></td>
+<td align="right">2.0× (polars @ 1M rows, count)</td>
+<td align="right">17.9×</td>
+<td align="right">61.8×</td>
+<td align="right">872.4× (reshape2 @ 100M rows, min)</td>
 </tr>
 </tbody>
 </table>
 <p>For <code><a href="../reference/melt.html">melt()</a></code>, on the largest cells (1e8 rows, 8 GB of
-input), <code>dataprep</code> is the only engine that completes within
-2.5 s: under 0.3 s on Ubuntu and under 1.0 s on Windows.</p>
+input), <code>dataprep</code> finishes in <strong>0.4 s on
+Ubuntu</strong> and <strong>1.8 s on Windows</strong>; the next-fastest
+engine takes 2.6 s (<code>polars</code>) on Ubuntu and 2.4 s
+(<code>data.table</code>) on Windows.</p>
 </div>
 </div>
 <div class="section level2">
@@ -701,7 +752,7 @@ input), <code>dataprep</code> is the only engine that completes within
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] dataprep_0.1.8</span></span>
+<span><span class="co">#&gt; [1] dataprep_0.1.8.1</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    </span></span>

@@ -98,7 +98,7 @@ are too long for `shorvalu` to interpolate.
 
 ## Overview
 
-The 0.1.8 cleaning pipeline consists of four sequential steps:
+The 0.1.8.1 cleaning pipeline consists of four sequential steps:
 
 1.  **Variable deletion** (`varidele`): drop columns whose missing
     fraction is above a threshold.
@@ -120,17 +120,17 @@ for one-call use. Every step is designed around the same physical
 constraint: a valid substitute for a missing value only exists if there
 is an observed value within `half` minutes on at least one side.
 
-## Why `obsedele` changed in 0.1.8
+## Why `obsedele` changed in 0.1.8.1
 
-Two behaviour changes were made in 0.1.8; both are bug fixes, but they
+Two behaviour changes were made in 0.1.8.1; both are bug fixes, but they
 change row counts on real data.
 
 **Change 1 — each column is scanned independently.** The 0.1.5
 implementation collapsed all selected columns into one long vector
 before computing missing runs, which merged `NA` runs across columns and
-over-deleted boundary rows. The 0.1.8 C++ backend (`obsedele_cpp`) scans
-each column separately: a row is deleted only when *any* selected column
-has a missing run longer than `half` minutes on both sides.
+over-deleted boundary rows. The 0.1.8.1 C++ backend (`obsedele_cpp`)
+scans each column separately: a row is deleted only when *any* selected
+column has a missing run longer than `half` minutes on both sides.
 
 **Change 2 — the boundary is inclusive.** The comparison is
 `dl <= half_seconds && dr <= half_seconds` for retention, so a row whose
@@ -566,7 +566,7 @@ be read from a nearby observation in the same segment.
   Full benchmark tables (median + mean for every cell), the 8-engine
   consistency checks, and the reproducible runner.
 
-- **Upgrading from 0.1.5 to 0.1.8** —
+- **Upgrading from 0.1.5 to 0.1.8.1** —
   [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md).
   Behaviour changes, quantified effect on a real dataset, and a
   migration checklist.
@@ -607,7 +607,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] dataprep_0.1.8
+#> [1] dataprep_0.1.8.1
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    

@@ -64,9 +64,18 @@ dcast(data, id = NULL, formula = NULL,
 
 - fun.aggregate:
 
-  Optional function used to reduce duplicate `(id, variable)` pairs.
-  Called with a single argument (the vector of values for that pair)
-  plus `na.rm = TRUE`. Without it, the last occurrence wins.
+  Optional function used to reduce duplicate `(id, variable)` pairs. The
+  C++ backend recognises [`base::sum`](https://rdrr.io/r/base/sum.html),
+  [`base::mean`](https://rdrr.io/r/base/mean.html),
+  [`base::min`](https://rdrr.io/r/base/Extremes.html),
+  [`base::max`](https://rdrr.io/r/base/Extremes.html),
+  [`base::length`](https://rdrr.io/r/base/length.html),
+  [`stats::median`](https://rdrr.io/r/stats/median.html) (or
+  `base::median`), and functions of the form `function(x) x[1]` /
+  `function(x) x[length(x)]` for first / last, and routes them to a
+  specialised kernel. Any other function falls back to a base-R
+  [`stats::aggregate()`](https://rdrr.io/r/stats/aggregate.html)
+  pre-pass. Without it, the last occurrence wins.
 
 - na.rm:
 
@@ -107,25 +116,48 @@ packed keys replaces the hash table entirely; and when the block path is
 taken and the id column is a permutation of `1..n_blocks`, a
 direct-index shortcut bypasses both.
 
-The output is identical to
-[`reshape2::dcast`](https://rdrr.io/pkg/reshape2/man/cast.html),
-[`data.table::dcast`](https://rdrr.io/pkg/data.table/man/dcast.data.table.html),
-[`tidyr::pivot_wider`](https://tidyr.tidyverse.org/reference/pivot_wider.html),
-`pandas.pivot`, `polars.pivot`, `duckdb PIVOT`, and `dask` on every
-tested shape, within `tol = 1e-12`. See
-[`vignette("dataprep-melt-dcast")`](https://chunshengliang.github.io/dataprep/articles/dataprep-melt-dcast.md)
-for the implementation notes and
-[`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md)
-for the benchmark tables.
+0.1.8.1 adds three implementation shortcuts: a zero-copy
+`dcast_fast_cpp` entry point used when the call shape is canonical; a
+16x16 AVX-512 register transpose for `period == 16`; and a dedicated
+`dcast_aggregate_cpp` kernel for `fun.aggregate` that recognises `sum`,
+`mean`, `min`, `max`, `length`, `median`, `first`, and `last`. Output
+buffers use `MADV_HUGEPAGE` and, on Linux 6.1+, `MADV_POPULATE_WRITE` to
+avoid first-touch page faults; input columns are promoted with
+`MADV_COLLAPSE`.
+
+When `fun.aggregate` is supplied, `dcast()` routes to a fused C++ kernel
+that reads the long input once and writes the aggregated wide output
+directly, without materialising an intermediate long table. The output
+is identical to `reshape2::dcast(..., fun.aggregate = f)`,
+`data.table::dcast(..., fun.aggregate = f)`,
+`collapse::pivot(..., FUN = f)`,
+`tidyr::pivot_wider(..., values_fn = f)`,
+`pandas.pivot_table(..., aggfunc = f)`,
+`polars.pivot(..., aggregate_function = f)`,
+`dask.pivot_table(..., aggfunc = f)`, and
+`duckdb PIVOT ... USING f(value)` within `tol = 1e-10` on every tested
+shape.
+
+**Benchmarks.** `dcast()` is benchmarked against all eight major
+alternatives in the R and Python ecosystems: `reshape2`, `data.table`,
+`tidyr`, `collapse`, `pandas`, `polars`, `dask`, and `duckdb`. Every
+cell is measured with a C++ steady-clock timer. The first call is a
+warmup and is excluded from the reported statistics; an adaptive rule
+picks the number of timed iterations from the warmup time. Mixed-type id
+columns (integer / character alternation for `n_id >= 2`) are the
+default; set `DATAPREP_MIXED_TYPES=FALSE` to force the all-integer
+baseline.
 
 On the canonical long-to-wide shape, `dcast()` is faster than every
-tested alternative. The speed-up relative to `reshape2`, `data.table`,
-`tidyr`, `pandas`, `polars`, `dask`, and `duckdb` spans `1.9x` (against
-`reshape2` on 1e3 rows and 10 levels, Ubuntu 25.10) to `799.8x` (against
-`duckdb` on 1e8 rows and 100 levels, Windows 11 Pro for Workstations).
-The median across all tested cells and all competitors is `46.5x` on
-Ubuntu 25.10 and `41.4x` on Windows 11 Pro for Workstations; the mean is
-`90.2x` and `76.6x`, respectively.
+tested alternative in most cells. The median speed-up relative to each
+competitor spans `1.82x` to `651.52x` on Ubuntu 25.10
+(`median = 74.46x`) and `0.92x` to `1849.52x` on Windows 11 Pro for
+Workstations (`median = 42.22x`). The single sub-1.0x cell is
+`collapse @ n_long=1,000, 1 id + 10 lvl` on Windows (`0.92x`).
+
+For aggregated `dcast()`, the median speed-up spans `2.32x` to `733.49x`
+on Ubuntu 25.10 (`median = 27.41x`) and `1.99x` to `872.38x` on Windows
+11 Pro for Workstations (`median = 17.93x`).
 
 ## Value
 

@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -80,9 +80,10 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><code>dataprep</code> 0.1.8 ships two reshaping backends,
+<p><code>dataprep</code> 0.1.8.1 ships two reshaping backends,
 <code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code>, benchmarked here against
-all seven major alternatives in the R and Python ecosystems:</p>
+all <strong>eight</strong> major alternatives in the R and Python
+ecosystems:</p>
 <ul>
 <li>
 <strong>R</strong>: <code>reshape2</code>, <code>data.table</code>,
@@ -210,12 +211,12 @@ large machine”. On a typical 8–16-core workstation the same comparisons
 are within 10–100×.</p>
 </div>
 <div class="section level2">
-<h2 id="cleaning-pipeline-dataprep-0-1-5-0-1-8">Cleaning pipeline (dataprep 0.1.5 → 0.1.8)<a class="anchor" aria-label="anchor" href="#cleaning-pipeline-dataprep-0-1-5-0-1-8"></a>
+<h2 id="cleaning-pipeline-dataprep-0-1-5-0-1-8-1">Cleaning pipeline (dataprep 0.1.5 → 0.1.8.1)<a class="anchor" aria-label="anchor" href="#cleaning-pipeline-dataprep-0-1-5-0-1-8-1"></a>
 </h2>
-<p>The 0.1.8 release rewrites every heavy cleaning routine in C++. The
+<p>The 0.1.8.1 release rewrites every heavy cleaning routine in C++. The
 table below compares against 0.1.5 on three dataset sizes from the same
 source (SMEAR I Varrio forest). All numbers are speed-up ratios (0.1.5
-time / 0.1.8 time) on Ubuntu 25.10.</p>
+time / 0.1.8.1 time) on Ubuntu 25.10.</p>
 <table class="table">
 <thead><tr class="header">
 <th>Function</th>
@@ -269,12 +270,13 @@ has little room for improvement.</p>
 implementation could crash when <code>cores &gt; 16</code>, because its
 <code><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">parallel::makeCluster()</a></code> path gave each worker a full copy
 of the data. The benchmark above used <code>cores = 16</code> for both
-versions to keep the comparison fair. 0.1.8 loads the package on each
+versions to keep the comparison fair. 0.1.8.1 loads the package on each
 worker, exports the input data once per worker, and runs each
 <code>(interval, times)</code> case as a separate task, so
 <code>cores = 64</code> is safe. The practical speed-up on a many-core
 host is larger. Also note that the optimal parameter values returned by
-<code><a href="../reference/optisolu.html">optisolu()</a></code> may differ slightly between 0.1.5 and 0.1.8.</p>
+<code><a href="../reference/optisolu.html">optisolu()</a></code> may differ slightly between 0.1.5 and
+0.1.8.1.</p>
 </blockquote>
 </div>
 <div class="section level2">
@@ -282,22 +284,24 @@ host is larger. Also note that the optimal parameter values returned by
 <code>melt()</code> — wide to long<a class="anchor" aria-label="anchor" href="#melt-wide-to-long"></a>
 </h2>
 <p>Input shapes are described as <code>rows × (n_id + n_val)</code>. All
-numbers in the cells are means in milliseconds; the value in parentheses
-is <code>dataprep</code>’s speed-up relative to that competitor.</p>
+numbers in the cells are <strong>medians</strong> in milliseconds; the
+value in parentheses is <code>dataprep</code>’s speed-up relative to
+that competitor.</p>
 <div class="section level3">
 <h3 id="vary-rows-1-id-9-value-columns">Vary rows, 1 id + 9 value columns<a class="anchor" aria-label="anchor" href="#vary-rows-1-id-9-value-columns"></a>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">rows</th>
@@ -305,6 +309,7 @@ is <code>dataprep</code>’s speed-up relative to that competitor.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -313,89 +318,94 @@ is <code>dataprep</code>’s speed-up relative to that competitor.</p>
 <tbody>
 <tr class="odd">
 <td align="right">1e3</td>
-<td align="right">0.173</td>
-<td align="right">0.378 (2.2×)</td>
-<td align="right">0.257 (1.5×)</td>
-<td align="right">2.788 (16.1×)</td>
-<td align="right">2.128 (12.3×)</td>
-<td align="right">0.645 (3.7×)</td>
-<td align="right">15.786 (91.3×)</td>
-<td align="right">4.489 (26.0×)</td>
+<td align="right">0.152</td>
+<td align="right">0.410 (2.7×)</td>
+<td align="right">0.260 (1.7×)</td>
+<td align="right">2.805 (18.4×)</td>
+<td align="right">0.175 (1.1×)</td>
+<td align="right">2.195 (14.4×)</td>
+<td align="right">0.594 (3.9×)</td>
+<td align="right">15.1 (99.0×)</td>
+<td align="right">5.435 (35.7×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e4</td>
-<td align="right">0.241</td>
-<td align="right">0.462 (1.9×)</td>
-<td align="right">0.334 (1.4×)</td>
-<td align="right">3.261 (13.5×)</td>
-<td align="right">2.499 (10.4×)</td>
-<td align="right">0.829 (3.4×)</td>
-<td align="right">15.818 (65.6×)</td>
-<td align="right">10.850 (45.0×)</td>
+<td align="right">0.243</td>
+<td align="right">0.453 (1.9×)</td>
+<td align="right">0.346 (1.4×)</td>
+<td align="right">3.305 (13.6×)</td>
+<td align="right">0.248 (1.0×)</td>
+<td align="right">2.644 (10.9×)</td>
+<td align="right">0.689 (2.8×)</td>
+<td align="right">15.1 (62.2×)</td>
+<td align="right">12.5 (51.3×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e5</td>
-<td align="right">0.679</td>
-<td align="right">1.204 (1.8×)</td>
-<td align="right">1.034 (1.5×)</td>
-<td align="right">8.167 (12.0×)</td>
-<td align="right">6.659 (9.8×)</td>
-<td align="right">2.029 (3.0×)</td>
-<td align="right">17.638 (26.0×)</td>
-<td align="right">68.473 (100.8×)</td>
+<td align="right">0.380</td>
+<td align="right">1.172 (3.1×)</td>
+<td align="right">1.038 (2.7×)</td>
+<td align="right">8.204 (21.6×)</td>
+<td align="right">0.812 (2.1×)</td>
+<td align="right">6.824 (17.9×)</td>
+<td align="right">1.558 (4.1×)</td>
+<td align="right">17.4 (45.9×)</td>
+<td align="right">89.3 (234.8×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e6</td>
-<td align="right">3.474</td>
-<td align="right">18.797 (5.4×)</td>
-<td align="right">9.646 (2.8×)</td>
-<td align="right">80.014 (23.0×)</td>
-<td align="right">61.686 (17.8×)</td>
-<td align="right">14.671 (4.2×)</td>
-<td align="right">47.584 (13.7×)</td>
-<td align="right">648.895 (186.8×)</td>
+<td align="right">1.441</td>
+<td align="right">8.145 (5.7×)</td>
+<td align="right">7.937 (5.5×)</td>
+<td align="right">65.8 (45.7×)</td>
+<td align="right">6.542 (4.5×)</td>
+<td align="right">60.7 (42.2×)</td>
+<td align="right">10.6 (7.4×)</td>
+<td align="right">46.1 (32.0×)</td>
+<td align="right">758.1 (526.2×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e7</td>
-<td align="right">33.412</td>
-<td align="right">364.564 (10.9×)</td>
-<td align="right">365.065 (10.9×)</td>
-<td align="right">1083.987 (32.4×)</td>
-<td align="right">710.806 (21.3×)</td>
-<td align="right">139.959 (4.2×)</td>
-<td align="right">482.693 (14.4×)</td>
-<td align="right">6389.564 (191.2×)</td>
+<td align="right">38.0</td>
+<td align="right">368.8 (9.7×)</td>
+<td align="right">368.8 (9.7×)</td>
+<td align="right">1094 (28.7×)</td>
+<td align="right">317.2 (8.3×)</td>
+<td align="right">718.5 (18.9×)</td>
+<td align="right">93.0 (2.4×)</td>
+<td align="right">507.2 (13.3×)</td>
+<td align="right">7418 (195.0×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e8</td>
-<td align="right">276.295</td>
-<td align="right">3579.061 (13.0×)</td>
-<td align="right">3571.833 (12.9×)</td>
-<td align="right">12126.897 (43.9×)</td>
-<td align="right">7463.089 (27.0×)</td>
-<td align="right">3121.344 (11.3×)</td>
-<td align="right">4756.547 (17.2×)</td>
-<td align="right">71947.305 (260.4×)</td>
+<td align="right">398.6</td>
+<td align="right">3592 (9.0×)</td>
+<td align="right">3584 (9.0×)</td>
+<td align="right">11788 (29.6×)</td>
+<td align="right">3632 (9.1×)</td>
+<td align="right">7388 (18.5×)</td>
+<td align="right">2597 (6.5×)</td>
+<td align="right">4550 (11.4×)</td>
+<td align="right">87982 (220.7×)</td>
 </tr>
 </tbody>
 </table>
-<p>The sub-1.0× cells are <code>polars</code> at 1e7 × 10 id on Ubuntu
-(0.6×) and <code>polars</code> at 1e5 × 10 id on Windows (0.7×).</p>
 </div>
 <div class="section level3">
 <h3 id="vary-rows-10-id-5-int-5-chr">Vary rows, 10 id (5 int + 5 chr)<a class="anchor" aria-label="anchor" href="#vary-rows-10-id-5-int-5-chr"></a>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">rows</th>
@@ -403,6 +413,7 @@ is <code>dataprep</code>’s speed-up relative to that competitor.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -411,58 +422,63 @@ is <code>dataprep</code>’s speed-up relative to that competitor.</p>
 <tbody>
 <tr class="odd">
 <td align="right">1e3</td>
-<td align="right">0.242</td>
-<td align="right">0.574 (2.4×)</td>
-<td align="right">0.408 (1.7×)</td>
-<td align="right">3.013 (12.5×)</td>
-<td align="right">5.565 (23.0×)</td>
-<td align="right">0.908 (3.8×)</td>
-<td align="right">51.309 (212.2×)</td>
-<td align="right">10.359 (42.8×)</td>
+<td align="right">0.207</td>
+<td align="right">0.576 (2.8×)</td>
+<td align="right">0.432 (2.1×)</td>
+<td align="right">3.164 (15.3×)</td>
+<td align="right">0.235 (1.1×)</td>
+<td align="right">5.831 (28.2×)</td>
+<td align="right">1.156 (5.6×)</td>
+<td align="right">53.9 (260.7×)</td>
+<td align="right">12.0 (57.9×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e4</td>
-<td align="right">0.472</td>
-<td align="right">2.017 (4.3×)</td>
-<td align="right">1.766 (3.7×)</td>
-<td align="right">4.811 (10.2×)</td>
-<td align="right">6.123 (13.0×)</td>
-<td align="right">1.953 (4.1×)</td>
-<td align="right">51.327 (108.7×)</td>
-<td align="right">49.807 (105.4×)</td>
+<td align="right">0.505</td>
+<td align="right">2.018 (4.0×)</td>
+<td align="right">1.775 (3.5×)</td>
+<td align="right">4.865 (9.6×)</td>
+<td align="right">0.580 (1.1×)</td>
+<td align="right">6.384 (12.7×)</td>
+<td align="right">1.770 (3.5×)</td>
+<td align="right">54.8 (108.6×)</td>
+<td align="right">67.1 (133.0×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e5</td>
-<td align="right">3.680</td>
-<td align="right">16.603 (4.5×)</td>
-<td align="right">14.949 (4.1×)</td>
-<td align="right">22.929 (6.2×)</td>
-<td align="right">13.307 (3.6×)</td>
-<td align="right">4.299 (1.2×)</td>
-<td align="right">56.135 (15.3×)</td>
-<td align="right">472.664 (128.4×)</td>
+<td align="right">2.191</td>
+<td align="right">16.4 (7.5×)</td>
+<td align="right">15.0 (6.8×)</td>
+<td align="right">22.9 (10.5×)</td>
+<td align="right">3.979 (1.8×)</td>
+<td align="right">13.6 (6.2×)</td>
+<td align="right">4.052 (1.8×)</td>
+<td align="right">58.6 (26.7×)</td>
+<td align="right">573.6 (261.8×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e6</td>
-<td align="right">20.354</td>
-<td align="right">208.901 (10.3×)</td>
-<td align="right">157.119 (7.7×)</td>
-<td align="right">221.574 (10.9×)</td>
-<td align="right">90.483 (4.4×)</td>
-<td align="right">39.946 (2.0×)</td>
-<td align="right">111.196 (5.5×)</td>
-<td align="right">4701.936 (231.0×)</td>
+<td align="right">17.7</td>
+<td align="right">185.5 (10.5×)</td>
+<td align="right">146.9 (8.3×)</td>
+<td align="right">210.2 (11.9×)</td>
+<td align="right">39.2 (2.2×)</td>
+<td align="right">90.1 (5.1×)</td>
+<td align="right">25.4 (1.4×)</td>
+<td align="right">112.6 (6.4×)</td>
+<td align="right">5663 (320.5×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e7</td>
-<td align="right">827.346</td>
-<td align="right">3125.168 (3.8×)</td>
-<td align="right">2651.650 (3.2×)</td>
-<td align="right">3724.859 (4.5×)</td>
-<td align="right">1340.982 (1.6×)</td>
-<td align="right">518.916 (0.6×)</td>
-<td align="right">963.953 (1.2×)</td>
-<td align="right">47964.021 (58.0×)</td>
+<td align="right">777.8</td>
+<td align="right">2901 (3.7×)</td>
+<td align="right">2694 (3.5×)</td>
+<td align="right">3322 (4.3×)</td>
+<td align="right">1667 (2.1×)</td>
+<td align="right">1267 (1.6×)</td>
+<td align="right">268.7 (0.3×)</td>
+<td align="right">994.4 (1.3×)</td>
+<td align="right">57499 (73.9×)</td>
 </tr>
 </tbody>
 </table>
@@ -472,15 +488,16 @@ is <code>dataprep</code>’s speed-up relative to that competitor.</p>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_val</th>
@@ -488,6 +505,7 @@ is <code>dataprep</code>’s speed-up relative to that competitor.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -496,68 +514,70 @@ is <code>dataprep</code>’s speed-up relative to that competitor.</p>
 <tbody>
 <tr class="odd">
 <td align="right">10</td>
-<td align="right">0.174</td>
-<td align="right">0.381 (2.2×)</td>
-<td align="right">0.256 (1.5×)</td>
-<td align="right">2.803 (16.1×)</td>
-<td align="right">2.123 (12.2×)</td>
-<td align="right">0.587 (3.4×)</td>
-<td align="right">15.358 (88.2×)</td>
-<td align="right">4.829 (27.7×)</td>
+<td align="right">0.165</td>
+<td align="right">0.417 (2.5×)</td>
+<td align="right">0.281 (1.7×)</td>
+<td align="right">2.860 (17.3×)</td>
+<td align="right">0.180 (1.1×)</td>
+<td align="right">2.276 (13.8×)</td>
+<td align="right">0.613 (3.7×)</td>
+<td align="right">16.1 (97.2×)</td>
+<td align="right">5.476 (33.1×)</td>
 </tr>
 <tr class="even">
 <td align="right">100</td>
-<td align="right">0.261</td>
-<td align="right">1.110 (4.3×)</td>
-<td align="right">0.371 (1.4×)</td>
-<td align="right">3.699 (14.2×)</td>
-<td align="right">6.431 (24.7×)</td>
-<td align="right">0.750 (2.9×)</td>
-<td align="right">44.906 (172.1×)</td>
-<td align="right">21.673 (83.1×)</td>
+<td align="right">0.267</td>
+<td align="right">1.108 (4.2×)</td>
+<td align="right">0.382 (1.4×)</td>
+<td align="right">3.681 (13.8×)</td>
+<td align="right">0.284 (1.1×)</td>
+<td align="right">6.669 (25.0×)</td>
+<td align="right">0.742 (2.8×)</td>
+<td align="right">47.5 (178.0×)</td>
+<td align="right">22.5 (84.3×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1000</td>
-<td align="right">0.916</td>
-<td align="right">8.127 (8.9×)</td>
-<td align="right">1.291 (1.4×)</td>
-<td align="right">12.233 (13.4×)</td>
-<td align="right">48.227 (52.6×)</td>
-<td align="right">2.704 (3.0×)</td>
-<td align="right">313.498 (342.2×)</td>
-<td align="right">178.161 (194.5×)</td>
+<td align="right">0.647</td>
+<td align="right">7.972 (12.3×)</td>
+<td align="right">1.250 (1.9×)</td>
+<td align="right">11.7 (18.1×)</td>
+<td align="right">1.148 (1.8×)</td>
+<td align="right">48.8 (75.5×)</td>
+<td align="right">2.069 (3.2×)</td>
+<td align="right">366.4 (566.3×)</td>
+<td align="right">196.3 (303.3×)</td>
 </tr>
 <tr class="even">
 <td align="right">10000</td>
-<td align="right">2.295</td>
-<td align="right">93.092 (40.6×)</td>
-<td align="right">12.415 (5.4×)</td>
-<td align="right">104.924 (45.7×)</td>
-<td align="right">495.659 (216.0×)</td>
-<td align="right">19.408 (8.5×)</td>
-<td align="right">3737.866 (1628.9×)</td>
-<td align="right">1919.247 (836.4×)</td>
+<td align="right">2.176</td>
+<td align="right">78.3 (36.0×)</td>
+<td align="right">9.710 (4.5×)</td>
+<td align="right">93.5 (43.0×)</td>
+<td align="right">9.285 (4.3×)</td>
+<td align="right">501.2 (230.3×)</td>
+<td align="right">16.3 (7.5×)</td>
+<td align="right">3809 (1750.0×)</td>
+<td align="right">2048 (940.9×)</td>
 </tr>
 </tbody>
 </table>
-<p>The 1e3 × 10000 cell is the widest gap in the entire benchmark suite:
-<code>dataprep</code> returns in 2.30 ms, <code>dask</code> in 3.74 s,
-and <code>duckdb</code> in 1.92 s.</p>
 </div>
 <div class="section level3">
 <h3 id="vary-value-columns-1e3-rows-10-id">Vary value columns, 1e3 rows, 10 id<a class="anchor" aria-label="anchor" href="#vary-value-columns-1e3-rows-10-id"></a>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_val</th>
@@ -565,6 +585,7 @@ and <code>duckdb</code> in 1.92 s.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -573,47 +594,51 @@ and <code>duckdb</code> in 1.92 s.</p>
 <tbody>
 <tr class="odd">
 <td align="right">10</td>
-<td align="right">0.247</td>
-<td align="right">0.576 (2.3×)</td>
-<td align="right">0.426 (1.7×)</td>
-<td align="right">3.022 (12.2×)</td>
-<td align="right">5.662 (22.9×)</td>
-<td align="right">1.010 (4.1×)</td>
-<td align="right">48.905 (198.0×)</td>
-<td align="right">13.088 (53.0×)</td>
+<td align="right">0.206</td>
+<td align="right">0.586 (2.9×)</td>
+<td align="right">0.434 (2.1×)</td>
+<td align="right">3.024 (14.7×)</td>
+<td align="right">0.232 (1.1×)</td>
+<td align="right">5.859 (28.5×)</td>
+<td align="right">0.922 (4.5×)</td>
+<td align="right">49.6 (241.3×)</td>
+<td align="right">13.9 (67.7×)</td>
 </tr>
 <tr class="even">
 <td align="right">100</td>
-<td align="right">0.533</td>
-<td align="right">2.972 (5.6×)</td>
-<td align="right">1.985 (3.7×)</td>
-<td align="right">5.397 (10.1×)</td>
-<td align="right">20.806 (39.0×)</td>
-<td align="right">2.094 (3.9×)</td>
-<td align="right">188.372 (353.4×)</td>
-<td align="right">60.608 (113.7×)</td>
+<td align="right">0.526</td>
+<td align="right">2.830 (5.4×)</td>
+<td align="right">1.961 (3.7×)</td>
+<td align="right">5.417 (10.3×)</td>
+<td align="right">0.717 (1.4×)</td>
+<td align="right">21.0 (39.9×)</td>
+<td align="right">2.172 (4.1×)</td>
+<td align="right">150.6 (286.6×)</td>
+<td align="right">72.4 (137.7×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1000</td>
-<td align="right">4.177</td>
-<td align="right">25.214 (6.0×)</td>
-<td align="right">16.681 (4.0×)</td>
-<td align="right">28.636 (6.9×)</td>
-<td align="right">166.521 (39.9×)</td>
-<td align="right">6.611 (1.6×)</td>
-<td align="right">1784.542 (427.2×)</td>
-<td align="right">570.076 (136.5×)</td>
+<td align="right">2.597</td>
+<td align="right">25.0 (9.6×)</td>
+<td align="right">16.7 (6.4×)</td>
+<td align="right">28.5 (11.0×)</td>
+<td align="right">5.299 (2.0×)</td>
+<td align="right">169.6 (65.3×)</td>
+<td align="right">5.799 (2.2×)</td>
+<td align="right">1375 (529.7×)</td>
+<td align="right">653.2 (251.6×)</td>
 </tr>
 <tr class="even">
 <td align="right">10000</td>
-<td align="right">25.009</td>
-<td align="right">308.602 (12.3×)</td>
-<td align="right">182.019 (7.3×)</td>
-<td align="right">282.574 (11.3×)</td>
-<td align="right">1783.493 (71.3×)</td>
-<td align="right">71.605 (2.9×)</td>
-<td align="right">23777.051 (950.7×)</td>
-<td align="right">5815.567 (232.5×)</td>
+<td align="right">22.6</td>
+<td align="right">279.9 (12.4×)</td>
+<td align="right">170.1 (7.5×)</td>
+<td align="right">256.9 (11.4×)</td>
+<td align="right">49.4 (2.2×)</td>
+<td align="right">1808 (80.0×)</td>
+<td align="right">64.2 (2.8×)</td>
+<td align="right">18730 (828.1×)</td>
+<td align="right">6573 (290.6×)</td>
 </tr>
 </tbody>
 </table>
@@ -629,15 +654,16 @@ and <code>duckdb</code> in 1.92 s.</p>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">rows</th>
@@ -645,6 +671,7 @@ and <code>duckdb</code> in 1.92 s.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -653,69 +680,75 @@ and <code>duckdb</code> in 1.92 s.</p>
 <tbody>
 <tr class="odd">
 <td align="right">1e3</td>
-<td align="right">0.286</td>
-<td align="right">0.647 (2.3×)</td>
-<td align="right">0.468 (1.6×)</td>
-<td align="right">4.048 (14.2×)</td>
-<td align="right">3.365 (11.8×)</td>
-<td align="right">0.528 (1.8×)</td>
-<td align="right">28.149 (98.4×)</td>
-<td align="right">8.201 (28.7×)</td>
+<td align="right">0.300</td>
+<td align="right">0.693 (2.3×)</td>
+<td align="right">0.516 (1.7×)</td>
+<td align="right">4.015 (13.4×)</td>
+<td align="right">0.313 (1.0×)</td>
+<td align="right">3.570 (11.9×)</td>
+<td align="right">0.597 (2.0×)</td>
+<td align="right">29.3 (97.7×)</td>
+<td align="right">7.877 (26.3×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e4</td>
-<td align="right">0.529</td>
-<td align="right">0.963 (1.8×)</td>
-<td align="right">0.738 (1.4×)</td>
-<td align="right">5.106 (9.7×)</td>
-<td align="right">5.550 (10.5×)</td>
-<td align="right">0.849 (1.6×)</td>
-<td align="right">28.967 (54.8×)</td>
-<td align="right">23.331 (44.1×)</td>
+<td align="right">0.580</td>
+<td align="right">0.926 (1.6×)</td>
+<td align="right">0.797 (1.4×)</td>
+<td align="right">5.026 (8.7×)</td>
+<td align="right">0.592 (1.0×)</td>
+<td align="right">4.962 (8.6×)</td>
+<td align="right">0.862 (1.5×)</td>
+<td align="right">31.7 (54.6×)</td>
+<td align="right">23.8 (41.1×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e5</td>
-<td align="right">2.690</td>
-<td align="right">3.366 (1.3×)</td>
-<td align="right">3.368 (1.3×)</td>
-<td align="right">16.860 (6.3×)</td>
-<td align="right">22.516 (8.4×)</td>
-<td align="right">3.344 (1.2×)</td>
-<td align="right">44.894 (16.7×)</td>
-<td align="right">180.028 (66.9×)</td>
+<td align="right">3.493</td>
+<td align="right">3.554 (1.0×)</td>
+<td align="right">3.129 (0.9×)</td>
+<td align="right">16.4 (4.7×)</td>
+<td align="right">2.945 (0.8×)</td>
+<td align="right">25.9 (7.4×)</td>
+<td align="right">2.923 (0.8×)</td>
+<td align="right">46.6 (13.3×)</td>
+<td align="right">179.2 (51.3×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e6</td>
-<td align="right">10.515</td>
-<td align="right">26.197 (2.5×)</td>
-<td align="right">24.209 (2.3×)</td>
-<td align="right">160.785 (15.3×)</td>
-<td align="right">214.683 (20.4×)</td>
-<td align="right">21.721 (2.1×)</td>
-<td align="right">181.218 (17.2×)</td>
-<td align="right">1537.791 (146.2×)</td>
+<td align="right">18.0</td>
+<td align="right">23.9 (1.3×)</td>
+<td align="right">23.6 (1.3×)</td>
+<td align="right">157.4 (8.7×)</td>
+<td align="right">23.2 (1.3×)</td>
+<td align="right">182.8 (10.2×)</td>
+<td align="right">17.8 (1.0×)</td>
+<td align="right">185.9 (10.3×)</td>
+<td align="right">1546 (85.9×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e7</td>
-<td align="right">77.008</td>
-<td align="right">245.861 (3.2×)</td>
-<td align="right">247.910 (3.2×)</td>
-<td align="right">1561.960 (20.3×)</td>
-<td align="right">1925.931 (25.0×)</td>
-<td align="right">275.120 (3.6×)</td>
-<td align="right">1499.583 (19.5×)</td>
-<td align="right">14517.337 (188.5×)</td>
+<td align="right">152.7</td>
+<td align="right">236.9 (1.6×)</td>
+<td align="right">238.0 (1.6×)</td>
+<td align="right">1501 (9.8×)</td>
+<td align="right">235.1 (1.5×)</td>
+<td align="right">1885 (12.3×)</td>
+<td align="right">162.5 (1.1×)</td>
+<td align="right">1515 (9.9×)</td>
+<td align="right">14435 (94.5×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e8</td>
-<td align="right">935.148</td>
-<td align="right">2636.186 (2.8×)</td>
-<td align="right">2534.491 (2.7×)</td>
-<td align="right">16599.644 (17.8×)</td>
-<td align="right">19578.283 (20.9×)</td>
-<td align="right">4263.390 (4.6×)</td>
-<td align="right">14714.823 (15.7×)</td>
-<td align="right">148009.529 (158.3×)</td>
+<td align="right">1773</td>
+<td align="right">3295 (1.9×)</td>
+<td align="right">2419 (1.4×)</td>
+<td align="right">20809 (11.7×)</td>
+<td align="right">2516 (1.4×)</td>
+<td align="right">22699 (12.8×)</td>
+<td align="right">5510 (3.1×)</td>
+<td align="right">15429 (8.7×)</td>
+<td align="right">161372 (91.0×)</td>
 </tr>
 </tbody>
 </table>
@@ -725,15 +758,16 @@ and <code>duckdb</code> in 1.92 s.</p>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">rows</th>
@@ -741,6 +775,7 @@ and <code>duckdb</code> in 1.92 s.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -749,58 +784,63 @@ and <code>duckdb</code> in 1.92 s.</p>
 <tbody>
 <tr class="odd">
 <td align="right">1e3</td>
-<td align="right">0.570</td>
-<td align="right">1.206 (2.1×)</td>
-<td align="right">0.947 (1.7×)</td>
-<td align="right">4.695 (8.2×)</td>
-<td align="right">11.374 (20.0×)</td>
-<td align="right">1.266 (2.2×)</td>
-<td align="right">98.325 (172.6×)</td>
-<td align="right">21.374 (37.5×)</td>
+<td align="right">0.434</td>
+<td align="right">1.096 (2.5×)</td>
+<td align="right">0.861 (2.0×)</td>
+<td align="right">4.412 (10.2×)</td>
+<td align="right">0.468 (1.1×)</td>
+<td align="right">11.2 (25.7×)</td>
+<td align="right">1.220 (2.8×)</td>
+<td align="right">98.3 (226.4×)</td>
+<td align="right">19.8 (45.6×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e4</td>
-<td align="right">1.706</td>
-<td align="right">4.985 (2.9×)</td>
-<td align="right">3.630 (2.1×)</td>
-<td align="right">8.509 (5.0×)</td>
-<td align="right">14.912 (8.7×)</td>
-<td align="right">2.074 (1.2×)</td>
-<td align="right">103.953 (60.9×)</td>
-<td align="right">114.451 (67.1×)</td>
+<td align="right">1.410</td>
+<td align="right">5.255 (3.7×)</td>
+<td align="right">3.580 (2.5×)</td>
+<td align="right">8.191 (5.8×)</td>
+<td align="right">1.601 (1.1×)</td>
+<td align="right">14.3 (10.1×)</td>
+<td align="right">1.853 (1.3×)</td>
+<td align="right">104.0 (73.7×)</td>
+<td align="right">121.6 (86.3×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e5</td>
-<td align="right">13.969</td>
-<td align="right">38.706 (2.8×)</td>
-<td align="right">27.974 (2.0×)</td>
-<td align="right">45.778 (3.3×)</td>
-<td align="right">44.324 (3.2×)</td>
-<td align="right">9.372 (0.7×)</td>
-<td align="right">134.847 (9.7×)</td>
-<td align="right">1007.726 (72.1×)</td>
+<td align="right">12.9</td>
+<td align="right">43.8 (3.4×)</td>
+<td align="right">29.1 (2.3×)</td>
+<td align="right">44.9 (3.5×)</td>
+<td align="right">12.9 (1.0×)</td>
+<td align="right">43.7 (3.4×)</td>
+<td align="right">7.974 (0.6×)</td>
+<td align="right">132.4 (10.3×)</td>
+<td align="right">993.8 (77.2×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e6</td>
-<td align="right">92.041</td>
-<td align="right">392.050 (4.3×)</td>
-<td align="right">272.765 (3.0×)</td>
-<td align="right">444.403 (4.8×)</td>
-<td align="right">323.335 (3.5×)</td>
-<td align="right">92.341 (1.0×)</td>
-<td align="right">371.440 (4.0×)</td>
-<td align="right">9545.364 (103.7×)</td>
+<td align="right">100.0</td>
+<td align="right">371.9 (3.7×)</td>
+<td align="right">269.3 (2.7×)</td>
+<td align="right">434.9 (4.4×)</td>
+<td align="right">129.4 (1.3×)</td>
+<td align="right">340.0 (3.4×)</td>
+<td align="right">72.1 (0.7×)</td>
+<td align="right">367.9 (3.7×)</td>
+<td align="right">9795 (98.0×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e7</td>
-<td align="right">857.942</td>
-<td align="right">3974.411 (4.6×)</td>
-<td align="right">2867.507 (3.3×)</td>
-<td align="right">4703.791 (5.5×)</td>
-<td align="right">3213.337 (3.7×)</td>
-<td align="right">965.515 (1.1×)</td>
-<td align="right">2710.996 (3.2×)</td>
-<td align="right">96232.400 (112.2×)</td>
+<td align="right">1009</td>
+<td align="right">3675 (3.6×)</td>
+<td align="right">2683 (2.7×)</td>
+<td align="right">4217 (4.2×)</td>
+<td align="right">1413 (1.4×)</td>
+<td align="right">3158 (3.1×)</td>
+<td align="right">1007 (1.0×)</td>
+<td align="right">2741 (2.7×)</td>
+<td align="right">97022 (96.1×)</td>
 </tr>
 </tbody>
 </table>
@@ -810,15 +850,16 @@ and <code>duckdb</code> in 1.92 s.</p>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_val</th>
@@ -826,6 +867,7 @@ and <code>duckdb</code> in 1.92 s.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -834,47 +876,51 @@ and <code>duckdb</code> in 1.92 s.</p>
 <tbody>
 <tr class="odd">
 <td align="right">10</td>
-<td align="right">0.440</td>
-<td align="right">0.773 (1.8×)</td>
-<td align="right">0.608 (1.4×)</td>
-<td align="right">4.256 (9.7×)</td>
-<td align="right">3.618 (8.2×)</td>
-<td align="right">0.642 (1.5×)</td>
-<td align="right">28.358 (64.5×)</td>
-<td align="right">31.298 (71.2×)</td>
+<td align="right">0.359</td>
+<td align="right">0.746 (2.1×)</td>
+<td align="right">0.576 (1.6×)</td>
+<td align="right">4.043 (11.3×)</td>
+<td align="right">0.375 (1.0×)</td>
+<td align="right">3.484 (9.7×)</td>
+<td align="right">0.552 (1.5×)</td>
+<td align="right">27.5 (76.5×)</td>
+<td align="right">10.3 (28.6×)</td>
 </tr>
 <tr class="even">
 <td align="right">100</td>
-<td align="right">0.939</td>
-<td align="right">2.505 (2.7×)</td>
-<td align="right">1.241 (1.3×)</td>
-<td align="right">6.455 (6.9×)</td>
-<td align="right">16.555 (17.6×)</td>
-<td align="right">228.139 (242.9×)</td>
-<td align="right">112.824 (120.1×)</td>
-<td align="right">47.901 (51.0×)</td>
+<td align="right">0.760</td>
+<td align="right">2.294 (3.0×)</td>
+<td align="right">1.054 (1.4×)</td>
+<td align="right">5.844 (7.7×)</td>
+<td align="right">0.825 (1.1×)</td>
+<td align="right">16.1 (21.2×)</td>
+<td align="right">0.910 (1.2×)</td>
+<td align="right">111.1 (146.1×)</td>
+<td align="right">52.5 (69.0×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1000</td>
-<td align="right">3.843</td>
-<td align="right">16.235 (4.2×)</td>
-<td align="right">3.787 (1.0×)</td>
-<td align="right">23.592 (6.1×)</td>
-<td align="right">142.100 (37.0×)</td>
-<td align="right">4.550 (1.2×)</td>
-<td align="right">964.746 (251.0×)</td>
-<td align="right">452.106 (117.6×)</td>
+<td align="right">4.057</td>
+<td align="right">15.9 (3.9×)</td>
+<td align="right">3.911 (1.0×)</td>
+<td align="right">23.3 (5.7×)</td>
+<td align="right">3.477 (0.9×)</td>
+<td align="right">140.4 (34.6×)</td>
+<td align="right">3.613 (0.9×)</td>
+<td align="right">960.5 (236.8×)</td>
+<td align="right">435.0 (107.2×)</td>
 </tr>
 <tr class="even">
 <td align="right">10000</td>
-<td align="right">11.569</td>
-<td align="right">161.647 (14.0×)</td>
-<td align="right">34.383 (3.0×)</td>
-<td align="right">203.580 (17.6×)</td>
-<td align="right">1410.476 (121.9×)</td>
-<td align="right">36.412 (3.1×)</td>
-<td align="right">10333.080 (893.2×)</td>
-<td align="right">5310.694 (459.0×)</td>
+<td align="right">31.7</td>
+<td align="right">168.6 (5.3×)</td>
+<td align="right">32.7 (1.0×)</td>
+<td align="right">201.7 (6.4×)</td>
+<td align="right">34.7 (1.1×)</td>
+<td align="right">1412 (44.6×)</td>
+<td align="right">30.0 (0.9×)</td>
+<td align="right">10253 (323.6×)</td>
+<td align="right">5112 (161.4×)</td>
 </tr>
 </tbody>
 </table>
@@ -884,15 +930,16 @@ and <code>duckdb</code> in 1.92 s.</p>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_val</th>
@@ -900,6 +947,7 @@ and <code>duckdb</code> in 1.92 s.</p>
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -908,53 +956,54 @@ and <code>duckdb</code> in 1.92 s.</p>
 <tbody>
 <tr class="odd">
 <td align="right">10</td>
-<td align="right">0.551</td>
-<td align="right">1.255 (2.3×)</td>
-<td align="right">0.887 (1.6×)</td>
-<td align="right">4.577 (8.3×)</td>
-<td align="right">12.074 (21.9×)</td>
-<td align="right">1.108 (2.0×)</td>
-<td align="right">102.415 (185.7×)</td>
-<td align="right">24.440 (44.3×)</td>
+<td align="right">0.467</td>
+<td align="right">1.175 (2.5×)</td>
+<td align="right">0.881 (1.9×)</td>
+<td align="right">4.464 (9.6×)</td>
+<td align="right">0.503 (1.1×)</td>
+<td align="right">11.6 (24.8×)</td>
+<td align="right">1.213 (2.6×)</td>
+<td align="right">101.5 (217.2×)</td>
+<td align="right">21.4 (45.8×)</td>
 </tr>
 <tr class="even">
 <td align="right">100</td>
-<td align="right">1.701</td>
-<td align="right">6.266 (3.7×)</td>
-<td align="right">3.721 (2.2×)</td>
-<td align="right">9.453 (5.6×)</td>
-<td align="right">58.290 (34.3×)</td>
-<td align="right">2.607 (1.5×)</td>
-<td align="right">501.132 (294.7×)</td>
-<td align="right">141.639 (83.3×)</td>
+<td align="right">1.430</td>
+<td align="right">6.471 (4.5×)</td>
+<td align="right">3.557 (2.5×)</td>
+<td align="right">9.033 (6.3×)</td>
+<td align="right">1.716 (1.2×)</td>
+<td align="right">67.7 (47.3×)</td>
+<td align="right">2.718 (1.9×)</td>
+<td align="right">503.7 (352.3×)</td>
+<td align="right">129.3 (90.4×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1000</td>
-<td align="right">16.754</td>
-<td align="right">54.631 (3.3×)</td>
-<td align="right">31.430 (1.9×)</td>
-<td align="right">55.585 (3.3×)</td>
-<td align="right">567.945 (33.9×)</td>
-<td align="right">12.350 (0.7×)</td>
-<td align="right">4799.771 (286.5×)</td>
-<td align="right">1373.995 (82.0×)</td>
+<td align="right">12.9</td>
+<td align="right">53.9 (4.2×)</td>
+<td align="right">30.9 (2.4×)</td>
+<td align="right">54.8 (4.2×)</td>
+<td align="right">15.3 (1.2×)</td>
+<td align="right">607.4 (47.1×)</td>
+<td align="right">12.5 (1.0×)</td>
+<td align="right">4819 (373.5×)</td>
+<td align="right">1221 (94.6×)</td>
 </tr>
 <tr class="even">
 <td align="right">10000</td>
-<td align="right">101.066</td>
-<td align="right">554.243 (5.5×)</td>
-<td align="right">346.842 (3.4×)</td>
-<td align="right">512.059 (5.1×)</td>
-<td align="right">5672.202 (56.1×)</td>
-<td align="right">115.524 (1.1×)</td>
-<td align="right">54507.720 (539.3×)</td>
-<td align="right">12874.917 (127.4×)</td>
+<td align="right">120.1</td>
+<td align="right">582.6 (4.8×)</td>
+<td align="right">347.3 (2.9×)</td>
+<td align="right">509.9 (4.2×)</td>
+<td align="right">156.9 (1.3×)</td>
+<td align="right">5682 (47.3×)</td>
+<td align="right">105.9 (0.9×)</td>
+<td align="right">52276 (435.2×)</td>
+<td align="right">12743 (106.1×)</td>
 </tr>
 </tbody>
 </table>
-<p>The largest Windows multiplier for <code><a href="../reference/melt.html">melt()</a></code> is 893.2×
-(<code>dask</code> at 1e3 rows, 1 id + 10000 value columns). On the
-Ubuntu host the corresponding cell reaches 1628.9×.</p>
 </div>
 </div>
 <div class="section level2">
@@ -963,22 +1012,24 @@ Ubuntu host the corresponding cell reaches 1628.9×.</p>
 </h2>
 <p>Input is a canonical long table with every
 <code>(id, variable)</code> pair present exactly once. All numbers in
-the cells are means in milliseconds; the value in parentheses is
-<code>dataprep</code>’s speed-up relative to that competitor.</p>
+the cells are <strong>medians</strong> in milliseconds; the value in
+parentheses is <code>dataprep</code>’s speed-up relative to that
+competitor.</p>
 <div class="section level3">
 <h3 id="vary-n_long-1-id-10-levels">Vary n_long, 1 id, 10 levels<a class="anchor" aria-label="anchor" href="#vary-n_long-1-id-10-levels"></a>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_long</th>
@@ -986,6 +1037,7 @@ the cells are means in milliseconds; the value in parentheses is
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -994,143 +1046,75 @@ the cells are means in milliseconds; the value in parentheses is
 <tbody>
 <tr class="odd">
 <td align="right">1e3</td>
-<td align="right">0.888</td>
-<td align="right">1.664 (1.9×)</td>
-<td align="right">1.810 (2.0×)</td>
-<td align="right">4.134 (4.7×)</td>
-<td align="right">1.905 (2.1×)</td>
-<td align="right">33.322 (37.5×)</td>
-<td align="right">8.107 (9.1×)</td>
-<td align="right">7.270 (8.2×)</td>
+<td align="right">0.105</td>
+<td align="right">1.756 (16.7×)</td>
+<td align="right">1.883 (17.9×)</td>
+<td align="right">4.358 (41.4×)</td>
+<td align="right">0.270 (2.6×)</td>
+<td align="right">2.073 (19.7×)</td>
+<td align="right">27.0 (256.8×)</td>
+<td align="right">8.642 (82.1×)</td>
+<td align="right">8.306 (78.9×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e4</td>
-<td align="right">0.940</td>
-<td align="right">2.611 (2.8×)</td>
-<td align="right">2.559 (2.7×)</td>
-<td align="right">4.474 (4.8×)</td>
-<td align="right">2.329 (2.5×)</td>
-<td align="right">48.157 (51.3×)</td>
-<td align="right">8.868 (9.4×)</td>
-<td align="right">10.398 (11.1×)</td>
+<td align="right">0.162</td>
+<td align="right">2.590 (16.0×)</td>
+<td align="right">2.564 (15.9×)</td>
+<td align="right">4.519 (27.9×)</td>
+<td align="right">0.313 (1.9×)</td>
+<td align="right">2.545 (15.7×)</td>
+<td align="right">35.0 (216.4×)</td>
+<td align="right">9.278 (57.4×)</td>
+<td align="right">12.0 (74.0×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e5</td>
-<td align="right">1.090</td>
-<td align="right">19.351 (17.8×)</td>
-<td align="right">14.634 (13.4×)</td>
-<td align="right">7.749 (7.1×)</td>
-<td align="right">7.078 (6.5×)</td>
-<td align="right">49.857 (45.7×)</td>
-<td align="right">14.741 (13.5×)</td>
-<td align="right">34.205 (31.4×)</td>
+<td align="right">0.345</td>
+<td align="right">20.8 (60.2×)</td>
+<td align="right">14.5 (41.9×)</td>
+<td align="right">7.763 (22.5×)</td>
+<td align="right">0.777 (2.3×)</td>
+<td align="right">7.115 (20.6×)</td>
+<td align="right">49.6 (143.6×)</td>
+<td align="right">15.9 (46.2×)</td>
+<td align="right">41.4 (119.8×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e6</td>
-<td align="right">1.654</td>
-<td align="right">151.826 (91.8×)</td>
-<td align="right">328.980 (198.9×)</td>
-<td align="right">44.728 (27.0×)</td>
-<td align="right">56.741 (34.3×)</td>
-<td align="right">105.018 (63.5×)</td>
-<td align="right">78.217 (47.3×)</td>
-<td align="right">155.880 (94.3×)</td>
+<td align="right">1.075</td>
+<td align="right">139.2 (129.5×)</td>
+<td align="right">323.7 (301.0×)</td>
+<td align="right">46.5 (43.3×)</td>
+<td align="right">4.917 (4.6×)</td>
+<td align="right">56.4 (52.5×)</td>
+<td align="right">94.2 (87.6×)</td>
+<td align="right">81.7 (76.0×)</td>
+<td align="right">242.0 (225.0×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e7</td>
-<td align="right">9.202</td>
-<td align="right">1693.368 (184.0×)</td>
-<td align="right">560.932 (61.0×)</td>
-<td align="right">716.377 (77.9×)</td>
-<td align="right">741.921 (80.6×)</td>
-<td align="right">310.878 (33.8×)</td>
-<td align="right">957.022 (104.0×)</td>
-<td align="right">1706.000 (185.4×)</td>
+<td align="right">8.019</td>
+<td align="right">1850 (230.7×)</td>
+<td align="right">600.9 (74.9×)</td>
+<td align="right">741.3 (92.4×)</td>
+<td align="right">47.0 (5.9×)</td>
+<td align="right">753.5 (94.0×)</td>
+<td align="right">293.1 (36.6×)</td>
+<td align="right">924.1 (115.2×)</td>
+<td align="right">2504 (312.2×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e8</td>
-<td align="right">91.926</td>
-<td align="right">21766.497 (236.8×)</td>
-<td align="right">16869.402 (183.5×)</td>
-<td align="right">10507.819 (114.3×)</td>
-<td align="right">10397.700 (113.1×)</td>
-<td align="right">2434.035 (26.5×)</td>
-<td align="right">13416.534 (145.9×)</td>
-<td align="right">17118.026 (186.2×)</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="section level3">
-<h3 id="vary-levels-1-id-1e6-rows">Vary levels, 1 id, 1e6 rows<a class="anchor" aria-label="anchor" href="#vary-levels-1-id-1e6-rows"></a>
-</h3>
-<table style="width:100%;" class="table">
-<colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-</colgroup>
-<thead><tr class="header">
-<th align="right">levels</th>
-<th align="right">dataprep</th>
-<th align="right">reshape2</th>
-<th align="right">data.table</th>
-<th align="right">tidyr</th>
-<th align="right">pandas</th>
-<th align="right">polars</th>
-<th align="right">dask</th>
-<th align="right">duckdb</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="right">10</td>
-<td align="right">1.654</td>
-<td align="right">151.826 (91.8×)</td>
-<td align="right">328.980 (198.9×)</td>
-<td align="right">44.728 (27.0×)</td>
-<td align="right">56.741 (34.3×)</td>
-<td align="right">105.018 (63.5×)</td>
-<td align="right">78.217 (47.3×)</td>
-<td align="right">155.880 (94.3×)</td>
-</tr>
-<tr class="even">
-<td align="right">100</td>
-<td align="right">1.415</td>
-<td align="right">101.438 (71.7×)</td>
-<td align="right">329.202 (232.6×)</td>
-<td align="right">42.047 (29.7×)</td>
-<td align="right">53.686 (37.9×)</td>
-<td align="right">173.478 (122.6×)</td>
-<td align="right">74.540 (52.7×)</td>
-<td align="right">178.421 (126.0×)</td>
-</tr>
-<tr class="odd">
-<td align="right">1000</td>
-<td align="right">2.107</td>
-<td align="right">100.949 (47.9×)</td>
-<td align="right">251.767 (119.5×)</td>
-<td align="right">45.413 (21.6×)</td>
-<td align="right">56.445 (26.8×)</td>
-<td align="right">186.575 (88.6×)</td>
-<td align="right">76.185 (36.2×)</td>
-<td align="right">195.787 (92.9×)</td>
-</tr>
-<tr class="even">
-<td align="right">10000</td>
-<td align="right">12.285</td>
-<td align="right">140.127 (11.4×)</td>
-<td align="right">405.321 (33.0×)</td>
-<td align="right">57.827 (4.7×)</td>
-<td align="right">59.199 (4.8×)</td>
-<td align="right">308.858 (25.1×)</td>
-<td align="right">80.920 (6.6×)</td>
-<td align="right">493.181 (40.1×)</td>
+<td align="right">84.0</td>
+<td align="right">21204 (252.6×)</td>
+<td align="right">17261 (205.6×)</td>
+<td align="right">9504 (113.2×)</td>
+<td align="right">497.2 (5.9×)</td>
+<td align="right">10370 (123.5×)</td>
+<td align="right">2373 (28.3×)</td>
+<td align="right">13332 (158.8×)</td>
+<td align="right">24768 (295.0×)</td>
 </tr>
 </tbody>
 </table>
@@ -1140,15 +1124,16 @@ the cells are means in milliseconds; the value in parentheses is
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_long</th>
@@ -1156,6 +1141,7 @@ the cells are means in milliseconds; the value in parentheses is
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -1164,79 +1150,162 @@ the cells are means in milliseconds; the value in parentheses is
 <tbody>
 <tr class="odd">
 <td align="right">1e4</td>
-<td align="right">1.010</td>
-<td align="right">2.860 (2.8×)</td>
-<td align="right">2.884 (2.9×)</td>
-<td align="right">4.640 (4.6×)</td>
-<td align="right">2.483 (2.5×)</td>
-<td align="right">45.241 (44.8×)</td>
-<td align="right">9.460 (9.4×)</td>
-<td align="right">14.845 (14.7×)</td>
+<td align="right">0.181</td>
+<td align="right">2.746 (15.2×)</td>
+<td align="right">2.767 (15.3×)</td>
+<td align="right">4.645 (25.6×)</td>
+<td align="right">0.329 (1.8×)</td>
+<td align="right">2.659 (14.7×)</td>
+<td align="right">37.9 (209.1×)</td>
+<td align="right">9.814 (54.2×)</td>
+<td align="right">16.0 (88.3×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e5</td>
-<td align="right">1.184</td>
-<td align="right">18.509 (15.6×)</td>
-<td align="right">8.577 (7.2×)</td>
-<td align="right">7.826 (6.6×)</td>
-<td align="right">6.861 (5.8×)</td>
-<td align="right">60.782 (51.3×)</td>
-<td align="right">14.937 (12.6×)</td>
-<td align="right">43.299 (36.6×)</td>
+<td align="right">0.328</td>
+<td align="right">18.8 (57.4×)</td>
+<td align="right">8.502 (26.0×)</td>
+<td align="right">7.884 (24.1×)</td>
+<td align="right">0.815 (2.5×)</td>
+<td align="right">7.112 (21.7×)</td>
+<td align="right">54.7 (167.0×)</td>
+<td align="right">15.2 (46.3×)</td>
+<td align="right">49.9 (152.4×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e6</td>
-<td align="right">1.415</td>
-<td align="right">101.438 (71.7×)</td>
-<td align="right">329.202 (232.6×)</td>
-<td align="right">42.047 (29.7×)</td>
-<td align="right">53.686 (37.9×)</td>
-<td align="right">173.478 (122.6×)</td>
-<td align="right">74.540 (52.7×)</td>
-<td align="right">178.421 (126.0×)</td>
+<td align="right">0.585</td>
+<td align="right">102.8 (175.6×)</td>
+<td align="right">346.7 (592.4×)</td>
+<td align="right">44.2 (75.5×)</td>
+<td align="right">5.021 (8.6×)</td>
+<td align="right">54.7 (93.5×)</td>
+<td align="right">176.1 (300.9×)</td>
+<td align="right">76.2 (130.3×)</td>
+<td align="right">258.8 (442.2×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e7</td>
-<td align="right">5.073</td>
-<td align="right">2016.036 (397.4×)</td>
-<td align="right">575.604 (113.5×)</td>
-<td align="right">660.455 (130.2×)</td>
-<td align="right">816.883 (161.0×)</td>
-<td align="right">506.557 (99.9×)</td>
-<td align="right">1002.368 (197.6×)</td>
-<td align="right">1669.419 (329.1×)</td>
+<td align="right">3.845</td>
+<td align="right">2016 (524.4×)</td>
+<td align="right">595.9 (155.0×)</td>
+<td align="right">684.3 (178.0×)</td>
+<td align="right">52.7 (13.7×)</td>
+<td align="right">742.5 (193.1×)</td>
+<td align="right">474.5 (123.4×)</td>
+<td align="right">941.3 (244.8×)</td>
+<td align="right">2505 (651.5×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e8</td>
-<td align="right">40.680</td>
-<td align="right">16963.494 (417.0×)</td>
-<td align="right">18866.887 (463.8×)</td>
-<td align="right">8100.475 (199.1×)</td>
-<td align="right">9529.877 (234.3×)</td>
-<td align="right">2460.625 (60.5×)</td>
-<td align="right">12764.776 (313.8×)</td>
-<td align="right">17616.392 (433.1×)</td>
+<td align="right">37.9</td>
+<td align="right">16777 (443.0×)</td>
+<td align="right">18782 (495.9×)</td>
+<td align="right">8285 (218.8×)</td>
+<td align="right">499.3 (13.2×)</td>
+<td align="right">9587 (253.1×)</td>
+<td align="right">2509 (66.3×)</td>
+<td align="right">12155 (320.9×)</td>
+<td align="right">24486 (646.5×)</td>
 </tr>
 </tbody>
 </table>
-<p>The 1e8 × 100 levels cell is the strongest <code>dcast</code> result
-on this host: <code>dataprep</code> returns in 40.68 ms,
-<code>reshape2</code> in 16.96 s.</p>
+</div>
+<div class="section level3">
+<h3 id="vary-levels-1-id-1e6-rows">Vary levels, 1 id, 1e6 rows<a class="anchor" aria-label="anchor" href="#vary-levels-1-id-1e6-rows"></a>
+</h3>
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+</colgroup>
+<thead><tr class="header">
+<th align="right">levels</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">10</td>
+<td align="right">1.075</td>
+<td align="right">139.2 (129.5×)</td>
+<td align="right">323.7 (301.0×)</td>
+<td align="right">46.5 (43.3×)</td>
+<td align="right">4.917 (4.6×)</td>
+<td align="right">56.4 (52.5×)</td>
+<td align="right">94.2 (87.6×)</td>
+<td align="right">81.7 (76.0×)</td>
+<td align="right">242.0 (225.0×)</td>
+</tr>
+<tr class="even">
+<td align="right">100</td>
+<td align="right">0.585</td>
+<td align="right">102.8 (175.6×)</td>
+<td align="right">346.7 (592.4×)</td>
+<td align="right">44.2 (75.5×)</td>
+<td align="right">5.021 (8.6×)</td>
+<td align="right">54.7 (93.5×)</td>
+<td align="right">176.1 (300.9×)</td>
+<td align="right">76.2 (130.3×)</td>
+<td align="right">258.8 (442.2×)</td>
+</tr>
+<tr class="odd">
+<td align="right">1000</td>
+<td align="right">0.906</td>
+<td align="right">101.7 (112.3×)</td>
+<td align="right">227.0 (250.6×)</td>
+<td align="right">43.9 (48.5×)</td>
+<td align="right">5.437 (6.0×)</td>
+<td align="right">56.7 (62.6×)</td>
+<td align="right">184.0 (203.2×)</td>
+<td align="right">78.1 (86.3×)</td>
+<td align="right">275.5 (304.1×)</td>
+</tr>
+<tr class="even">
+<td align="right">10000</td>
+<td align="right">2.477</td>
+<td align="right">123.4 (49.8×)</td>
+<td align="right">452.9 (182.9×)</td>
+<td align="right">56.2 (22.7×)</td>
+<td align="right">6.529 (2.6×)</td>
+<td align="right">60.7 (24.5×)</td>
+<td align="right">310.4 (125.3×)</td>
+<td align="right">82.1 (33.1×)</td>
+<td align="right">580.3 (234.3×)</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level3">
 <h3 id="vary-n_id-1e6-rows-10-levels">Vary n_id, 1e6 rows, 10 levels<a class="anchor" aria-label="anchor" href="#vary-n_id-1e6-rows-10-levels"></a>
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_id</th>
@@ -1244,6 +1313,7 @@ on this host: <code>dataprep</code> returns in 40.68 ms,
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -1252,54 +1322,30 @@ on this host: <code>dataprep</code> returns in 40.68 ms,
 <tbody>
 <tr class="odd">
 <td align="right">1</td>
-<td align="right">1.654</td>
-<td align="right">151.826 (91.8×)</td>
-<td align="right">328.980 (198.9×)</td>
-<td align="right">44.728 (27.0×)</td>
-<td align="right">56.741 (34.3×)</td>
-<td align="right">105.018 (63.5×)</td>
-<td align="right">78.217 (47.3×)</td>
-<td align="right">155.880 (94.3×)</td>
+<td align="right">1.075</td>
+<td align="right">139.2 (129.5×)</td>
+<td align="right">323.7 (301.0×)</td>
+<td align="right">46.5 (43.3×)</td>
+<td align="right">4.917 (4.6×)</td>
+<td align="right">56.4 (52.5×)</td>
+<td align="right">94.2 (87.6×)</td>
+<td align="right">81.7 (76.0×)</td>
+<td align="right">242.0 (225.0×)</td>
 </tr>
 <tr class="even">
-<td align="right">2</td>
-<td align="right">1.915</td>
-<td align="right">218.272 (114.0×)</td>
-<td align="right">304.452 (159.0×)</td>
-<td align="right">54.255 (28.3×)</td>
-<td align="right">80.896 (42.2×)</td>
-<td align="right">122.649 (64.0×)</td>
-<td align="right">108.293 (56.5×)</td>
-<td align="right">285.377 (149.0×)</td>
-</tr>
-<tr class="odd">
 <td align="right">10</td>
-<td align="right">3.565</td>
-<td align="right">1247.607 (350.0×)</td>
-<td align="right">405.322 (113.7×)</td>
-<td align="right">93.897 (26.3×)</td>
-<td align="right">192.356 (54.0×)</td>
-<td align="right">119.942 (33.6×)</td>
-<td align="right">248.201 (69.6×)</td>
-<td align="right">922.863 (258.9×)</td>
-</tr>
-<tr class="even">
-<td align="right">100</td>
-<td align="right">22.579</td>
-<td align="right">10394.072 (460.3×)</td>
-<td align="right">549.582 (24.3×)</td>
-<td align="right">431.569 (19.1×)</td>
-<td align="right">1415.001 (62.7×)</td>
-<td align="right">150.336 (6.7×)</td>
-<td align="right">1608.617 (71.2×)</td>
-<td align="right">8314.759 (368.3×)</td>
+<td align="right">3.556</td>
+<td align="right">1201 (337.7×)</td>
+<td align="right">457.8 (128.7×)</td>
+<td align="right">85.1 (23.9×)</td>
+<td align="right">24.6 (6.9×)</td>
+<td align="right">186.3 (52.4×)</td>
+<td align="right">113.1 (31.8×)</td>
+<td align="right">240.7 (67.7×)</td>
+<td align="right">1366 (384.3×)</td>
 </tr>
 </tbody>
 </table>
-<p>The 100 <code>id</code> cell is the only case in the entire benchmark
-suite where a competitor reaches a single-digit ratio.
-<code>polars</code> is within 7.4×. It remains behind
-<code>dataprep</code>.</p>
 </div>
 </div>
 <div class="section level2">
@@ -1312,15 +1358,16 @@ suite where a competitor reaches a single-digit ratio.
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_long</th>
@@ -1328,6 +1375,7 @@ suite where a competitor reaches a single-digit ratio.
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -1336,143 +1384,75 @@ suite where a competitor reaches a single-digit ratio.
 <tbody>
 <tr class="odd">
 <td align="right">1e3</td>
-<td align="right">0.384</td>
-<td align="right">2.412 (6.3×)</td>
-<td align="right">3.885 (10.1×)</td>
-<td align="right">6.465 (16.9×)</td>
-<td align="right">2.832 (7.4×)</td>
-<td align="right">5.114 (13.3×)</td>
-<td align="right">15.597 (40.7×)</td>
-<td align="right">19.382 (50.5×)</td>
+<td align="right">0.353</td>
+<td align="right">2.185 (6.2×)</td>
+<td align="right">3.673 (10.4×)</td>
+<td align="right">6.248 (17.7×)</td>
+<td align="right">0.325 (0.9×)</td>
+<td align="right">2.351 (6.7×)</td>
+<td align="right">4.699 (13.3×)</td>
+<td align="right">14.9 (42.3×)</td>
+<td align="right">20.8 (59.0×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e4</td>
-<td align="right">0.478</td>
-<td align="right">4.178 (8.7×)</td>
-<td align="right">7.391 (15.5×)</td>
-<td align="right">8.016 (16.8×)</td>
-<td align="right">5.078 (10.6×)</td>
-<td align="right">5.806 (12.1×)</td>
-<td align="right">18.732 (39.2×)</td>
-<td align="right">24.628 (51.5×)</td>
+<td align="right">0.505</td>
+<td align="right">4.133 (8.2×)</td>
+<td align="right">7.698 (15.3×)</td>
+<td align="right">7.550 (15.0×)</td>
+<td align="right">0.777 (1.5×)</td>
+<td align="right">4.620 (9.2×)</td>
+<td align="right">5.647 (11.2×)</td>
+<td align="right">18.0 (35.6×)</td>
+<td align="right">25.7 (50.9×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e5</td>
-<td align="right">1.029</td>
-<td align="right">31.267 (30.4×)</td>
-<td align="right">39.986 (38.9×)</td>
-<td align="right">13.887 (13.5×)</td>
-<td align="right">20.444 (19.9×)</td>
-<td align="right">11.069 (10.8×)</td>
-<td align="right">42.061 (40.9×)</td>
-<td align="right">73.489 (71.5×)</td>
+<td align="right">0.847</td>
+<td align="right">30.7 (36.2×)</td>
+<td align="right">38.6 (45.6×)</td>
+<td align="right">15.5 (18.3×)</td>
+<td align="right">2.286 (2.7×)</td>
+<td align="right">20.3 (24.0×)</td>
+<td align="right">12.4 (14.7×)</td>
+<td align="right">41.5 (49.0×)</td>
+<td align="right">73.2 (86.4×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e6</td>
-<td align="right">3.426</td>
-<td align="right">281.533 (82.2×)</td>
-<td align="right">148.638 (43.4×)</td>
-<td align="right">93.290 (27.2×)</td>
-<td align="right">251.508 (73.4×)</td>
-<td align="right">44.604 (13.0×)</td>
-<td align="right">346.422 (101.1×)</td>
-<td align="right">391.237 (114.2×)</td>
+<td align="right">2.977</td>
+<td align="right">239.6 (80.5×)</td>
+<td align="right">154.7 (52.0×)</td>
+<td align="right">112.8 (37.9×)</td>
+<td align="right">14.2 (4.8×)</td>
+<td align="right">239.5 (80.5×)</td>
+<td align="right">53.0 (17.8×)</td>
+<td align="right">359.4 (120.8×)</td>
+<td align="right">385.6 (129.6×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e7</td>
-<td align="right">23.194</td>
-<td align="right">2820.301 (121.6×)</td>
-<td align="right">989.520 (42.7×)</td>
-<td align="right">1481.134 (63.9×)</td>
-<td align="right">2698.928 (116.4×)</td>
-<td align="right">459.512 (19.8×)</td>
-<td align="right">3299.792 (142.3×)</td>
-<td align="right">3619.348 (156.0×)</td>
+<td align="right">19.7</td>
+<td align="right">2550 (129.5×)</td>
+<td align="right">1038 (52.7×)</td>
+<td align="right">1393 (70.7×)</td>
+<td align="right">118.1 (6.0×)</td>
+<td align="right">2490 (126.4×)</td>
+<td align="right">534.5 (27.1×)</td>
+<td align="right">3224 (163.7×)</td>
+<td align="right">3444 (174.9×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e8</td>
-<td align="right">214.305</td>
-<td align="right">29441.634 (137.4×)</td>
-<td align="right">13164.922 (61.4×)</td>
-<td align="right">16383.457 (76.4×)</td>
-<td align="right">31753.144 (148.2×)</td>
-<td align="right">4722.561 (22.0×)</td>
-<td align="right">38192.158 (178.2×)</td>
-<td align="right">33441.939 (156.0×)</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="section level3">
-<h3 id="vary-levels-1-id-1e6-rows-1">Vary levels, 1 id, 1e6 rows<a class="anchor" aria-label="anchor" href="#vary-levels-1-id-1e6-rows-1"></a>
-</h3>
-<table style="width:100%;" class="table">
-<colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-</colgroup>
-<thead><tr class="header">
-<th align="right">levels</th>
-<th align="right">dataprep</th>
-<th align="right">reshape2</th>
-<th align="right">data.table</th>
-<th align="right">tidyr</th>
-<th align="right">pandas</th>
-<th align="right">polars</th>
-<th align="right">dask</th>
-<th align="right">duckdb</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="right">10</td>
-<td align="right">3.426</td>
-<td align="right">281.533 (82.2×)</td>
-<td align="right">148.638 (43.4×)</td>
-<td align="right">93.290 (27.2×)</td>
-<td align="right">251.508 (73.4×)</td>
-<td align="right">44.604 (13.0×)</td>
-<td align="right">346.422 (101.1×)</td>
-<td align="right">391.237 (114.2×)</td>
-</tr>
-<tr class="even">
-<td align="right">100</td>
-<td align="right">4.049</td>
-<td align="right">173.399 (42.8×)</td>
-<td align="right">169.140 (41.8×)</td>
-<td align="right">91.050 (22.5×)</td>
-<td align="right">229.426 (56.7×)</td>
-<td align="right">56.026 (13.8×)</td>
-<td align="right">332.823 (82.2×)</td>
-<td align="right">800.504 (197.7×)</td>
-</tr>
-<tr class="odd">
-<td align="right">1000</td>
-<td align="right">5.064</td>
-<td align="right">189.364 (37.4×)</td>
-<td align="right">153.576 (30.3×)</td>
-<td align="right">81.644 (16.1×)</td>
-<td align="right">253.038 (50.0×)</td>
-<td align="right">178.688 (35.3×)</td>
-<td align="right">316.612 (62.5×)</td>
-<td align="right">1136.216 (224.4×)</td>
-</tr>
-<tr class="even">
-<td align="right">10000</td>
-<td align="right">29.411</td>
-<td align="right">252.442 (8.6×)</td>
-<td align="right">191.452 (6.5×)</td>
-<td align="right">115.340 (3.9×)</td>
-<td align="right">275.314 (9.4×)</td>
-<td align="right">1350.575 (45.9×)</td>
-<td align="right">367.614 (12.5×)</td>
-<td align="right">13596.212 (462.3×)</td>
+<td align="right">183.2</td>
+<td align="right">27499 (150.1×)</td>
+<td align="right">12540 (68.4×)</td>
+<td align="right">15113 (82.5×)</td>
+<td align="right">1167 (6.4×)</td>
+<td align="right">30323 (165.5×)</td>
+<td align="right">5340 (29.1×)</td>
+<td align="right">36734 (200.5×)</td>
+<td align="right">33128 (180.8×)</td>
 </tr>
 </tbody>
 </table>
@@ -1482,15 +1462,16 @@ suite where a competitor reaches a single-digit ratio.
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_long</th>
@@ -1498,6 +1479,7 @@ suite where a competitor reaches a single-digit ratio.
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -1506,58 +1488,143 @@ suite where a competitor reaches a single-digit ratio.
 <tbody>
 <tr class="odd">
 <td align="right">1e4</td>
-<td align="right">0.514</td>
-<td align="right">4.960 (9.7×)</td>
-<td align="right">8.608 (16.8×)</td>
-<td align="right">8.088 (15.7×)</td>
-<td align="right">5.519 (10.7×)</td>
-<td align="right">9.883 (19.2×)</td>
-<td align="right">18.710 (36.4×)</td>
-<td align="right">94.938 (184.8×)</td>
+<td align="right">0.694</td>
+<td align="right">4.733 (6.8×)</td>
+<td align="right">8.769 (12.6×)</td>
+<td align="right">7.967 (11.5×)</td>
+<td align="right">0.965 (1.4×)</td>
+<td align="right">5.636 (8.1×)</td>
+<td align="right">10.2 (14.8×)</td>
+<td align="right">17.3 (25.0×)</td>
+<td align="right">87.9 (126.7×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e5</td>
-<td align="right">0.838</td>
-<td align="right">34.405 (41.1×)</td>
-<td align="right">41.520 (49.6×)</td>
-<td align="right">17.537 (20.9×)</td>
-<td align="right">37.751 (45.1×)</td>
-<td align="right">13.291 (15.9×)</td>
-<td align="right">63.692 (76.0×)</td>
-<td align="right">303.785 (362.7×)</td>
+<td align="right">0.610</td>
+<td align="right">33.4 (54.8×)</td>
+<td align="right">41.0 (67.3×)</td>
+<td align="right">18.8 (30.8×)</td>
+<td align="right">3.453 (5.7×)</td>
+<td align="right">34.6 (56.7×)</td>
+<td align="right">14.4 (23.6×)</td>
+<td align="right">65.2 (107.0×)</td>
+<td align="right">289.6 (475.2×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e6</td>
-<td align="right">4.049</td>
-<td align="right">173.399 (42.8×)</td>
-<td align="right">169.140 (41.8×)</td>
-<td align="right">91.050 (22.5×)</td>
-<td align="right">229.426 (56.7×)</td>
-<td align="right">56.026 (13.8×)</td>
-<td align="right">332.823 (82.2×)</td>
-<td align="right">800.504 (197.7×)</td>
+<td align="right">3.999</td>
+<td align="right">173.3 (43.3×)</td>
+<td align="right">179.5 (44.9×)</td>
+<td align="right">82.1 (20.5×)</td>
+<td align="right">14.2 (3.6×)</td>
+<td align="right">226.4 (56.6×)</td>
+<td align="right">71.8 (18.0×)</td>
+<td align="right">308.5 (77.1×)</td>
+<td align="right">800.0 (200.0×)</td>
 </tr>
 <tr class="even">
 <td align="right">1e7</td>
-<td align="right">38.527</td>
-<td align="right">3197.642 (83.0×)</td>
-<td align="right">1100.505 (28.6×)</td>
-<td align="right">1359.999 (35.3×)</td>
-<td align="right">2337.317 (60.7×)</td>
-<td align="right">814.529 (21.1×)</td>
-<td align="right">3014.871 (78.3×)</td>
-<td align="right">7495.310 (194.5×)</td>
+<td align="right">32.7</td>
+<td align="right">2855 (87.3×)</td>
+<td align="right">1119 (34.2×)</td>
+<td align="right">1220 (37.3×)</td>
+<td align="right">156.7 (4.8×)</td>
+<td align="right">2259 (69.1×)</td>
+<td align="right">1217 (37.2×)</td>
+<td align="right">2967 (90.7×)</td>
+<td align="right">7389 (226.0×)</td>
 </tr>
 <tr class="odd">
 <td align="right">1e8</td>
-<td align="right">107.287</td>
-<td align="right">23690.584 (220.8×)</td>
-<td align="right">14715.772 (137.2×)</td>
-<td align="right">14245.599 (132.8×)</td>
-<td align="right">25843.625 (240.9×)</td>
-<td align="right">6222.505 (58.0×)</td>
-<td align="right">33050.665 (308.1×)</td>
-<td align="right">85804.834 (799.8×)</td>
+<td align="right">105.9</td>
+<td align="right">22379 (211.3×)</td>
+<td align="right">14723 (139.0×)</td>
+<td align="right">12879 (121.6×)</td>
+<td align="right">1477 (13.9×)</td>
+<td align="right">25000 (236.0×)</td>
+<td align="right">8290 (78.3×)</td>
+<td align="right">31519 (297.5×)</td>
+<td align="right">82310 (777.0×)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="vary-levels-1-id-1e6-rows-1">Vary levels, 1 id, 1e6 rows<a class="anchor" aria-label="anchor" href="#vary-levels-1-id-1e6-rows-1"></a>
+</h3>
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+</colgroup>
+<thead><tr class="header">
+<th align="right">levels</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">10</td>
+<td align="right">2.977</td>
+<td align="right">239.6 (80.5×)</td>
+<td align="right">154.7 (52.0×)</td>
+<td align="right">112.8 (37.9×)</td>
+<td align="right">14.2 (4.8×)</td>
+<td align="right">239.5 (80.5×)</td>
+<td align="right">53.0 (17.8×)</td>
+<td align="right">359.4 (120.8×)</td>
+<td align="right">385.6 (129.6×)</td>
+</tr>
+<tr class="even">
+<td align="right">100</td>
+<td align="right">3.999</td>
+<td align="right">173.3 (43.3×)</td>
+<td align="right">179.5 (44.9×)</td>
+<td align="right">82.1 (20.5×)</td>
+<td align="right">14.2 (3.6×)</td>
+<td align="right">226.4 (56.6×)</td>
+<td align="right">71.8 (18.0×)</td>
+<td align="right">308.5 (77.1×)</td>
+<td align="right">800.0 (200.0×)</td>
+</tr>
+<tr class="odd">
+<td align="right">1000</td>
+<td align="right">2.199</td>
+<td align="right">167.9 (76.4×)</td>
+<td align="right">167.4 (76.1×)</td>
+<td align="right">92.6 (42.1×)</td>
+<td align="right">13.9 (6.3×)</td>
+<td align="right">256.4 (116.6×)</td>
+<td align="right">232.8 (105.9×)</td>
+<td align="right">308.6 (140.4×)</td>
+<td align="right">1107 (503.4×)</td>
+</tr>
+<tr class="even">
+<td align="right">10000</td>
+<td align="right">6.971</td>
+<td align="right">234.8 (33.7×)</td>
+<td align="right">178.2 (25.6×)</td>
+<td align="right">109.8 (15.8×)</td>
+<td align="right">20.4 (2.9×)</td>
+<td align="right">275.7 (39.5×)</td>
+<td align="right">1712 (245.6×)</td>
+<td align="right">322.9 (46.3×)</td>
+<td align="right">12893 (1849.5×)</td>
 </tr>
 </tbody>
 </table>
@@ -1567,15 +1634,16 @@ suite where a competitor reaches a single-digit ratio.
 </h3>
 <table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th align="right">n_id</th>
@@ -1583,6 +1651,7 @@ suite where a competitor reaches a single-digit ratio.
 <th align="right">reshape2</th>
 <th align="right">data.table</th>
 <th align="right">tidyr</th>
+<th align="right">collapse</th>
 <th align="right">pandas</th>
 <th align="right">polars</th>
 <th align="right">dask</th>
@@ -1591,97 +1660,397 @@ suite where a competitor reaches a single-digit ratio.
 <tbody>
 <tr class="odd">
 <td align="right">1</td>
-<td align="right">3.426</td>
-<td align="right">281.533 (82.2×)</td>
-<td align="right">148.638 (43.4×)</td>
-<td align="right">93.290 (27.2×)</td>
-<td align="right">251.508 (73.4×)</td>
-<td align="right">44.604 (13.0×)</td>
-<td align="right">346.422 (101.1×)</td>
-<td align="right">391.237 (114.2×)</td>
+<td align="right">2.977</td>
+<td align="right">239.6 (80.5×)</td>
+<td align="right">154.7 (52.0×)</td>
+<td align="right">112.8 (37.9×)</td>
+<td align="right">14.2 (4.8×)</td>
+<td align="right">239.5 (80.5×)</td>
+<td align="right">53.0 (17.8×)</td>
+<td align="right">359.4 (120.8×)</td>
+<td align="right">385.6 (129.6×)</td>
 </tr>
 <tr class="even">
-<td align="right">2</td>
-<td align="right">10.712</td>
-<td align="right">401.842 (37.5×)</td>
-<td align="right">195.915 (18.3×)</td>
-<td align="right">116.768 (10.9×)</td>
-<td align="right">367.464 (34.3×)</td>
-<td align="right">57.728 (5.4×)</td>
-<td align="right">487.128 (45.5×)</td>
-<td align="right">697.317 (65.1×)</td>
-</tr>
-<tr class="odd">
 <td align="right">10</td>
-<td align="right">16.392</td>
-<td align="right">2687.391 (163.9×)</td>
-<td align="right">326.747 (19.9×)</td>
-<td align="right">187.891 (11.5×)</td>
-<td align="right">875.166 (53.4×)</td>
-<td align="right">66.015 (4.0×)</td>
-<td align="right">1109.804 (67.7×)</td>
-<td align="right">2012.130 (122.8×)</td>
-</tr>
-<tr class="even">
-<td align="right">100</td>
-<td align="right">76.279</td>
-<td align="right">23604.925 (309.5×)</td>
-<td align="right">1002.287 (13.1×)</td>
-<td align="right">740.787 (9.7×)</td>
-<td align="right">6652.292 (87.2×)</td>
-<td align="right">198.455 (2.6×)</td>
-<td align="right">8254.600 (108.2×)</td>
-<td align="right">15421.548 (202.2×)</td>
+<td align="right">13.6</td>
+<td align="right">2596 (190.3×)</td>
+<td align="right">312.6 (22.9×)</td>
+<td align="right">159.6 (11.7×)</td>
+<td align="right">127.6 (9.4×)</td>
+<td align="right">831.3 (61.0×)</td>
+<td align="right">77.5 (5.7×)</td>
+<td align="right">1062 (77.9×)</td>
+<td align="right">2051 (150.4×)</td>
 </tr>
 </tbody>
 </table>
-<p>The largest Windows multiplier for <code><a href="../reference/dcast.html">dcast()</a></code> is 799.8×
-(<code>duckdb</code> at 1e8 rows, 1 id, 100 levels). On the Ubuntu host
-the corresponding cell reaches 433.1×. The largest Ubuntu multiplier for
-<code><a href="../reference/dcast.html">dcast()</a></code> overall is 463.8× (<code>data.table</code> at 1e8
-rows, 1 id, 100 levels).</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="summary-of-speedups">Summary of speedups<a class="anchor" aria-label="anchor" href="#summary-of-speedups"></a>
+<h2 id="aggregated-dcast-fun-aggregate">Aggregated <code>dcast()</code> — <code>fun.aggregate</code><a class="anchor" aria-label="anchor" href="#aggregated-dcast-fun-aggregate"></a>
 </h2>
-<p>Speedup is defined as <code>competitor mean / dataprep mean</code>.
-Each table summarises every benchmark cell on that host, across all
-seven competitors (<code>reshape2</code>, <code>data.table</code>,
-<code>tidyr</code>, <code>pandas</code>, <code>polars</code>,
-<code>dask</code>, <code>duckdb</code>).</p>
+<p>Input is a canonical long table where every
+<code>(id, variable)</code> pair appears exactly <code>K = 3</code>
+times. Five aggregation functions (<code>sum</code>, <code>mean</code>,
+<code>min</code>, <code>max</code>, <code>count</code>) are measured
+across five scales (1e4 to 1e8 rows). Medians in milliseconds;
+<code>speedup×</code> is
+<code>competitor_median / dataprep_median</code>.</p>
 <div class="section level3">
 <h3 id="ubuntu-25-10">Ubuntu 25.10<a class="anchor" aria-label="anchor" href="#ubuntu-25-10"></a>
 </h3>
 <table class="table">
 <colgroup>
-<col width="15%">
-<col width="21%">
-<col width="21%">
-<col width="21%">
-<col width="21%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
 </colgroup>
 <thead><tr class="header">
-<th>Operation</th>
-<th align="right">Min</th>
-<th align="right">Median</th>
-<th align="right">Mean</th>
-<th align="right">Max</th>
+<th align="right">agg</th>
+<th align="right">n_long</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code><a href="../reference/melt.html">melt()</a></code></td>
-<td align="right">0.6× (polars @ 1e7 × 19 × 10 × 9)</td>
-<td align="right">11.3×</td>
-<td align="right">67.8×</td>
-<td align="right">1628.9× (dask @ 1e3 × 10001 × 1 × 10000)</td>
+<td align="right">sum</td>
+<td align="right">1e4</td>
+<td align="right">0.361</td>
+<td align="right">7.456 (20.7×)</td>
+<td align="right">13.1 (36.3×)</td>
+<td align="right">6.863 (19.0×)</td>
+<td align="right">1.326 (3.7×)</td>
+<td align="right">4.214 (11.7×)</td>
+<td align="right">44.3 (122.7×)</td>
+<td align="right">9.549 (26.5×)</td>
+<td align="right">11.2 (31.0×)</td>
 </tr>
 <tr class="even">
-<td><code><a href="../reference/dcast.html">dcast()</a></code></td>
-<td align="right">1.9× (reshape2 @ 1e3 × 1 × 10)</td>
-<td align="right">46.5×</td>
-<td align="right">90.2×</td>
-<td align="right">463.8× (data.table @ 1e8 × 1 × 100)</td>
+<td align="right">sum</td>
+<td align="right">1e5</td>
+<td align="right">1.098</td>
+<td align="right">58.0 (52.8×)</td>
+<td align="right">99.8 (90.9×)</td>
+<td align="right">24.1 (22.0×)</td>
+<td align="right">9.103 (8.3×)</td>
+<td align="right">7.685 (7.0×)</td>
+<td align="right">67.6 (61.5×)</td>
+<td align="right">12.9 (11.7×)</td>
+<td align="right">39.9 (36.3×)</td>
+</tr>
+<tr class="odd">
+<td align="right">sum</td>
+<td align="right">1e6</td>
+<td align="right">8.248</td>
+<td align="right">578.3 (70.1×)</td>
+<td align="right">1277 (154.8×)</td>
+<td align="right">235.2 (28.5×)</td>
+<td align="right">102.8 (12.5×)</td>
+<td align="right">42.7 (5.2×)</td>
+<td align="right">169.5 (20.6×)</td>
+<td align="right">48.3 (5.9×)</td>
+<td align="right">226.3 (27.4×)</td>
+</tr>
+<tr class="even">
+<td align="right">sum</td>
+<td align="right">1e7</td>
+<td align="right">81.3</td>
+<td align="right">6096 (75.0×)</td>
+<td align="right">9264 (113.9×)</td>
+<td align="right">3149 (38.7×)</td>
+<td align="right">1579 (19.4×)</td>
+<td align="right">461.6 (5.7×)</td>
+<td align="right">440.3 (5.4×)</td>
+<td align="right">463.7 (5.7×)</td>
+<td align="right">2441 (30.0×)</td>
+</tr>
+<tr class="odd">
+<td align="right">sum</td>
+<td align="right">1e8</td>
+<td align="right">802.2</td>
+<td align="right">61358 (76.5×)</td>
+<td align="right">100481 (125.3×)</td>
+<td align="right">33633 (41.9×)</td>
+<td align="right">17333 (21.6×)</td>
+<td align="right">6123 (7.6×)</td>
+<td align="right">2247 (2.8×)</td>
+<td align="right">6198 (7.7×)</td>
+<td align="right">24414 (30.4×)</td>
+</tr>
+<tr class="even">
+<td align="right">mean</td>
+<td align="right">1e4</td>
+<td align="right">0.349</td>
+<td align="right">13.4 (38.2×)</td>
+<td align="right">20.0 (57.2×)</td>
+<td align="right">13.0 (37.2×)</td>
+<td align="right">7.437 (21.3×)</td>
+<td align="right">4.250 (12.2×)</td>
+<td align="right">39.7 (113.8×)</td>
+<td align="right">9.388 (26.9×)</td>
+<td align="right">11.4 (32.6×)</td>
+</tr>
+<tr class="odd">
+<td align="right">mean</td>
+<td align="right">1e5</td>
+<td align="right">1.132</td>
+<td align="right">130.5 (115.3×)</td>
+<td align="right">184.9 (163.4×)</td>
+<td align="right">93.9 (82.9×)</td>
+<td align="right">71.7 (63.4×)</td>
+<td align="right">7.841 (6.9×)</td>
+<td align="right">53.3 (47.1×)</td>
+<td align="right">13.1 (11.6×)</td>
+<td align="right">39.7 (35.1×)</td>
+</tr>
+<tr class="even">
+<td align="right">mean</td>
+<td align="right">1e6</td>
+<td align="right">8.749</td>
+<td align="right">1238 (141.5×)</td>
+<td align="right">2060 (235.5×)</td>
+<td align="right">1020 (116.5×)</td>
+<td align="right">788.5 (90.1×)</td>
+<td align="right">43.5 (5.0×)</td>
+<td align="right">137.9 (15.8×)</td>
+<td align="right">49.2 (5.6×)</td>
+<td align="right">231.7 (26.5×)</td>
+</tr>
+<tr class="odd">
+<td align="right">mean</td>
+<td align="right">1e7</td>
+<td align="right">87.8</td>
+<td align="right">12731 (145.0×)</td>
+<td align="right">17215 (196.1×)</td>
+<td align="right">12040 (137.2×)</td>
+<td align="right">9395 (107.0×)</td>
+<td align="right">470.0 (5.4×)</td>
+<td align="right">438.5 (5.0×)</td>
+<td align="right">477.1 (5.4×)</td>
+<td align="right">2404 (27.4×)</td>
+</tr>
+<tr class="even">
+<td align="right">mean</td>
+<td align="right">1e8</td>
+<td align="right">840.0</td>
+<td align="right">126353 (150.4×)</td>
+<td align="right">176405 (210.0×)</td>
+<td align="right">123259 (146.7×)</td>
+<td align="right">95859 (114.1×)</td>
+<td align="right">5727 (6.8×)</td>
+<td align="right">2544 (3.0×)</td>
+<td align="right">5811 (6.9×)</td>
+<td align="right">23826 (28.4×)</td>
+</tr>
+<tr class="odd">
+<td align="right">min</td>
+<td align="right">1e4</td>
+<td align="right">0.331</td>
+<td align="right">61.3 (185.5×)</td>
+<td align="right">12.2 (37.0×)</td>
+<td align="right">6.353 (19.2×)</td>
+<td align="right">1.272 (3.8×)</td>
+<td align="right">4.175 (12.6×)</td>
+<td align="right">36.9 (111.8×)</td>
+<td align="right">9.305 (28.1×)</td>
+<td align="right">11.4 (34.6×)</td>
+</tr>
+<tr class="even">
+<td align="right">min</td>
+<td align="right">1e5</td>
+<td align="right">1.080</td>
+<td align="right">619.0 (573.2×)</td>
+<td align="right">99.7 (92.3×)</td>
+<td align="right">24.3 (22.5×)</td>
+<td align="right">9.068 (8.4×)</td>
+<td align="right">8.171 (7.6×)</td>
+<td align="right">54.3 (50.3×)</td>
+<td align="right">13.3 (12.3×)</td>
+<td align="right">39.7 (36.8×)</td>
+</tr>
+<tr class="odd">
+<td align="right">min</td>
+<td align="right">1e6</td>
+<td align="right">8.391</td>
+<td align="right">6102 (727.2×)</td>
+<td align="right">1233 (147.0×)</td>
+<td align="right">229.0 (27.3×)</td>
+<td align="right">89.6 (10.7×)</td>
+<td align="right">43.8 (5.2×)</td>
+<td align="right">131.8 (15.7×)</td>
+<td align="right">49.6 (5.9×)</td>
+<td align="right">229.3 (27.3×)</td>
+</tr>
+<tr class="even">
+<td align="right">min</td>
+<td align="right">1e7</td>
+<td align="right">83.2</td>
+<td align="right">61001 (733.5×)</td>
+<td align="right">9280 (111.6×)</td>
+<td align="right">2985 (35.9×)</td>
+<td align="right">1584 (19.0×)</td>
+<td align="right">480.7 (5.8×)</td>
+<td align="right">428.2 (5.1×)</td>
+<td align="right">487.9 (5.9×)</td>
+<td align="right">2435 (29.3×)</td>
+</tr>
+<tr class="odd">
+<td align="right">min</td>
+<td align="right">1e8</td>
+<td align="right">822.4</td>
+<td align="right">583807 (709.9×)</td>
+<td align="right">98298 (119.5×)</td>
+<td align="right">33490 (40.7×)</td>
+<td align="right">15748 (19.1×)</td>
+<td align="right">5984 (7.3×)</td>
+<td align="right">2455 (3.0×)</td>
+<td align="right">6339 (7.7×)</td>
+<td align="right">24143 (29.4×)</td>
+</tr>
+<tr class="even">
+<td align="right">max</td>
+<td align="right">1e4</td>
+<td align="right">0.336</td>
+<td align="right">61.6 (183.3×)</td>
+<td align="right">12.2 (36.3×)</td>
+<td align="right">6.380 (19.0×)</td>
+<td align="right">1.266 (3.8×)</td>
+<td align="right">4.248 (12.6×)</td>
+<td align="right">37.1 (110.5×)</td>
+<td align="right">9.342 (27.8×)</td>
+<td align="right">11.4 (33.8×)</td>
+</tr>
+<tr class="odd">
+<td align="right">max</td>
+<td align="right">1e5</td>
+<td align="right">1.101</td>
+<td align="right">621.2 (564.3×)</td>
+<td align="right">99.6 (90.5×)</td>
+<td align="right">23.9 (21.7×)</td>
+<td align="right">8.855 (8.0×)</td>
+<td align="right">7.861 (7.1×)</td>
+<td align="right">54.5 (49.5×)</td>
+<td align="right">13.0 (11.8×)</td>
+<td align="right">40.5 (36.8×)</td>
+</tr>
+<tr class="even">
+<td align="right">max</td>
+<td align="right">1e6</td>
+<td align="right">8.682</td>
+<td align="right">6150 (708.4×)</td>
+<td align="right">1242 (143.1×)</td>
+<td align="right">229.8 (26.5×)</td>
+<td align="right">88.6 (10.2×)</td>
+<td align="right">48.5 (5.6×)</td>
+<td align="right">130.9 (15.1×)</td>
+<td align="right">54.8 (6.3×)</td>
+<td align="right">238.2 (27.4×)</td>
+</tr>
+<tr class="odd">
+<td align="right">max</td>
+<td align="right">1e7</td>
+<td align="right">84.9</td>
+<td align="right">60865 (717.2×)</td>
+<td align="right">9282 (109.4×)</td>
+<td align="right">3042 (35.9×)</td>
+<td align="right">1609 (19.0×)</td>
+<td align="right">478.8 (5.6×)</td>
+<td align="right">419.4 (4.9×)</td>
+<td align="right">482.0 (5.7×)</td>
+<td align="right">2372 (28.0×)</td>
+</tr>
+<tr class="even">
+<td align="right">max</td>
+<td align="right">1e8</td>
+<td align="right">852.1</td>
+<td align="right">585064 (686.6×)</td>
+<td align="right">98892 (116.1×)</td>
+<td align="right">30419 (35.7×)</td>
+<td align="right">16114 (18.9×)</td>
+<td align="right">5786 (6.8×)</td>
+<td align="right">2367 (2.8×)</td>
+<td align="right">5925 (7.0×)</td>
+<td align="right">24394 (28.6×)</td>
+</tr>
+<tr class="odd">
+<td align="right">count</td>
+<td align="right">1e4</td>
+<td align="right">0.327</td>
+<td align="right">5.960 (18.3×)</td>
+<td align="right">11.6 (35.5×)</td>
+<td align="right">5.906 (18.1×)</td>
+<td align="right">0.950 (2.9×)</td>
+<td align="right">4.010 (12.3×)</td>
+<td align="right">32.7 (100.1×)</td>
+<td align="right">8.744 (26.8×)</td>
+<td align="right">11.3 (34.6×)</td>
+</tr>
+<tr class="even">
+<td align="right">count</td>
+<td align="right">1e5</td>
+<td align="right">1.001</td>
+<td align="right">46.4 (46.3×)</td>
+<td align="right">94.5 (94.4×)</td>
+<td align="right">20.7 (20.7×)</td>
+<td align="right">5.902 (5.9×)</td>
+<td align="right">7.362 (7.4×)</td>
+<td align="right">39.4 (39.4×)</td>
+<td align="right">12.4 (12.4×)</td>
+<td align="right">40.3 (40.3×)</td>
+</tr>
+<tr class="odd">
+<td align="right">count</td>
+<td align="right">1e6</td>
+<td align="right">7.506</td>
+<td align="right">483.0 (64.4×)</td>
+<td align="right">1204 (160.3×)</td>
+<td align="right">186.1 (24.8×)</td>
+<td align="right">63.2 (8.4×)</td>
+<td align="right">43.0 (5.7×)</td>
+<td align="right">87.5 (11.7×)</td>
+<td align="right">48.8 (6.5×)</td>
+<td align="right">232.9 (31.0×)</td>
+</tr>
+<tr class="even">
+<td align="right">count</td>
+<td align="right">1e7</td>
+<td align="right">82.5</td>
+<td align="right">5002 (60.6×)</td>
+<td align="right">8894 (107.8×)</td>
+<td align="right">2671 (32.4×)</td>
+<td align="right">1264 (15.3×)</td>
+<td align="right">430.5 (5.2×)</td>
+<td align="right">273.4 (3.3×)</td>
+<td align="right">435.4 (5.3×)</td>
+<td align="right">2362 (28.6×)</td>
+</tr>
+<tr class="odd">
+<td align="right">count</td>
+<td align="right">1e8</td>
+<td align="right">816.4</td>
+<td align="right">49663 (60.8×)</td>
+<td align="right">93518 (114.5×)</td>
+<td align="right">24270 (29.7×)</td>
+<td align="right">11898 (14.6×)</td>
+<td align="right">5312 (6.5×)</td>
+<td align="right">1897 (2.3×)</td>
+<td align="right">5481 (6.7×)</td>
+<td align="right">24073 (29.5×)</td>
 </tr>
 </tbody>
 </table>
@@ -1691,6 +2060,377 @@ seven competitors (<code>reshape2</code>, <code>data.table</code>,
 </h3>
 <table class="table">
 <colgroup>
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+</colgroup>
+<thead><tr class="header">
+<th align="right">agg</th>
+<th align="right">n_long</th>
+<th align="right">dataprep</th>
+<th align="right">reshape2</th>
+<th align="right">data.table</th>
+<th align="right">tidyr</th>
+<th align="right">collapse</th>
+<th align="right">pandas</th>
+<th align="right">polars</th>
+<th align="right">dask</th>
+<th align="right">duckdb</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">sum</td>
+<td align="right">1e4</td>
+<td align="right">0.996</td>
+<td align="right">13.3 (13.3×)</td>
+<td align="right">34.2 (34.4×)</td>
+<td align="right">12.0 (12.1×)</td>
+<td align="right">3.401 (3.4×)</td>
+<td align="right">7.354 (7.4×)</td>
+<td align="right">7.622 (7.7×)</td>
+<td align="right">15.6 (15.7×)</td>
+<td align="right">36.2 (36.4×)</td>
+</tr>
+<tr class="even">
+<td align="right">sum</td>
+<td align="right">1e5</td>
+<td align="right">4.626</td>
+<td align="right">114.1 (24.7×)</td>
+<td align="right">235.8 (51.0×)</td>
+<td align="right">57.1 (12.3×)</td>
+<td align="right">27.6 (6.0×)</td>
+<td align="right">35.7 (7.7×)</td>
+<td align="right">14.1 (3.0×)</td>
+<td align="right">46.1 (10.0×)</td>
+<td align="right">96.1 (20.8×)</td>
+</tr>
+<tr class="odd">
+<td align="right">sum</td>
+<td align="right">1e6</td>
+<td align="right">19.6</td>
+<td align="right">1113 (56.7×)</td>
+<td align="right">2393 (122.0×)</td>
+<td align="right">561.2 (28.6×)</td>
+<td align="right">259.8 (13.2×)</td>
+<td align="right">177.4 (9.0×)</td>
+<td align="right">56.2 (2.9×)</td>
+<td align="right">188.4 (9.6×)</td>
+<td align="right">408.1 (20.8×)</td>
+</tr>
+<tr class="even">
+<td align="right">sum</td>
+<td align="right">1e7</td>
+<td align="right">159.5</td>
+<td align="right">11738 (73.6×)</td>
+<td align="right">20070 (125.8×)</td>
+<td align="right">6380 (40.0×)</td>
+<td align="right">3495 (21.9×)</td>
+<td align="right">1547 (9.7×)</td>
+<td align="right">452.1 (2.8×)</td>
+<td align="right">1579 (9.9×)</td>
+<td align="right">3603 (22.6×)</td>
+</tr>
+<tr class="odd">
+<td align="right">sum</td>
+<td align="right">1e8</td>
+<td align="right">1581</td>
+<td align="right">132964 (84.1×)</td>
+<td align="right">199057 (125.9×)</td>
+<td align="right">73704 (46.6×)</td>
+<td align="right">36725 (23.2×)</td>
+<td align="right">15698 (9.9×)</td>
+<td align="right">4015 (2.5×)</td>
+<td align="right">15549 (9.8×)</td>
+<td align="right">32016 (20.3×)</td>
+</tr>
+<tr class="even">
+<td align="right">mean</td>
+<td align="right">1e4</td>
+<td align="right">1.106</td>
+<td align="right">31.6 (28.5×)</td>
+<td align="right">61.7 (55.8×)</td>
+<td align="right">33.6 (30.3×)</td>
+<td align="right">21.6 (19.5×)</td>
+<td align="right">8.789 (7.9×)</td>
+<td align="right">6.711 (6.1×)</td>
+<td align="right">18.9 (17.1×)</td>
+<td align="right">36.8 (33.3×)</td>
+</tr>
+<tr class="odd">
+<td align="right">mean</td>
+<td align="right">1e5</td>
+<td align="right">5.008</td>
+<td align="right">316.5 (63.2×)</td>
+<td align="right">522.0 (104.2×)</td>
+<td align="right">268.1 (53.5×)</td>
+<td align="right">208.9 (41.7×)</td>
+<td align="right">35.8 (7.2×)</td>
+<td align="right">16.0 (3.2×)</td>
+<td align="right">46.0 (9.2×)</td>
+<td align="right">97.2 (19.4×)</td>
+</tr>
+<tr class="even">
+<td align="right">mean</td>
+<td align="right">1e6</td>
+<td align="right">20.0</td>
+<td align="right">2946 (147.0×)</td>
+<td align="right">4273 (213.3×)</td>
+<td align="right">2764 (138.0×)</td>
+<td align="right">2245 (112.1×)</td>
+<td align="right">172.8 (8.6×)</td>
+<td align="right">62.6 (3.1×)</td>
+<td align="right">185.0 (9.2×)</td>
+<td align="right">410.0 (20.5×)</td>
+</tr>
+<tr class="odd">
+<td align="right">mean</td>
+<td align="right">1e7</td>
+<td align="right">165.6</td>
+<td align="right">30262 (182.7×)</td>
+<td align="right">41963 (253.3×)</td>
+<td align="right">28408 (171.5×)</td>
+<td align="right">24059 (145.3×)</td>
+<td align="right">1513 (9.1×)</td>
+<td align="right">579.8 (3.5×)</td>
+<td align="right">1746 (10.5×)</td>
+<td align="right">3331 (20.1×)</td>
+</tr>
+<tr class="even">
+<td align="right">mean</td>
+<td align="right">1e8</td>
+<td align="right">1625</td>
+<td align="right">328585 (202.2×)</td>
+<td align="right">428035 (263.4×)</td>
+<td align="right">294363 (181.1×)</td>
+<td align="right">254503 (156.6×)</td>
+<td align="right">15647 (9.6×)</td>
+<td align="right">4052 (2.5×)</td>
+<td align="right">16144 (9.9×)</td>
+<td align="right">31085 (19.1×)</td>
+</tr>
+<tr class="odd">
+<td align="right">min</td>
+<td align="right">1e4</td>
+<td align="right">1.080</td>
+<td align="right">139.0 (128.7×)</td>
+<td align="right">34.5 (31.9×)</td>
+<td align="right">13.9 (12.9×)</td>
+<td align="right">3.486 (3.2×)</td>
+<td align="right">7.892 (7.3×)</td>
+<td align="right">6.350 (5.9×)</td>
+<td align="right">17.4 (16.2×)</td>
+<td align="right">36.6 (33.9×)</td>
+</tr>
+<tr class="even">
+<td align="right">min</td>
+<td align="right">1e5</td>
+<td align="right">4.700</td>
+<td align="right">1528 (325.2×)</td>
+<td align="right">237.5 (50.5×)</td>
+<td align="right">56.3 (12.0×)</td>
+<td align="right">27.4 (5.8×)</td>
+<td align="right">36.1 (7.7×)</td>
+<td align="right">14.6 (3.1×)</td>
+<td align="right">54.1 (11.5×)</td>
+<td align="right">98.9 (21.1×)</td>
+</tr>
+<tr class="odd">
+<td align="right">min</td>
+<td align="right">1e6</td>
+<td align="right">19.5</td>
+<td align="right">14020 (718.0×)</td>
+<td align="right">2333 (119.5×)</td>
+<td align="right">476.2 (24.4×)</td>
+<td align="right">224.3 (11.5×)</td>
+<td align="right">210.3 (10.8×)</td>
+<td align="right">64.2 (3.3×)</td>
+<td align="right">189.7 (9.7×)</td>
+<td align="right">412.7 (21.1×)</td>
+</tr>
+<tr class="even">
+<td align="right">min</td>
+<td align="right">1e7</td>
+<td align="right">162.6</td>
+<td align="right">141674 (871.2×)</td>
+<td align="right">19570 (120.3×)</td>
+<td align="right">6346 (39.0×)</td>
+<td align="right">3045 (18.7×)</td>
+<td align="right">1518 (9.3×)</td>
+<td align="right">542.8 (3.3×)</td>
+<td align="right">1558 (9.6×)</td>
+<td align="right">3634 (22.3×)</td>
+</tr>
+<tr class="odd">
+<td align="right">min</td>
+<td align="right">1e8</td>
+<td align="right">1608</td>
+<td align="right">1402743 (872.4×)</td>
+<td align="right">199609 (124.1×)</td>
+<td align="right">74296 (46.2×)</td>
+<td align="right">30693 (19.1×)</td>
+<td align="right">16374 (10.2×)</td>
+<td align="right">4029 (2.5×)</td>
+<td align="right">15650 (9.7×)</td>
+<td align="right">32002 (19.9×)</td>
+</tr>
+<tr class="even">
+<td align="right">max</td>
+<td align="right">1e4</td>
+<td align="right">1.075</td>
+<td align="right">139.2 (129.5×)</td>
+<td align="right">34.5 (32.1×)</td>
+<td align="right">13.5 (12.6×)</td>
+<td align="right">3.493 (3.2×)</td>
+<td align="right">8.509 (7.9×)</td>
+<td align="right">6.397 (6.0×)</td>
+<td align="right">18.1 (16.8×)</td>
+<td align="right">36.3 (33.8×)</td>
+</tr>
+<tr class="odd">
+<td align="right">max</td>
+<td align="right">1e5</td>
+<td align="right">4.819</td>
+<td align="right">1463 (303.5×)</td>
+<td align="right">271.1 (56.2×)</td>
+<td align="right">57.1 (11.8×)</td>
+<td align="right">27.6 (5.7×)</td>
+<td align="right">35.8 (7.4×)</td>
+<td align="right">14.2 (2.9×)</td>
+<td align="right">45.8 (9.5×)</td>
+<td align="right">94.0 (19.5×)</td>
+</tr>
+<tr class="even">
+<td align="right">max</td>
+<td align="right">1e6</td>
+<td align="right">23.0</td>
+<td align="right">14022 (609.3×)</td>
+<td align="right">2013 (87.5×)</td>
+<td align="right">480.7 (20.9×)</td>
+<td align="right">226.7 (9.8×)</td>
+<td align="right">176.0 (7.6×)</td>
+<td align="right">64.0 (2.8×)</td>
+<td align="right">189.5 (8.2×)</td>
+<td align="right">411.8 (17.9×)</td>
+</tr>
+<tr class="odd">
+<td align="right">max</td>
+<td align="right">1e7</td>
+<td align="right">165.7</td>
+<td align="right">141902 (856.5×)</td>
+<td align="right">19688 (118.8×)</td>
+<td align="right">6272 (37.9×)</td>
+<td align="right">3070 (18.5×)</td>
+<td align="right">1494 (9.0×)</td>
+<td align="right">580.5 (3.5×)</td>
+<td align="right">1538 (9.3×)</td>
+<td align="right">3678 (22.2×)</td>
+</tr>
+<tr class="even">
+<td align="right">max</td>
+<td align="right">1e8</td>
+<td align="right">1632</td>
+<td align="right">1411738 (865.2×)</td>
+<td align="right">199830 (122.5×)</td>
+<td align="right">73164 (44.8×)</td>
+<td align="right">29333 (18.0×)</td>
+<td align="right">16082 (9.9×)</td>
+<td align="right">4052 (2.5×)</td>
+<td align="right">15769 (9.7×)</td>
+<td align="right">34345 (21.0×)</td>
+</tr>
+<tr class="odd">
+<td align="right">count</td>
+<td align="right">1e4</td>
+<td align="right">1.024</td>
+<td align="right">11.4 (11.1×)</td>
+<td align="right">32.7 (32.0×)</td>
+<td align="right">11.4 (11.1×)</td>
+<td align="right">2.900 (2.8×)</td>
+<td align="right">7.662 (7.5×)</td>
+<td align="right">5.619 (5.5×)</td>
+<td align="right">18.2 (17.8×)</td>
+<td align="right">37.5 (36.6×)</td>
+</tr>
+<tr class="even">
+<td align="right">count</td>
+<td align="right">1e5</td>
+<td align="right">4.559</td>
+<td align="right">93.7 (20.6×)</td>
+<td align="right">249.8 (54.8×)</td>
+<td align="right">57.8 (12.7×)</td>
+<td align="right">20.1 (4.4×)</td>
+<td align="right">34.8 (7.6×)</td>
+<td align="right">10.1 (2.2×)</td>
+<td align="right">44.9 (9.9×)</td>
+<td align="right">96.1 (21.1×)</td>
+</tr>
+<tr class="odd">
+<td align="right">count</td>
+<td align="right">1e6</td>
+<td align="right">22.6</td>
+<td align="right">883.1 (39.0×)</td>
+<td align="right">2216 (97.9×)</td>
+<td align="right">414.6 (18.3×)</td>
+<td align="right">168.1 (7.4×)</td>
+<td align="right">175.1 (7.7×)</td>
+<td align="right">45.0 (2.0×)</td>
+<td align="right">207.0 (9.1×)</td>
+<td align="right">410.1 (18.1×)</td>
+</tr>
+<tr class="even">
+<td align="right">count</td>
+<td align="right">1e7</td>
+<td align="right">158.1</td>
+<td align="right">9421 (59.6×)</td>
+<td align="right">19698 (124.6×)</td>
+<td align="right">5770 (36.5×)</td>
+<td align="right">2693 (17.0×)</td>
+<td align="right">1449 (9.2×)</td>
+<td align="right">428.1 (2.7×)</td>
+<td align="right">1491 (9.4×)</td>
+<td align="right">3424 (21.7×)</td>
+</tr>
+<tr class="odd">
+<td align="right">count</td>
+<td align="right">1e8</td>
+<td align="right">1545</td>
+<td align="right">107299 (69.4×)</td>
+<td align="right">197190 (127.6×)</td>
+<td align="right">58430 (37.8×)</td>
+<td align="right">24493 (15.8×)</td>
+<td align="right">15100 (9.8×)</td>
+<td align="right">3629 (2.3×)</td>
+<td align="right">14865 (9.6×)</td>
+<td align="right">31049 (20.1×)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level2">
+<h2 id="summary-of-speedups">Summary of speedups<a class="anchor" aria-label="anchor" href="#summary-of-speedups"></a>
+</h2>
+<p>Speedup is defined as
+<code>competitor median / dataprep median</code>. Each table summarises
+every benchmark cell on that host, across all eight competitors
+(<code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>,
+<code>collapse</code>, <code>pandas</code>, <code>polars</code>,
+<code>dask</code>, <code>duckdb</code>). Cell labels are written as
+<code>n_rows × n_cols × n_id × n_val</code> for <code><a href="../reference/melt.html">melt()</a></code> and
+<code>n_long × n_id × n_levels</code> for <code><a href="../reference/dcast.html">dcast()</a></code>.</p>
+<div class="section level3">
+<h3 id="ubuntu-25-10-1">Ubuntu 25.10<a class="anchor" aria-label="anchor" href="#ubuntu-25-10-1"></a>
+</h3>
+<table class="table">
+<colgroup>
 <col width="15%">
 <col width="21%">
 <col width="21%">
@@ -1707,138 +2447,128 @@ seven competitors (<code>reshape2</code>, <code>data.table</code>,
 <tbody>
 <tr class="odd">
 <td><code><a href="../reference/melt.html">melt()</a></code></td>
-<td align="right">0.7× (polars @ 1e5 × 19 × 10 × 9)</td>
-<td align="right">5.6×</td>
-<td align="right">46.6×</td>
-<td align="right">893.2× (dask @ 1e3 × 10001 × 1 × 10000)</td>
+<td align="right">0.3× (polars @ 10M rows, 10 id + 9 val)</td>
+<td align="right">9.6×</td>
+<td align="right">71.0×</td>
+<td align="right">1750.0× (dask @ 1e3 rows, 1 id + 10000 val)</td>
 </tr>
 <tr class="even">
 <td><code><a href="../reference/dcast.html">dcast()</a></code></td>
-<td align="right">2.6× (polars @ 1e6 × 100 × 10)</td>
-<td align="right">41.4×</td>
-<td align="right">76.6×</td>
-<td align="right">799.8× (duckdb @ 1e8 × 1 × 100)</td>
+<td align="right">1.8× (collapse @ 10K rows, 1 id + 100 lvl)</td>
+<td align="right">74.5×</td>
+<td align="right">128.9×</td>
+<td align="right">651.5× (duckdb @ 10M rows, 1 id + 100 lvl)</td>
+</tr>
+<tr class="odd">
+<td><code>dcast(agg)</code></td>
+<td align="right">2.3× (polars @ 100M rows, count)</td>
+<td align="right">27.4×</td>
+<td align="right">68.6×</td>
+<td align="right">733.5× (reshape2 @ 10M rows, min)</td>
 </tr>
 </tbody>
 </table>
-<p>Combined across both hosts:</p>
-<ul>
-<li><p><strong><code><a href="../reference/melt.html">melt()</a></code> spans 0.6–1628.9×</strong> across all
-competitors. The sub-1.0× cells are <code>polars</code> at 1e7 × 10 id
-on Ubuntu (0.6×) and <code>polars</code> at 1e5 × 10 id on Windows
-(0.7×). Every other cell has <code>dataprep</code> ahead of or on par
-with the fastest competitor. The median across all <code>melt</code>
-cells and all competitors is 11.3× on Ubuntu and 5.6× on Windows; the
-mean is 67.8× and 46.6× respectively.</p></li>
-<li><p><strong><code><a href="../reference/dcast.html">dcast()</a></code> spans 1.9–799.8×</strong> across all
-competitors. Every cell has <code>dataprep</code> ahead of every other
-engine. The median across all <code>dcast</code> cells and all
-competitors is 46.5× on Ubuntu and 41.4× on Windows; the mean is 90.2×
-and 76.6× respectively.</p></li>
-<li><p>For <code><a href="../reference/melt.html">melt()</a></code>, on the largest cells (1e8 rows, 1 id + 9
-val, 8 GB of input), <code>dataprep</code> is the only engine that
-completes within 2.5 s, specifically &lt; 0.3 s on Ubuntu and &lt; 1.0 s
-on Windows.</p></li>
-</ul>
+</div>
+<div class="section level3">
+<h3 id="windows-11-pro-for-workstations-1">Windows 11 Pro for Workstations<a class="anchor" aria-label="anchor" href="#windows-11-pro-for-workstations-1"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="15%">
+<col width="21%">
+<col width="21%">
+<col width="21%">
+<col width="21%">
+</colgroup>
+<thead><tr class="header">
+<th>Operation</th>
+<th align="right">Min</th>
+<th align="right">Median</th>
+<th align="right">Mean</th>
+<th align="right">Max</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code><a href="../reference/melt.html">melt()</a></code></td>
+<td align="right">0.6× (polars @ 100K rows, 10 id + 9 val)</td>
+<td align="right">3.7×</td>
+<td align="right">31.8×</td>
+<td align="right">435.2× (dask @ 1e3 rows, 10 id + 10000 val)</td>
+</tr>
+<tr class="even">
+<td><code><a href="../reference/dcast.html">dcast()</a></code></td>
+<td align="right">0.9× (collapse @ 1K rows, 1 id + 10 lvl)</td>
+<td align="right">42.2×</td>
+<td align="right">91.1×</td>
+<td align="right">1849.5× (duckdb @ 1M rows, 1 id + 10000 lvl)</td>
+</tr>
+<tr class="odd">
+<td><code>dcast(agg)</code></td>
+<td align="right">2.0× (polars @ 1M rows, count)</td>
+<td align="right">17.9×</td>
+<td align="right">61.8×</td>
+<td align="right">872.4× (reshape2 @ 100M rows, min)</td>
+</tr>
+</tbody>
+</table>
+<p>Combined across both hosts, the smallest speedups are 0.3×
+(<code><a href="../reference/melt.html">melt()</a></code> on Ubuntu, 10 id + 9 val at 1e7 rows, where
+<code>polars</code> is faster than <code>dataprep</code>) and 0.9×
+(<code><a href="../reference/dcast.html">dcast()</a></code> on Windows, 1e3 rows, 1 id + 10 levels, where
+<code>collapse</code> is faster than <code>dataprep</code>). The largest
+speedups reach 1750.0× for <code><a href="../reference/melt.html">melt()</a></code>, 1849.5× for
+<code><a href="../reference/dcast.html">dcast()</a></code>, and 872.4× for aggregated
+<code><a href="../reference/dcast.html">dcast()</a></code>.</p>
+<p>For <code><a href="../reference/melt.html">melt()</a></code> on the largest cells (1e8 rows, 1 id + 9 val,
+8 GB of input), <code>dataprep</code> finishes in <strong>0.4 s on
+Ubuntu</strong> and <strong>1.8 s on Windows</strong>. The next-fastest
+engine takes 2.6 s (<code>polars</code>) on Ubuntu and 2.4 s
+(<code>data.table</code>) on Windows.</p>
+<p>Complete tables — including per-cell medians and the full
+per-competitor gradient — are in
+<code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code>.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="cross-engine-consistency">Cross-engine consistency<a class="anchor" aria-label="anchor" href="#cross-engine-consistency"></a>
 </h2>
-<p>Both <code><a href="../reference/melt.html">melt()</a></code> and <code><a href="../reference/dcast.html">dcast()</a></code> produce output
-numerically identical to <code>reshape2</code> on every tested cell. All
-pairs of engines agree pairwise within <code>tol = 1e-12</code>.</p>
-<div class="section level3">
-<h3 id="melt-consistency">
-<code>melt</code> consistency<a class="anchor" aria-label="anchor" href="#melt-consistency"></a>
-</h3>
+<p><code><a href="../reference/melt.html">melt()</a></code>, <code><a href="../reference/dcast.html">dcast()</a></code>, and aggregated
+<code><a href="../reference/dcast.html">dcast()</a></code> produce output identical to <code>reshape2</code>,
+<code>data.table</code>, <code>tidyr</code>, <code>collapse</code>,
+<code>pandas</code>, <code>polars</code>, <code>dask</code>, and
+<code>duckdb</code> on every tested shape, <code><a href="../reference/melt.html">melt()</a></code> and
+<code><a href="../reference/dcast.html">dcast()</a></code> are pure data movement, so their output is
+bit-identical; aggregated <code><a href="../reference/dcast.html">dcast()</a></code> matches to
+<code>tol = 1e-10</code> because <code>sum</code> and <code>mean</code>
+accumulate in different orders across engines:</p>
 <table class="table">
 <thead><tr class="header">
-<th align="right">rows</th>
-<th align="right">n_id</th>
-<th align="right">n_val</th>
-<th align="right">engines passed</th>
-<th>pairwise</th>
+<th>Operation</th>
+<th align="right">Cells tested</th>
+<th align="right">Engines</th>
+<th>Pairwise</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="right">1,000</td>
-<td align="right">1</td>
+<td><code>melt</code></td>
+<td align="right">4 shapes</td>
 <td align="right">9</td>
-<td align="right">8/8</td>
 <td>all consistent</td>
 </tr>
 <tr class="even">
-<td align="right">100,000</td>
-<td align="right">1</td>
+<td><code>dcast</code></td>
+<td align="right">4 shapes</td>
 <td align="right">9</td>
-<td align="right">8/8</td>
 <td>all consistent</td>
 </tr>
 <tr class="odd">
-<td align="right">1,000</td>
-<td align="right">1</td>
-<td align="right">100</td>
-<td align="right">8/8</td>
-<td>all consistent</td>
-</tr>
-<tr class="even">
-<td align="right">10,000</td>
-<td align="right">10</td>
-<td align="right">10</td>
-<td align="right">8/8</td>
+<td><code>dcast(agg)</code></td>
+<td align="right">2 shapes × 5 aggs</td>
+<td align="right">9</td>
 <td>all consistent</td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section level3">
-<h3 id="dcast-consistency">
-<code>dcast</code> consistency<a class="anchor" aria-label="anchor" href="#dcast-consistency"></a>
-</h3>
-<table class="table">
-<thead><tr class="header">
-<th align="right">n_long</th>
-<th align="right">n_id</th>
-<th align="right">n_levels</th>
-<th align="right">engines passed</th>
-<th>pairwise</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td align="right">5,000</td>
-<td align="right">2</td>
-<td align="right">5</td>
-<td align="right">8/8</td>
-<td>all consistent</td>
-</tr>
-<tr class="even">
-<td align="right">50,000</td>
-<td align="right">1</td>
-<td align="right">50</td>
-<td align="right">8/8</td>
-<td>all consistent</td>
-</tr>
-<tr class="odd">
-<td align="right">50,000</td>
-<td align="right">10</td>
-<td align="right">10</td>
-<td align="right">8/8</td>
-<td>all consistent</td>
-</tr>
-<tr class="even">
-<td align="right">1,000,000</td>
-<td align="right">1</td>
-<td align="right">10</td>
-<td align="right">8/8</td>
-<td>all consistent</td>
-</tr>
-</tbody>
-</table>
-<p>Engines compared: <code>dataprep</code>, <code>reshape2</code>,
-<code>data.table</code>, <code>tidyr</code>, <code>pandas</code>,
-<code>polars</code>, <code>dask</code>, <code>duckdb</code>.</p>
-</div>
 </div>
 <div class="section level2">
 <h2 id="reproducing-the-benchmarks">Reproducing the benchmarks<a class="anchor" aria-label="anchor" href="#reproducing-the-benchmarks"></a>
@@ -1851,7 +2581,7 @@ pairs of engines agree pairwise within <code>tol = 1e-12</code>.</p>
 <li>
 <code>benchmark_melt_dcast.R</code> — integrated driver. It runs
 both the per-tool benchmarks for <code><a href="../reference/melt.html">melt()</a></code> /
-<code><a href="../reference/dcast.html">dcast()</a></code> and the 8-engine consistency checks, and prints the
+<code><a href="../reference/dcast.html">dcast()</a></code> and the 9-engine consistency checks, and prints the
 tables shown above.</li>
 </ul>
 <p>Scripts are disabled by default so that <code>R CMD check</code> does
@@ -1886,7 +2616,7 @@ not run them. To enable:</p>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] ggplot2_4.0.3  dataprep_0.1.8</span></span>
+<span><span class="co">#&gt; [1] ggplot2_4.0.3    dataprep_0.1.8.1</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] gtable_0.3.6       jsonlite_2.0.0     dplyr_1.2.1        compiler_4.6.1    </span></span>

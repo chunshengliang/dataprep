@@ -121,6 +121,8 @@ backends.
   specification
 - [`dcast()`](https://chunshengliang.github.io/dataprep/reference/dcast.md)
   : Cast a long-format data.frame into a wide format
+- [`melt_clear_cache()`](https://chunshengliang.github.io/dataprep/reference/melt_clear_cache.md)
+  : Release internal caches held by melt()
 
 ## Data cleaning helpers
 

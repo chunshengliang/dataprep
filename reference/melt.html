@@ -13,7 +13,7 @@ column names, and two storage layouts (row-major or column-major)."><meta proper
 
     <a class="navbar-brand me-2" href="../index.html">dataprep</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.1.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,7 @@ column names, and two storage layouts (row-major or column-major).</p>
 <span>     variable.name <span class="op">=</span> <span class="st">"variable"</span>, value.name <span class="op">=</span> <span class="st">"value"</span>,</span>
 <span>     na.rm <span class="op">=</span> <span class="cn">FALSE</span>, cores <span class="op">=</span> <span class="cn">NULL</span>, major <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>     as.factor <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>     verbose <span class="op">=</span> <span class="cn">FALSE</span>, parallel_threshold <span class="op">=</span> <span class="fl">5e6</span>, id.vars <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<span>     verbose <span class="op">=</span> <span class="cn">FALSE</span>, parallel_threshold <span class="op">=</span> <span class="fl">2e4</span>, id.vars <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -86,9 +86,12 @@ column names, and two storage layouts (row-major or column-major).</p>
     should be supplied.</p></dd>
 
   <dt id="arg-variable-name">variable.name<a class="anchor" aria-label="anchor" href="#arg-variable-name"></a></dt>
-<dd><p>Name of the new column that stores the
-    original column names of the measure variables. Default
-    <code>"variable"</code>. See <code>as.factor</code> for its type.</p></dd>
+<dd><p>Length-1 character; name of the output column that
+    records which measure column each row came from.  Defaults to
+    <code>"variable"</code>.  The column is a <code>factor</code> whose levels are
+    the names of the measure columns when <code>as.factor</code> resolves to
+    <code>TRUE</code> (the default for <code>major = "col"</code>), and a
+    <code>character</code> vector otherwise.</p></dd>
 
   <dt id="arg-value-name">value.name<a class="anchor" aria-label="anchor" href="#arg-value-name"></a></dt>
 <dd><p>Name of the new numeric column that stores the
@@ -112,12 +115,12 @@ column names, and two storage layouts (row-major or column-major).</p>
     the input shape.</p></dd>
 
   <dt id="arg-as-factor">as.factor<a class="anchor" aria-label="anchor" href="#arg-as-factor"></a></dt>
-<dd><p>Whether the <code>variable</code> column is a factor.
-    <code>NULL</code> (default) uses <code>TRUE</code> when <code>major</code> is
-    <code>"col"</code> and <code>FALSE</code> when <code>major</code> is <code>"row"</code>.
-    Explicit <code>TRUE</code> / <code>FALSE</code> overrides that default. The
-    return value is always a plain <code>data.frame</code>; no
-    <code>tibble</code> attributes are attached.</p></dd>
+<dd><p>Logical or <code>NULL</code>.  If <code>TRUE</code>, the
+    <code>variable.name</code> column is returned as a <code>factor</code>.  If
+    <code>FALSE</code>, it is returned as <code>character</code>.  <code>NULL</code> (the
+    default) uses <code>TRUE</code> when <code>major</code> is <code>"col"</code> and
+    <code>FALSE</code> when <code>major</code> is <code>"row"</code>.  Explicit <code>TRUE</code>
+    or <code>FALSE</code> overrides that default.</p></dd>
 
   <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, prints timing messages.</p></dd>
@@ -125,7 +128,7 @@ column names, and two storage layouts (row-major or column-major).</p>
   <dt id="arg-parallel-threshold">parallel_threshold<a class="anchor" aria-label="anchor" href="#arg-parallel-threshold"></a></dt>
 <dd><p>Minimum number of output elements, i.e.\
     <code>nrow(data) * length(measure.vars)</code>, before automatic
-    parallelism is enabled. Default <code>5e6</code>.</p></dd>
+    parallelism is enabled. Default <code>2e4</code>.</p></dd>
 
   <dt id="arg-id-vars">id.vars<a class="anchor" aria-label="anchor" href="#arg-id-vars"></a></dt>
 <dd><p>Alias of <code>id</code>, provided for reshape2 / data.table
@@ -134,42 +137,60 @@ column names, and two storage layouts (row-major or column-major).</p>
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p><code>melt()</code> is the fast, drop-in replacement for
-<code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code> and <code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">tidyr::pivot_longer</a></code>. The C++
-backend (<code>melt_cpp</code>) has been benchmarked against <strong>all
-seven major alternatives</strong> in the R and Python ecosystems:
-<code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>pandas</code>,
-<code>polars</code>, <code>dask</code>, and <code>duckdb</code>. Every cell is
-measured with a C++ steady-clock timer and an adaptive <code>times</code>
-rule.</p>
-<p><strong>Speed-up relative to each competitor spans
-<code>0.6x</code> to <code>1628.9x</code>.</strong> The median across all tested cells
-and all competitors is <code>11.3x</code> on Ubuntu 25.10 and
-<code>5.6x</code> on Windows 11 Pro for Workstations; the mean is
-<code>67.8x</code> and <code>46.6x</code>, respectively. The largest gaps
-appear on wide tables (many value columns, few rows); the smallest
-gaps appear on small tables where initialization overhead dominates.</p>
-<p>Representative cells (means; numbers in parentheses are the
-speed-up of <code>melt()</code> relative to that competitor) taken from
-the Ubuntu 25.10 host:</p>
-<ul><li><p><strong>1e6 rows, 1 id, 9 value columns</strong> —
-        <code>3.474 ms</code> vs <code>9.646 ms</code> (<code>data.table</code>,
-        <code>2.8x</code>), <code>80.014 ms</code> (<code>tidyr</code>, <code>23.0x</code>),
-        <code>648.895 ms</code> (<code>duckdb</code>, <code>186.8x</code>).</p></li>
-<li><p><strong>1e7 rows, 1 id, 9 value columns</strong> —
-        <code>33.412 ms</code> vs <code>365.065 ms</code> (<code>data.table</code>,
-        <code>10.9x</code>), <code>1083.987 ms</code> (<code>tidyr</code>, <code>32.4x</code>),
-        <code>6389.564 ms</code> (<code>duckdb</code>, <code>191.2x</code>).</p></li>
-<li><p><strong>1e3 rows, 1 id, 10000 value columns</strong> —
-        <code>2.295 ms</code> vs <code>12.415 ms</code> (<code>data.table</code>,
-        <code>5.4x</code>), <code>19.408 ms</code> (<code>polars</code>, <code>8.5x</code>),
-        <code>3737.866 ms</code> (<code>dask</code>, <strong><code>1628.9x</code></strong>).</p></li>
-<li><p><strong>1e3 rows, 10 id, 10000 value columns</strong> —
-        <code>25.009 ms</code> vs <code>71.605 ms</code> (<code>polars</code>,
-        <code>2.9x</code>), <code>182.019 ms</code> (<code>data.table</code>,
-        <code>7.3x</code>), <code>23777.051 ms</code> (<code>dask</code>,
-        <strong><code>950.7x</code></strong>).</p></li>
-</ul><p>The speed-up comes from three design choices:</p>
+    <p><strong>Shape.</strong>  A <code>data.frame</code> with <code>n</code> rows and
+<code>k = length(measure.vars)</code> measure columns becomes a
+<code>data.frame</code> with <code>n * k</code> rows.  Identity columns are
+replicated <code>k</code> times; a factor <code>variable</code> column records the
+source column; a <code>double</code> <code>value</code> column holds the stacked
+data.</p>
+<p><strong>Implementation.</strong>  The heavy lifting is done by a C++17 kernel
+compiled with OpenMP and dispatched to AVX-512 / AVX2 / SSE4.2
+implementations of <code>memcpy</code>-like primitives at first use.  Output
+buffers are pre-faulted via <code>madvise(MADV_HUGEPAGE)</code> on Linux and
+<code>mallopt(M_MMAP_THRESHOLD, ...)</code> on glibc.  Threads scale with
+input size up to a hardware-aware cap; per-column write-combining-buffer
+pressure caps the thread count further when many measure columns are
+being written at once.</p>
+<p>The general path uses a two-phase, cache-aware schedule.  Phase A
+writes the value and variable columns with non-temporal stores.
+Phase B replicates the id columns with L2-sized blocking so that
+each worker has exactly one active non-temporal write stream at a
+time; this avoids saturating the x86 write-combining buffers when
+many id columns are present.</p>
+<p><strong>Fast paths.</strong>  Three code paths exist, chosen automatically:
+a tiny-input path for <code>nrow &lt;= 2048</code> with at most 64 measure
+columns; a small-input path for at most 131072 output elements; and a
+general two-phase path for everything else.  Passing <code>verbose =
+TRUE</code> disables the two fast paths so that all calls exercise the same
+kernel; this is intended for testing, not production.</p>
+<p><strong>Memory.</strong>  Peak memory is roughly
+<code>(n_id + 2) * n * k * 8</code> bytes plus the input.  For very large
+inputs the R heap is briefly reserved with a same-sized sentinel so
+that glibc's <code>M_MMAP_THRESHOLD</code> rises before the output
+allocation; the sentinel is released before the C++ kernel runs.</p>
+<p><strong>Benchmarks.</strong>  <code>melt()</code> is benchmarked against all
+eight major alternatives in the R and Python ecosystems:
+<code>reshape2</code>, <code>data.table</code>, <code>tidyr</code>, <code>collapse</code>,
+<code>pandas</code>, <code>polars</code>, <code>dask</code>, and <code>duckdb</code>.
+Every cell is measured with a C++ steady-clock timer.  The first
+call is a warmup and is excluded from the reported statistics; an
+adaptive rule picks the number of timed iterations from the warmup
+time.  Mixed-type id columns (integer / character alternation for
+<code>n_id &gt;= 2</code>) are the default; set
+<code>DATAPREP_MIXED_TYPES=FALSE</code> to force the all-integer baseline.</p>
+<p>The median speed-up of <code>melt()</code> relative to each competitor
+spans <code>0.35x</code> to <code>1750x</code> on Ubuntu 25.10 and
+<code>0.62x</code> to <code>435x</code> on Windows 11 Pro for Workstations.
+The median across all tested cells and all competitors is
+<code>9.64x</code> on Ubuntu 25.10 and <code>3.72x</code> on Windows 11 Pro
+for Workstations.</p>
+<p>The sub-1.0x cells are concentrated on the <code>1 id + 9 value</code>
+shape, where <code>polars</code> is faster than <code>melt()</code>:
+<code>polars @ rows=10,000,000, 10 id + 9 val</code> on Ubuntu
+(<code>0.35x</code>), and <code>polars @ rows=100,000, 10 id + 9 val</code>
+on Windows (<code>0.62x</code>).  Every other cell has <code>melt()</code>
+ahead of or on par with the fastest competitor.</p>
+<p>The speed-up comes from three design choices:</p>
 <ol><li><p><strong>Two layout paths, selected by <code>major</code>.</strong> The
         default is column-major. On the column-major path, each output
         column is written as one contiguous <code>memcpy</code> of the input
@@ -198,13 +219,13 @@ and thread-cap detection, which keeps <code>melt()</code> the fastest
 engine even on tables of a few thousand rows.</p>
 <p>The output is identical to <code><a href="https://rdrr.io/pkg/reshape2/man/melt.html" class="external-link">reshape2::melt</a></code>,
 <code><a href="https://rdrr.io/pkg/data.table/man/melt.data.table.html" class="external-link">data.table::melt</a></code>, <code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">tidyr::pivot_longer</a></code>,
-<code>pandas.melt</code>, <code>polars.unpivot</code>, <code>dask</code>, and
-<code>duckdb UNPIVOT</code> on every tested shape, within
-<code>tol = 1e-12</code>. See <code><a href="../articles/dataprep-melt-dcast.html">vignette("dataprep-melt-dcast")</a></code> for
-the implementation notes and
-<code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code> for the full benchmark
-tables, including <code>mean</code>, <code>median</code>, and the per-competitor
-gradient at every tested scale.</p>
+<code>collapse::pivot(how = "longer")</code>, <code>pandas.melt</code>,
+<code>polars.unpivot</code>, <code>dask</code>, and <code>duckdb UNPIVOT</code> on
+every tested shape, within <code>tol = 1e-12</code>. See
+<code><a href="../articles/dataprep-melt-dcast.html">vignette("dataprep-melt-dcast")</a></code> for the implementation notes
+and <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code> for the full benchmark
+tables, including <code>mean</code>, <code>median</code>, and the
+per-competitor gradient at every tested scale.</p>
     </div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -216,6 +237,9 @@ Columns are the ID columns, a column named
 <code>variable.name</code> (a factor when <code>as.factor</code> resolves to
 <code>TRUE</code>, otherwise a character vector), and a numeric column
 named <code>value.name</code>.</p>
+<p>When <code>as.factor = NULL</code> and <code>major = "row"</code>, the
+<code>variable</code> column is a <code>character</code> vector, matching
+<code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">tidyr::pivot_longer()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
