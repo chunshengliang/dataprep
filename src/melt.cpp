@@ -1,23 +1,13 @@
 // [[Rcpp::plugins(cpp17)]]
 // [[Rcpp::plugins(openmp)]]
 //
-// ============================================================================
-// melt.cpp -- CRAN-compliant, SIMD-dispatched dataframe melt for R.
-// Optimized for large mixed-id datasets; matches/exceeds polars performance.
+// melt.cpp -- dataprep 0.1.8.1
 //
-// Key optimizations (melt_cpp and its SPMD path; tiny/small fast paths
-// short-circuit most of these to minimize fixed overhead):
-//   * Blocked id-column doubling: id columns read ONCE from input, replicated
-//     via L2-cached block doubling. Cuts id-column read bandwidth by 8/9.
-//   * Normal-store first block + NT-store remaining blocks: maximizes cache
-//     utilization for replication while avoiding cache pollution.
-//   * Added normal-store SIMD int copy (copy_i32) for cached paths.
-//   * L2-sized blocking (16Ki rows) for id column replication.
+// Phase B split:
+//   Pass 1 : src[i] -> dst[i][0]      (all i, all blocks; one stream/worker)
+//   Pass 2 : for k = 1..n_meas-1:
+//              dst[i][0] -> dst[i][k] (all i, all blocks; one stream/worker)
 //
-// CRAN compliance: no PGO, no global -march=native, all intrinsics guarded,
-// runtime feature detection, scalar fallbacks, no custom allocators.
-// ============================================================================
-
 #include <Rcpp.h>
 #include <cstring>
 #include <vector>
@@ -35,11 +25,9 @@
 #  include <unistd.h>
 #  include <sys/mman.h>
 #endif
-
 #if defined(__GLIBC__)
 #  include <malloc.h>
 #endif
-
 #ifdef _OPENMP
 #  include <omp.h>
 #endif
@@ -72,46 +60,32 @@ using namespace Rcpp;
 namespace {
 
 // ============================================================================
-// Parallel THP trigger.
+//  THP helpers
 // ============================================================================
-static inline void touch_2m_in_range(const void* col_base, size_t col_bytes,
-                                     R_xlen_t elem_off, R_xlen_t elem_len,
-                                     size_t elem_size) {
-  if (col_bytes < (2ULL << 20)) return;
-  if (elem_len <= 0 || elem_size == 0) return;
-  const size_t STEP = 2ULL << 20;
-  const size_t byte_start = (size_t)elem_off * elem_size;
-  size_t byte_end = byte_start + (size_t)elem_len * elem_size;
-  if (byte_end > col_bytes) byte_end = col_bytes;
-  if (byte_start >= byte_end) return;
-  size_t off = byte_start & ~(STEP - 1);
-  volatile char* c = (volatile char*)col_base;
-  for (; off < byte_end; off += STEP) {
-    c[off] = 0;
-  }
-}
-
 #if defined(__linux__)
 static inline void hint_pages(void* ptr, size_t bytes) {
   if (bytes < (2ULL << 20)) return;
-  long ps = sysconf(_SC_PAGESIZE);
-  if (ps <= 0) ps = 4096;
+  constexpr uintptr_t HP = 2ULL << 20;
   uintptr_t a = (uintptr_t)ptr;
-  uintptr_t m = (uintptr_t)ps - 1;
-  uintptr_t s = (a + m) & ~m;
-  uintptr_t e = (a + bytes) & ~m;
+  uintptr_t e_raw = a + bytes;
+  uintptr_t s = (a + HP - 1) & ~(HP - 1);
+  uintptr_t e = e_raw & ~(HP - 1);
   if (e <= s) return;
-#  ifdef MADV_HUGEPAGE
+#ifdef MADV_HUGEPAGE
+  // Async hint only.  MADV_COLLAPSE was tested exhaustively:
+  //   - Single collapse on a large array: up to 25% faster on 1e8×1id.
+  //   - Multiple collapses within one melt() call: catastrophic on
+  //     1e7×10id (6 collapses -> mmap_lock serializes -> 2x slower).
+  // Since the 10-id path is the one we care about, we accept the
+  // ~10% loss on the single-id 1e8 case and skip synchronous collapse
+  // entirely.  khugepaged will still fold pages in the background.
   madvise((void*)s, (size_t)(e - s), MADV_HUGEPAGE);
-#  endif
+#endif
 }
 #else
 static inline void hint_pages(void*, size_t) {}
 #endif
 
-// ============================================================================
-// Allocation with huge-page hint.
-// ============================================================================
 static inline SEXP alloc_hint(SEXPTYPE t, R_xlen_t n) {
   SEXP s = Rf_allocVector(t, n);
   if (n <= 0) return s;
@@ -124,14 +98,17 @@ static inline SEXP alloc_hint(SEXPTYPE t, R_xlen_t n) {
   case STRSXP:  es = sizeof(SEXP);   p = (void*)STRING_PTR_RO(s); break;
   default: return s;
   }
-  size_t bytes = (size_t)n * es;
-  if (p) hint_pages(p, bytes);
+  if (p) hint_pages(p, (size_t)n * es);
   return s;
 }
 
-// ============================================================================
-// sfence (per-thread).
-// ============================================================================
+static inline SEXP alloc_string_col(R_xlen_t n) {
+  SEXP s = Rf_allocVector(STRSXP, n);
+  if (n > 0) hint_pages((void*)STRING_PTR_RO(s),
+      (size_t)n * sizeof(SEXP));
+  return s;
+}
+
 static inline void nt_flush() {
 #if DATAPREP_ARCH_X86
   _mm_sfence();
@@ -139,346 +116,303 @@ static inline void nt_flush() {
 }
 
 // ============================================================================
-// ISA primitive 1: nt_fill_i32 (non-temporal int32 fill)
+//  ISA primitives
 // ============================================================================
 static void nt_fill_i32_scalar(int* p, int v, R_xlen_t n) {
   for (R_xlen_t i = 0; i < n; ++i) p[i] = v;
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static void nt_fill_i32_sse42(int* p, int v, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(p + r) & 15u) != 0) { p[r] = v; ++r; }
-    const __m128i vv = _mm_set1_epi32(v);
-    const R_xlen_t end = r + ((n - r) / 4) * 4;
-    for (; r < end; r += 4) _mm_stream_si128((__m128i*)(p + r), vv);
-    for (; r < n; ++r) p[r] = v;
-  }
-
-DATAPREP_TARGET("avx2")
-  static void nt_fill_i32_avx2(int* p, int v, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(p + r) & 31u) != 0) { p[r] = v; ++r; }
-    const __m256i vv = _mm256_set1_epi32(v);
-    const R_xlen_t end = r + ((n - r) / 8) * 8;
-    for (; r < end; r += 8) _mm256_stream_si256((__m256i*)(p + r), vv);
-    for (; r < n; ++r) p[r] = v;
-  }
-
-DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static void nt_fill_i32_avx512(int* p, int v, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(p + r) & 63u) != 0) { p[r] = v; ++r; }
-    const __m512i vv = _mm512_set1_epi32(v);
-    const R_xlen_t end = r + ((n - r) / 16) * 16;
-    for (; r < end; r += 16) _mm512_stream_si512((__m512i*)(p + r), vv);
-    for (; r < n; ++r) p[r] = v;
-  }
-#endif
-
-static void (*nt_fill_i32_ptr)(int*, int, R_xlen_t) = nt_fill_i32_scalar;
-static inline void nt_fill_i32(int* p, int v, R_xlen_t n) {
-  nt_fill_i32_ptr(p, v, n);
+static void nt_fill_i32_sse42(int* p, int v, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(p + r) & 15u) != 0) { p[r] = v; ++r; }
+  const __m128i vv = _mm_set1_epi32(v);
+  const R_xlen_t end = r + ((n - r) / 4) * 4;
+  for (; r < end; r += 4) _mm_stream_si128((__m128i*)(p + r), vv);
+  for (; r < n; ++r) p[r] = v;
 }
+DATAPREP_TARGET("avx2")
+static void nt_fill_i32_avx2(int* p, int v, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(p + r) & 31u) != 0) { p[r] = v; ++r; }
+  const __m256i vv = _mm256_set1_epi32(v);
+  const R_xlen_t end = r + ((n - r) / 8) * 8;
+  for (; r < end; r += 8) _mm256_stream_si256((__m256i*)(p + r), vv);
+  for (; r < n; ++r) p[r] = v;
+}
+DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
+static void nt_fill_i32_avx512(int* p, int v, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(p + r) & 63u) != 0) { p[r] = v; ++r; }
+  const __m512i vv = _mm512_set1_epi32(v);
+  const R_xlen_t end = r + ((n - r) / 16) * 16;
+  for (; r < end; r += 16) _mm512_stream_si512((__m512i*)(p + r), vv);
+  for (; r < n; ++r) p[r] = v;
+}
+#endif
+static void (*nt_fill_i32_ptr)(int*, int, R_xlen_t) = nt_fill_i32_scalar;
+static inline void nt_fill_i32(int* p, int v, R_xlen_t n) { nt_fill_i32_ptr(p, v, n); }
 
-// ============================================================================
-// ISA primitive 2: nt_copy_pd (non-temporal 8-byte copy)
-// ============================================================================
 static void nt_copy_pd_scalar(double* dst, const double* src, R_xlen_t n) {
   std::memcpy(dst, src, (size_t)n * sizeof(double));
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static void nt_copy_pd_sse42(double* dst, const double* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 2) * 2;
-    constexpr R_xlen_t PF = 64;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 2) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm_stream_pd(dst + r, _mm_loadu_pd(src + r));
-      }
+static void nt_copy_pd_sse42(double* dst, const double* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 2) * 2;
+  constexpr R_xlen_t PF = 64;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 2) {
+      __builtin_prefetch(src + r + PF, 0, 0);
+      _mm_stream_pd(dst + r, _mm_loadu_pd(src + r));
     }
-    for (; r < end; r += 2) _mm_stream_pd(dst + r, _mm_loadu_pd(src + r));
-    for (; r < n; ++r) dst[r] = src[r];
   }
-
+  for (; r < end; r += 2) _mm_stream_pd(dst + r, _mm_loadu_pd(src + r));
+  for (; r < n; ++r) dst[r] = src[r];
+}
 DATAPREP_TARGET("avx2")
-  static void nt_copy_pd_avx2(double* dst, const double* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 4) * 4;
-    constexpr R_xlen_t PF = 64;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 4) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm256_stream_pd(dst + r, _mm256_loadu_pd(src + r));
-      }
-    }
-    for (; r < end; r += 4)
+static void nt_copy_pd_avx2(double* dst, const double* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 4) * 4;
+  constexpr R_xlen_t PF = 64;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 4) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm256_stream_pd(dst + r, _mm256_loadu_pd(src + r));
-    for (; r < n; ++r) dst[r] = src[r];
-  }
-
-DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static void nt_copy_pd_avx512(double* dst, const double* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 8) * 8;
-    constexpr R_xlen_t PF = 64;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 8) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm512_stream_pd(dst + r, _mm512_loadu_pd(src + r));
-      }
     }
-    for (; r < end; r += 8)
-      _mm512_stream_pd(dst + r, _mm512_loadu_pd(src + r));
-    for (; r < n; ++r) dst[r] = src[r];
   }
+  for (; r < end; r += 4)
+    _mm256_stream_pd(dst + r, _mm256_loadu_pd(src + r));
+  for (; r < n; ++r) dst[r] = src[r];
+}
+DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
+static void nt_copy_pd_avx512(double* dst, const double* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 8) * 8;
+  constexpr R_xlen_t PF = 64;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 8) {
+      __builtin_prefetch(src + r + PF, 0, 0);
+      _mm512_stream_pd(dst + r, _mm512_loadu_pd(src + r));
+    }
+  }
+  for (; r < end; r += 8)
+    _mm512_stream_pd(dst + r, _mm512_loadu_pd(src + r));
+  for (; r < n; ++r) dst[r] = src[r];
+}
 #endif
-
 static void (*nt_copy_pd_ptr)(double*, const double*, R_xlen_t) = nt_copy_pd_scalar;
 static inline void nt_copy_pd(double* dst, const double* src, R_xlen_t n) {
   nt_copy_pd_ptr(dst, src, n);
 }
 
-// ============================================================================
-// ISA primitive 3: copy_pd (normal-store 8-byte copy, cached)
-// ============================================================================
 static void copy_pd_scalar(double* dst, const double* src, R_xlen_t n) {
   std::memcpy(dst, src, (size_t)n * sizeof(double));
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static void copy_pd_sse42(double* dst, const double* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 2) * 2;
-    constexpr R_xlen_t PF = 64;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 2) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm_store_pd(dst + r, _mm_loadu_pd(src + r));
-      }
+static void copy_pd_sse42(double* dst, const double* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 2) * 2;
+  constexpr R_xlen_t PF = 64;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 2) {
+      __builtin_prefetch(src + r + PF, 0, 0);
+      _mm_store_pd(dst + r, _mm_loadu_pd(src + r));
     }
-    for (; r < end; r += 2) _mm_store_pd(dst + r, _mm_loadu_pd(src + r));
-    for (; r < n; ++r) dst[r] = src[r];
   }
-
+  for (; r < end; r += 2) _mm_store_pd(dst + r, _mm_loadu_pd(src + r));
+  for (; r < n; ++r) dst[r] = src[r];
+}
 DATAPREP_TARGET("avx2")
-  static void copy_pd_avx2(double* dst, const double* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 4) * 4;
-    constexpr R_xlen_t PF = 64;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 4) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm256_store_pd(dst + r, _mm256_loadu_pd(src + r));
-      }
-    }
-    for (; r < end; r += 4)
+static void copy_pd_avx2(double* dst, const double* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 4) * 4;
+  constexpr R_xlen_t PF = 64;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 4) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm256_store_pd(dst + r, _mm256_loadu_pd(src + r));
-    for (; r < n; ++r) dst[r] = src[r];
-  }
-
-DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static void copy_pd_avx512(double* dst, const double* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 8) * 8;
-    constexpr R_xlen_t PF = 64;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 8) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm512_store_pd(dst + r, _mm512_loadu_pd(src + r));
-      }
     }
-    for (; r < end; r += 8)
-      _mm512_store_pd(dst + r, _mm512_loadu_pd(src + r));
-    for (; r < n; ++r) dst[r] = src[r];
   }
+  for (; r < end; r += 4)
+    _mm256_store_pd(dst + r, _mm256_loadu_pd(src + r));
+  for (; r < n; ++r) dst[r] = src[r];
+}
+DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
+static void copy_pd_avx512(double* dst, const double* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 8) * 8;
+  constexpr R_xlen_t PF = 64;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 8) {
+      __builtin_prefetch(src + r + PF, 0, 0);
+      _mm512_store_pd(dst + r, _mm512_loadu_pd(src + r));
+    }
+  }
+  for (; r < end; r += 8)
+    _mm512_store_pd(dst + r, _mm512_loadu_pd(src + r));
+  for (; r < n; ++r) dst[r] = src[r];
+}
 #endif
-
 static void (*copy_pd_ptr)(double*, const double*, R_xlen_t) = copy_pd_scalar;
-
 static inline void copy_pd(double* dst, const double* src, R_xlen_t n) {
   copy_pd_ptr(dst, src, n);
 }
-
-// Fast bulk copy of a SEXP vector via memcpy/SIMD. Safe ONLY when
-// `dst` was produced by Rf_allocVector in this call, so every element
-// is NEW from the GC's point of view and no write barrier is required.
-// Do not use for in-place modification of a live vector.
 static inline void copy_sexp(SEXP* dst, const SEXP* src, R_xlen_t n) {
   copy_pd_ptr((double*)dst, (const double*)src, n);
 }
 
-// ============================================================================
-// ISA primitive 4: nt_copy_i32 (non-temporal int32 copy)
-// ============================================================================
 static void nt_copy_i32_scalar(int* dst, const int* src, R_xlen_t n) {
   std::memcpy(dst, src, (size_t)n * sizeof(int));
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static void nt_copy_i32_sse42(int* dst, const int* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 4) * 4;
-    constexpr R_xlen_t PF = 128;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 4) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm_stream_si128((__m128i*)(dst + r),
-                         _mm_loadu_si128((const __m128i*)(src + r)));
-      }
-    }
-    for (; r < end; r += 4)
+static void nt_copy_i32_sse42(int* dst, const int* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 4) * 4;
+  constexpr R_xlen_t PF = 128;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 4) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm_stream_si128((__m128i*)(dst + r),
                        _mm_loadu_si128((const __m128i*)(src + r)));
-    for (; r < n; ++r) dst[r] = src[r];
-  }
-
-DATAPREP_TARGET("avx2")
-  static void nt_copy_i32_avx2(int* dst, const int* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 8) * 8;
-    constexpr R_xlen_t PF = 128;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 8) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm256_stream_si256((__m256i*)(dst + r),
-                            _mm256_loadu_si256((const __m256i*)(src + r)));
-      }
     }
-    for (; r < end; r += 8)
+  }
+  for (; r < end; r += 4)
+    _mm_stream_si128((__m128i*)(dst + r),
+                     _mm_loadu_si128((const __m128i*)(src + r)));
+  for (; r < n; ++r) dst[r] = src[r];
+}
+DATAPREP_TARGET("avx2")
+static void nt_copy_i32_avx2(int* dst, const int* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 8) * 8;
+  constexpr R_xlen_t PF = 128;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 8) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm256_stream_si256((__m256i*)(dst + r),
                           _mm256_loadu_si256((const __m256i*)(src + r)));
-    for (; r < n; ++r) dst[r] = src[r];
-  }
-
-DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static void nt_copy_i32_avx512(int* dst, const int* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 16) * 16;
-    constexpr R_xlen_t PF = 128;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 16) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm512_stream_si512((__m512i*)(dst + r),
-                            _mm512_loadu_si512((const __m512i*)(src + r)));
-      }
     }
-    for (; r < end; r += 16)
+  }
+  for (; r < end; r += 8)
+    _mm256_stream_si256((__m256i*)(dst + r),
+                        _mm256_loadu_si256((const __m256i*)(src + r)));
+  for (; r < n; ++r) dst[r] = src[r];
+}
+DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
+static void nt_copy_i32_avx512(int* dst, const int* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 16) * 16;
+  constexpr R_xlen_t PF = 128;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 16) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm512_stream_si512((__m512i*)(dst + r),
                           _mm512_loadu_si512((const __m512i*)(src + r)));
-    for (; r < n; ++r) dst[r] = src[r];
+    }
   }
+  for (; r < end; r += 16)
+    _mm512_stream_si512((__m512i*)(dst + r),
+                        _mm512_loadu_si512((const __m512i*)(src + r)));
+  for (; r < n; ++r) dst[r] = src[r];
+}
 #endif
-
 static void (*nt_copy_i32_ptr)(int*, const int*, R_xlen_t) = nt_copy_i32_scalar;
 static inline void nt_copy_i32(int* dst, const int* src, R_xlen_t n) {
   nt_copy_i32_ptr(dst, src, n);
 }
 
-// ============================================================================
-// ISA primitive 5: copy_i32 (normal-store int32 copy, cached)
-// ============================================================================
 static void copy_i32_scalar(int* dst, const int* src, R_xlen_t n) {
   std::memcpy(dst, src, (size_t)n * sizeof(int));
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static void copy_i32_sse42(int* dst, const int* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 4) * 4;
-    constexpr R_xlen_t PF = 128;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 4) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm_store_si128((__m128i*)(dst + r),
-                        _mm_loadu_si128((const __m128i*)(src + r)));
-      }
-    }
-    for (; r < end; r += 4)
+static void copy_i32_sse42(int* dst, const int* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 15u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 4) * 4;
+  constexpr R_xlen_t PF = 128;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 4) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm_store_si128((__m128i*)(dst + r),
                       _mm_loadu_si128((const __m128i*)(src + r)));
-    for (; r < n; ++r) dst[r] = src[r];
-  }
-
-DATAPREP_TARGET("avx2")
-  static void copy_i32_avx2(int* dst, const int* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 8) * 8;
-    constexpr R_xlen_t PF = 128;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 8) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm256_store_si256((__m256i*)(dst + r),
-                           _mm256_loadu_si256((const __m256i*)(src + r)));
-      }
     }
-    for (; r < end; r += 8)
+  }
+  for (; r < end; r += 4)
+    _mm_store_si128((__m128i*)(dst + r),
+                    _mm_loadu_si128((const __m128i*)(src + r)));
+  for (; r < n; ++r) dst[r] = src[r];
+}
+DATAPREP_TARGET("avx2")
+static void copy_i32_avx2(int* dst, const int* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 31u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 8) * 8;
+  constexpr R_xlen_t PF = 128;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 8) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm256_store_si256((__m256i*)(dst + r),
                          _mm256_loadu_si256((const __m256i*)(src + r)));
-    for (; r < n; ++r) dst[r] = src[r];
-  }
-
-DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static void copy_i32_avx512(int* dst, const int* src, R_xlen_t n) {
-    if (n <= 0) return;
-    R_xlen_t r = 0;
-    while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
-    const R_xlen_t end = r + ((n - r) / 16) * 16;
-    constexpr R_xlen_t PF = 128;
-    if (n >= 4096) {
-      for (; r + PF < end; r += 16) {
-        __builtin_prefetch(src + r + PF, 0, 0);
-        _mm512_store_si512((__m512i*)(dst + r),
-                           _mm512_loadu_si512((const __m512i*)(src + r)));
-      }
     }
-    for (; r < end; r += 16)
+  }
+  for (; r < end; r += 8)
+    _mm256_store_si256((__m256i*)(dst + r),
+                       _mm256_loadu_si256((const __m256i*)(src + r)));
+  for (; r < n; ++r) dst[r] = src[r];
+}
+DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
+static void copy_i32_avx512(int* dst, const int* src, R_xlen_t n) {
+  if (n <= 0) return;
+  R_xlen_t r = 0;
+  while (r < n && ((uintptr_t)(dst + r) & 63u) != 0) { dst[r] = src[r]; ++r; }
+  const R_xlen_t end = r + ((n - r) / 16) * 16;
+  constexpr R_xlen_t PF = 128;
+  if (n >= 4096) {
+    for (; r + PF < end; r += 16) {
+      __builtin_prefetch(src + r + PF, 0, 0);
       _mm512_store_si512((__m512i*)(dst + r),
                          _mm512_loadu_si512((const __m512i*)(src + r)));
-    for (; r < n; ++r) dst[r] = src[r];
+    }
   }
+  for (; r < end; r += 16)
+    _mm512_store_si512((__m512i*)(dst + r),
+                       _mm512_loadu_si512((const __m512i*)(src + r)));
+  for (; r < n; ++r) dst[r] = src[r];
+}
 #endif
-
 static void (*copy_i32_ptr)(int*, const int*, R_xlen_t) = copy_i32_scalar;
 static inline void copy_i32(int* dst, const int* src, R_xlen_t n) {
   copy_i32_ptr(dst, src, n);
 }
 
-// ============================================================================
-// ISA primitive 6: int2double
-// ============================================================================
 static void int2double_scalar(const int* s, double* d, size_t n, bool is_logical) {
   for (size_t i = 0; i < n; ++i) {
     int v = s[i];
@@ -486,255 +420,216 @@ static void int2double_scalar(const int* s, double* d, size_t n, bool is_logical
     else            d[i] = (v == NA_INTEGER) ? NA_REAL : (double)v;
   }
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static void int2double_sse42(const int* src, double* dst, size_t n, bool is_logical) {
-    size_t i = 0;
-    const __m128i na_i = _mm_set1_epi32(is_logical ? NA_LOGICAL : NA_INTEGER);
-    const __m128d na_d = _mm_set1_pd(NA_REAL);
-    const __m128d zero = _mm_setzero_pd();
-    const __m128d one  = _mm_set1_pd(1.0);
-    for (; i + 4 <= n; i += 4) {
-      __m128i vi = _mm_loadu_si128((const __m128i*)(src + i));
-      __m128i na_mask = _mm_cmpeq_epi32(vi, na_i);
-      __m128d r;
-      if (is_logical) {
-        __m128i one_mask = _mm_cmpeq_epi32(vi, _mm_set1_epi32(1));
-        r = _mm_or_pd(_mm_andnot_pd(_mm_castsi128_pd(one_mask), zero),
-                      _mm_and_pd(_mm_castsi128_pd(one_mask), one));
-      } else {
-        r = _mm_cvtepi32_pd(vi);
-      }
-      r = _mm_or_pd(_mm_andnot_pd(_mm_castsi128_pd(na_mask), r),
-                    _mm_and_pd(_mm_castsi128_pd(na_mask), na_d));
-      _mm_storeu_pd(dst + i, r);
-    }
-    for (; i < n; ++i) {
-      int v = src[i];
-      if (is_logical) dst[i] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
-      else            dst[i] = (v == NA_INTEGER) ? NA_REAL : (double)v;
-    }
-  }
-
-DATAPREP_TARGET("avx2")
-  static void int2double_avx2(const int* src, double* dst, size_t n, bool is_logical) {
-    size_t i = 0;
-    const __m128i na_i = _mm_set1_epi32(is_logical ? NA_LOGICAL : NA_INTEGER);
-    const __m256d na_d = _mm256_set1_pd(NA_REAL);
-    const __m256d zero = _mm256_setzero_pd();
-    const __m256d one  = _mm256_set1_pd(1.0);
-    for (; i + 8 <= n; i += 8) {
-      __m256i vi = _mm256_loadu_si256((const __m256i*)(src + i));
-      __m128i lo = _mm256_castsi256_si128(vi);
-      __m128i hi = _mm256_extracti128_si256(vi, 1);
-      __m256i na_lo = _mm256_broadcastsi128_si256(_mm_cmpeq_epi32(lo, na_i));
-      __m256i na_hi = _mm256_broadcastsi128_si256(_mm_cmpeq_epi32(hi, na_i));
-      __m256d r_lo, r_hi;
-      if (is_logical) {
-        __m256i one_lo = _mm256_broadcastsi128_si256(
-          _mm_cmpeq_epi32(lo, _mm_set1_epi32(1)));
-        __m256i one_hi = _mm256_broadcastsi128_si256(
-          _mm_cmpeq_epi32(hi, _mm_set1_epi32(1)));
-        r_lo = _mm256_blendv_pd(zero, one, _mm256_castsi256_pd(one_lo));
-        r_hi = _mm256_blendv_pd(zero, one, _mm256_castsi256_pd(one_hi));
-      } else {
-        r_lo = _mm256_cvtepi32_pd(lo);
-        r_hi = _mm256_cvtepi32_pd(hi);
-      }
-      r_lo = _mm256_blendv_pd(r_lo, na_d, _mm256_castsi256_pd(na_lo));
-      r_hi = _mm256_blendv_pd(r_hi, na_d, _mm256_castsi256_pd(na_hi));
-      _mm256_storeu_pd(dst + i,     r_lo);
-      _mm256_storeu_pd(dst + i + 4, r_hi);
-    }
-    for (; i < n; ++i) {
-      int v = src[i];
-      if (is_logical) dst[i] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
-      else            dst[i] = (v == NA_INTEGER) ? NA_REAL : (double)v;
-    }
-  }
-
-DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static void int2double_avx512(const int* src, double* dst, size_t n, bool is_logical) {
-    size_t i = 0;
-    const __m256i na_i = _mm256_set1_epi32(is_logical ? NA_LOGICAL : NA_INTEGER);
-    const __m512d na_d = _mm512_set1_pd(NA_REAL);
-    const __m512d zero = _mm512_setzero_pd();
-    const __m512d one  = _mm512_set1_pd(1.0);
-    constexpr size_t PF = 64;
-    if (n >= 4096) {
-      for (; i + 16 <= n; i += 16) {
-        __builtin_prefetch(src + i + PF, 0, 0);
-        __m512i vi = _mm512_loadu_si512((const __m512i*)(src + i));
-        __m256i lo = _mm512_extracti32x8_epi32(vi, 0);
-        __m256i hi = _mm512_extracti32x8_epi32(vi, 1);
-        __mmask8 na_lo = _mm256_cmpeq_epi32_mask(lo, na_i);
-        __mmask8 na_hi = _mm256_cmpeq_epi32_mask(hi, na_i);
-        __m512d r_lo, r_hi;
-        if (is_logical) {
-          __mmask8 on_lo = _mm256_cmpneq_epi32_mask(lo, _mm256_setzero_si256());
-          __mmask8 on_hi = _mm256_cmpneq_epi32_mask(hi, _mm256_setzero_si256());
-          r_lo = _mm512_mask_blend_pd(on_lo, zero, one);
-          r_hi = _mm512_mask_blend_pd(on_hi, zero, one);
-        } else {
-          r_lo = _mm512_cvtepi32_pd(lo);
-          r_hi = _mm512_cvtepi32_pd(hi);
-        }
-        r_lo = _mm512_mask_blend_pd(na_lo, r_lo, na_d);
-        r_hi = _mm512_mask_blend_pd(na_hi, r_hi, na_d);
-        _mm512_storeu_pd(dst + i,     r_lo);
-        _mm512_storeu_pd(dst + i + 8, r_hi);
-      }
+static void int2double_sse42(const int* src, double* dst, size_t n, bool is_logical) {
+  size_t i = 0;
+  const __m128i na_i = _mm_set1_epi32(is_logical ? NA_LOGICAL : NA_INTEGER);
+  const __m128d na_d = _mm_set1_pd(NA_REAL);
+  const __m128d zero = _mm_setzero_pd();
+  const __m128d one  = _mm_set1_pd(1.0);
+  for (; i + 4 <= n; i += 4) {
+    __m128i vi = _mm_loadu_si128((const __m128i*)(src + i));
+    __m128i na_mask = _mm_cmpeq_epi32(vi, na_i);
+    __m128d r;
+    if (is_logical) {
+      __m128i one_mask = _mm_cmpeq_epi32(vi, _mm_set1_epi32(1));
+      r = _mm_or_pd(_mm_andnot_pd(_mm_castsi128_pd(one_mask), zero),
+                    _mm_and_pd(_mm_castsi128_pd(one_mask), one));
     } else {
-      for (; i + 16 <= n; i += 16) {
-        __m512i vi = _mm512_loadu_si512((const __m512i*)(src + i));
-        __m256i lo = _mm512_extracti32x8_epi32(vi, 0);
-        __m256i hi = _mm512_extracti32x8_epi32(vi, 1);
-        __mmask8 na_lo = _mm256_cmpeq_epi32_mask(lo, na_i);
-        __mmask8 na_hi = _mm256_cmpeq_epi32_mask(hi, na_i);
-        __m512d r_lo, r_hi;
-        if (is_logical) {
-          __mmask8 on_lo = _mm256_cmpneq_epi32_mask(lo, _mm256_setzero_si256());
-          __mmask8 on_hi = _mm256_cmpneq_epi32_mask(hi, _mm256_setzero_si256());
-          r_lo = _mm512_mask_blend_pd(on_lo, zero, one);
-          r_hi = _mm512_mask_blend_pd(on_hi, zero, one);
-        } else {
-          r_lo = _mm512_cvtepi32_pd(lo);
-          r_hi = _mm512_cvtepi32_pd(hi);
-        }
-        r_lo = _mm512_mask_blend_pd(na_lo, r_lo, na_d);
-        r_hi = _mm512_mask_blend_pd(na_hi, r_hi, na_d);
-        _mm512_storeu_pd(dst + i,     r_lo);
-        _mm512_storeu_pd(dst + i + 8, r_hi);
-      }
+      r = _mm_cvtepi32_pd(vi);
     }
-    for (; i < n; ++i) {
-      int v = src[i];
-      if (is_logical) dst[i] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
-      else            dst[i] = (v == NA_INTEGER) ? NA_REAL : (double)v;
-    }
+    r = _mm_or_pd(_mm_andnot_pd(_mm_castsi128_pd(na_mask), r),
+                  _mm_and_pd(_mm_castsi128_pd(na_mask), na_d));
+    _mm_storeu_pd(dst + i, r);
   }
+  for (; i < n; ++i) {
+    int v = src[i];
+    if (is_logical) dst[i] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
+    else            dst[i] = (v == NA_INTEGER) ? NA_REAL : (double)v;
+  }
+}
+DATAPREP_TARGET("avx2")
+static void int2double_avx2(const int* src, double* dst, size_t n, bool is_logical) {
+  size_t i = 0;
+  const __m128i na_i = _mm_set1_epi32(is_logical ? NA_LOGICAL : NA_INTEGER);
+  const __m256d na_d = _mm256_set1_pd(NA_REAL);
+  const __m256d zero = _mm256_setzero_pd();
+  const __m256d one  = _mm256_set1_pd(1.0);
+  for (; i + 8 <= n; i += 8) {
+    __m256i vi = _mm256_loadu_si256((const __m256i*)(src + i));
+    __m128i lo = _mm256_castsi256_si128(vi);
+    __m128i hi = _mm256_extracti128_si256(vi, 1);
+    __m256i na_lo = _mm256_broadcastsi128_si256(_mm_cmpeq_epi32(lo, na_i));
+    __m256i na_hi = _mm256_broadcastsi128_si256(_mm_cmpeq_epi32(hi, na_i));
+    __m256d r_lo, r_hi;
+    if (is_logical) {
+      __m256i one_lo = _mm256_broadcastsi128_si256(
+        _mm_cmpeq_epi32(lo, _mm_set1_epi32(1)));
+      __m256i one_hi = _mm256_broadcastsi128_si256(
+        _mm_cmpeq_epi32(hi, _mm_set1_epi32(1)));
+      r_lo = _mm256_blendv_pd(zero, one, _mm256_castsi256_pd(one_lo));
+      r_hi = _mm256_blendv_pd(zero, one, _mm256_castsi256_pd(one_hi));
+    } else {
+      r_lo = _mm256_cvtepi32_pd(lo);
+      r_hi = _mm256_cvtepi32_pd(hi);
+    }
+    r_lo = _mm256_blendv_pd(r_lo, na_d, _mm256_castsi256_pd(na_lo));
+    r_hi = _mm256_blendv_pd(r_hi, na_d, _mm256_castsi256_pd(na_hi));
+    _mm256_storeu_pd(dst + i,     r_lo);
+    _mm256_storeu_pd(dst + i + 4, r_hi);
+  }
+  for (; i < n; ++i) {
+    int v = src[i];
+    if (is_logical) dst[i] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
+    else            dst[i] = (v == NA_INTEGER) ? NA_REAL : (double)v;
+  }
+}
+DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
+static void int2double_avx512(const int* src, double* dst, size_t n, bool is_logical) {
+  size_t i = 0;
+  const __m256i na_i = _mm256_set1_epi32(is_logical ? NA_LOGICAL : NA_INTEGER);
+  const __m512d na_d = _mm512_set1_pd(NA_REAL);
+  const __m512d zero = _mm512_setzero_pd();
+  const __m512d one  = _mm512_set1_pd(1.0);
+  constexpr size_t PF = 64;
+  for (; i + 16 <= n; i += 16) {
+    if (n >= 4096) __builtin_prefetch(src + i + PF, 0, 0);
+    __m512i vi = _mm512_loadu_si512((const __m512i*)(src + i));
+    __m256i lo = _mm512_extracti32x8_epi32(vi, 0);
+    __m256i hi = _mm512_extracti32x8_epi32(vi, 1);
+    __mmask8 na_lo = _mm256_cmpeq_epi32_mask(lo, na_i);
+    __mmask8 na_hi = _mm256_cmpeq_epi32_mask(hi, na_i);
+    __m512d r_lo, r_hi;
+    if (is_logical) {
+      __mmask8 on_lo = _mm256_cmpneq_epi32_mask(lo, _mm256_setzero_si256());
+      __mmask8 on_hi = _mm256_cmpneq_epi32_mask(hi, _mm256_setzero_si256());
+      r_lo = _mm512_mask_blend_pd(on_lo, zero, one);
+      r_hi = _mm512_mask_blend_pd(on_hi, zero, one);
+    } else {
+      r_lo = _mm512_cvtepi32_pd(lo);
+      r_hi = _mm512_cvtepi32_pd(hi);
+    }
+    r_lo = _mm512_mask_blend_pd(na_lo, r_lo, na_d);
+    r_hi = _mm512_mask_blend_pd(na_hi, r_hi, na_d);
+    _mm512_storeu_pd(dst + i,     r_lo);
+    _mm512_storeu_pd(dst + i + 8, r_hi);
+  }
+  for (; i < n; ++i) {
+    int v = src[i];
+    if (is_logical) dst[i] = (v == NA_LOGICAL) ? NA_REAL : (v ? 1.0 : 0.0);
+    else            dst[i] = (v == NA_INTEGER) ? NA_REAL : (double)v;
+  }
+}
 #endif
-
 static void (*int2double_ptr)(const int*, double*, size_t, bool) = int2double_scalar;
 
-// ============================================================================
-// ISA primitive 7: count_keep_double
-// ============================================================================
 static R_xlen_t count_keep_double_scalar(const double* src, R_xlen_t n) {
   R_xlen_t c = 0;
   for (R_xlen_t i = 0; i < n; ++i) c += !ISNAN(src[i]);
   return c;
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static R_xlen_t count_keep_double_sse42(const double* src, R_xlen_t n) {
-    if (n <= 0) return 0;
-    R_xlen_t c = 0; size_t i = 0;
-    const __m128d na = _mm_set1_pd(NA_REAL);
-    const size_t m = (size_t)n - (size_t)n % 2;
-    for (; i < m; i += 2) {
-      __m128d v = _mm_loadu_pd(src + i);
-      c += __builtin_popcount((unsigned)_mm_movemask_pd(_mm_cmpneq_pd(v, na)));
-    }
-    for (; i < (size_t)n; ++i) c += !ISNAN(src[i]);
-    return c;
+static R_xlen_t count_keep_double_sse42(const double* src, R_xlen_t n) {
+  if (n <= 0) return 0;
+  R_xlen_t c = 0;
+  size_t i = 0;
+  const size_t m = (size_t)n - (size_t)n % 2;
+  for (; i < m; i += 2) {
+    __m128d v = _mm_loadu_pd(src + i);
+    c += __builtin_popcount((unsigned)_mm_movemask_pd(_mm_cmpord_pd(v, v)));
   }
-
+  for (; i < (size_t)n; ++i) c += !ISNAN(src[i]);
+  return c;
+}
 DATAPREP_TARGET("avx2")
-  static R_xlen_t count_keep_double_avx2(const double* src, R_xlen_t n) {
-    if (n <= 0) return 0;
-    R_xlen_t c = 0; size_t i = 0;
-    const __m256d na = _mm256_set1_pd(NA_REAL);
-    const size_t m = (size_t)n - (size_t)n % 4;
-    for (; i < m; i += 4) {
-      __m256d v = _mm256_loadu_pd(src + i);
-      c += __builtin_popcount(
-        (unsigned)_mm256_movemask_pd(_mm256_cmp_pd(v, na, _CMP_NEQ_UQ)));
-    }
-    for (; i < (size_t)n; ++i) c += !ISNAN(src[i]);
-    return c;
+static R_xlen_t count_keep_double_avx2(const double* src, R_xlen_t n) {
+  if (n <= 0) return 0;
+  R_xlen_t c = 0;
+  size_t i = 0;
+  const size_t m = (size_t)n - (size_t)n % 4;
+  for (; i < m; i += 4) {
+    __m256d v = _mm256_loadu_pd(src + i);
+    c += __builtin_popcount(
+           (unsigned)_mm256_movemask_pd(_mm256_cmp_pd(v, v, _CMP_ORD_Q)));
   }
-
+  for (; i < (size_t)n; ++i) c += !ISNAN(src[i]);
+  return c;
+}
 DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static R_xlen_t count_keep_double_avx512(const double* src, R_xlen_t n) {
-    if (n <= 0) return 0;
-    R_xlen_t c = 0; size_t i = 0;
-    const __m512d na = _mm512_set1_pd(NA_REAL);
-    const size_t m = (size_t)n - (size_t)n % 8;
-    for (; i < m; i += 8) {
-      __m512d v = _mm512_loadu_pd(src + i);
-      c += __builtin_popcount(
-        (unsigned)_mm512_cmp_pd_mask(v, na, _CMP_NEQ_UQ));
-    }
-    for (; i < (size_t)n; ++i) c += !ISNAN(src[i]);
-    return c;
+static R_xlen_t count_keep_double_avx512(const double* src, R_xlen_t n) {
+  if (n <= 0) return 0;
+  R_xlen_t c = 0;
+  size_t i = 0;
+  const size_t m = (size_t)n - (size_t)n % 8;
+  for (; i < m; i += 8) {
+    __m512d v = _mm512_loadu_pd(src + i);
+    c += __builtin_popcount(
+           (unsigned)_mm512_cmp_pd_mask(v, v, _CMP_ORD_Q));
   }
+  for (; i < (size_t)n; ++i) c += !ISNAN(src[i]);
+  return c;
+}
 #endif
-
 static R_xlen_t (*count_keep_double_ptr)(const double*, R_xlen_t) = count_keep_double_scalar;
 
-// ============================================================================
-// ISA primitive 8: count_keep_int
-// ============================================================================
 static R_xlen_t count_keep_int_scalar(const int* src, R_xlen_t n, bool is_logical) {
   R_xlen_t c = 0;
   int na = is_logical ? NA_LOGICAL : NA_INTEGER;
   for (R_xlen_t i = 0; i < n; ++i) c += (src[i] != na);
   return c;
 }
-
 #if DATAPREP_ARCH_X86
 DATAPREP_TARGET("sse4.2")
-  static R_xlen_t count_keep_int_sse42(const int* src, R_xlen_t n, bool is_logical) {
-    if (n <= 0) return 0;
-    R_xlen_t c = 0; size_t i = 0;
-    const int na_val = is_logical ? NA_LOGICAL : NA_INTEGER;
-    const __m128i na_vec = _mm_set1_epi32(na_val);
-    const size_t m = (size_t)n - (size_t)n % 4;
-    for (; i < m; i += 4) {
-      __m128i v = _mm_loadu_si128((const __m128i*)(src + i));
-      int mask = _mm_movemask_epi8(_mm_cmpeq_epi32(v, na_vec));
-      c += 4 - __builtin_popcount((unsigned)mask) / 4;
-    }
-    for (; i < (size_t)n; ++i) c += (src[i] != na_val);
-    return c;
+static R_xlen_t count_keep_int_sse42(const int* src, R_xlen_t n, bool is_logical) {
+  if (n <= 0) return 0;
+  R_xlen_t c = 0;
+  size_t i = 0;
+  const int na_val = is_logical ? NA_LOGICAL : NA_INTEGER;
+  const __m128i na_vec = _mm_set1_epi32(na_val);
+  const size_t m = (size_t)n - (size_t)n % 4;
+  for (; i < m; i += 4) {
+    __m128i v = _mm_loadu_si128((const __m128i*)(src + i));
+    int mask = _mm_movemask_epi8(_mm_cmpeq_epi32(v, na_vec));
+    c += 4 - __builtin_popcount((unsigned)mask) / 4;
   }
-
+  for (; i < (size_t)n; ++i) c += (src[i] != na_val);
+  return c;
+}
 DATAPREP_TARGET("avx2")
-  static R_xlen_t count_keep_int_avx2(const int* src, R_xlen_t n, bool is_logical) {
-    if (n <= 0) return 0;
-    R_xlen_t c = 0; size_t i = 0;
-    const int na_val = is_logical ? NA_LOGICAL : NA_INTEGER;
-    const __m256i na_vec = _mm256_set1_epi32(na_val);
-    const size_t m = (size_t)n - (size_t)n % 8;
-    for (; i < m; i += 8) {
-      __m256i v = _mm256_loadu_si256((const __m256i*)(src + i));
-      int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi32(v, na_vec));
-      c += 8 - __builtin_popcount((unsigned)mask) / 4;
-    }
-    for (; i < (size_t)n; ++i) c += (src[i] != na_val);
-    return c;
+static R_xlen_t count_keep_int_avx2(const int* src, R_xlen_t n, bool is_logical) {
+  if (n <= 0) return 0;
+  R_xlen_t c = 0;
+  size_t i = 0;
+  const int na_val = is_logical ? NA_LOGICAL : NA_INTEGER;
+  const __m256i na_vec = _mm256_set1_epi32(na_val);
+  const size_t m = (size_t)n - (size_t)n % 8;
+  for (; i < m; i += 8) {
+    __m256i v = _mm256_loadu_si256((const __m256i*)(src + i));
+    int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi32(v, na_vec));
+    c += 8 - __builtin_popcount((unsigned)mask) / 4;
   }
-
+  for (; i < (size_t)n; ++i) c += (src[i] != na_val);
+  return c;
+}
 DATAPREP_TARGET("avx512f,avx512vl,avx512bw,avx512dq")
-  static R_xlen_t count_keep_int_avx512(const int* src, R_xlen_t n, bool is_logical) {
-    if (n <= 0) return 0;
-    R_xlen_t c = 0; size_t i = 0;
-    const int na_val = is_logical ? NA_LOGICAL : NA_INTEGER;
-    const __m512i na_vec = _mm512_set1_epi32(na_val);
-    const size_t m = (size_t)n - (size_t)n % 16;
-    for (; i < m; i += 16) {
-      __m512i v = _mm512_loadu_si512((const __m512i*)(src + i));
-      c += 16 - __builtin_popcount(
-        (unsigned)_mm512_cmpeq_epi32_mask(v, na_vec));
-    }
-    for (; i < (size_t)n; ++i) c += (src[i] != na_val);
-    return c;
+static R_xlen_t count_keep_int_avx512(const int* src, R_xlen_t n, bool is_logical) {
+  if (n <= 0) return 0;
+  R_xlen_t c = 0;
+  size_t i = 0;
+  const int na_val = is_logical ? NA_LOGICAL : NA_INTEGER;
+  const __m512i na_vec = _mm512_set1_epi32(na_val);
+  const size_t m = (size_t)n - (size_t)n % 16;
+  for (; i < m; i += 16) {
+    __m512i v = _mm512_loadu_si512((const __m512i*)(src + i));
+    c += 16 - __builtin_popcount(
+             (unsigned)_mm512_cmpeq_epi32_mask(v, na_vec));
   }
+  for (; i < (size_t)n; ++i) c += (src[i] != na_val);
+  return c;
+}
 #endif
-
 static R_xlen_t (*count_keep_int_ptr)(const int*, R_xlen_t, bool) = count_keep_int_scalar;
 
 static inline void fill_int_exact(int* dst, int v, int n) {
@@ -745,7 +640,7 @@ static inline void fill_double_exact(double* dst, double v, int n) {
 }
 
 // ============================================================================
-// Runtime feature detection
+//  CPU detection
 // ============================================================================
 static void init_cpu_features() DATAPREP_COLD;
 static void init_cpu_features() {
@@ -793,7 +688,7 @@ static void init_cpu_features() {
 }
 
 // ============================================================================
-// Cached CHARSXP
+//  Cached strings / L3 / levels / scratch / cap
 // ============================================================================
 struct CachedStr {
   SEXP v = R_NilValue;
@@ -807,9 +702,6 @@ struct CachedStr {
 };
 static CachedStr g_df_class, g_fac_class, g_var_name, g_val_name;
 
-// ============================================================================
-// L3 detection
-// ============================================================================
 static size_t g_l3_size = 32ULL << 20;
 static void detect_l3_once() DATAPREP_COLD;
 static void detect_l3_once() {
@@ -833,9 +725,6 @@ static void detect_l3_once() {
 #endif
 }
 
-// ============================================================================
-// Levels cache
-// ============================================================================
 struct LevelsCache {
   SEXP col_names = R_NilValue;
   SEXP levels    = R_NilValue;
@@ -862,9 +751,6 @@ static SEXP get_or_make_levels(SEXP col_names, const std::vector<int>& meas_idx)
   return lv;
 }
 
-// ============================================================================
-// Per-thread scratch
-// ============================================================================
 struct Scratch {
   std::vector<int>  id_idx, meas_idx;
   std::vector<char> is_id, is_meas;
@@ -889,18 +775,12 @@ struct Scratch {
 };
 static thread_local Scratch g_scratch;
 
-// ============================================================================
-// Thread cap: physical cores only for memory-bound workloads.
-// Only defined when OpenMP is available: all call sites live inside
-// #ifdef _OPENMP blocks, so a non-OpenMP build simply never sees this.
-// ============================================================================
 #ifdef _OPENMP
 static int get_thread_cap() {
   static const int cap = []() DATAPREP_COLD {
-    int n = omp_get_num_procs();
-    if (n < 1) n = 1;
-    if (n >= 8) n = n / 2;
-    if (n < 1) n = 1;
+    int hw = omp_get_num_procs();
+    if (hw < 1) hw = 1;
+    int n = hw;
     if (n > 256) n = 256;
     if (const char* e = getenv("DATAPREP_THREADS")) {
       int v = atoi(e); if (v > 0 && v < n) n = v;
@@ -924,9 +804,6 @@ static inline size_t sizeof_sexp(SEXPTYPE t) {
   }
 }
 
-// ============================================================================
-// Lazy init
-// ============================================================================
 static void melt_lazy_init() {
   static bool done = false;
   if (DATAPREP_LIKELY(done)) return;
@@ -934,9 +811,13 @@ static void melt_lazy_init() {
 #if defined(__GLIBC__)
   const char* off = getenv("DATAPREP_NO_MMAP_POOL");
   if (!(off && off[0] == '1')) {
-    mallopt(M_MMAP_THRESHOLD, 64 * 1024 * 1024);
+    // Raise the mmap threshold so that mid-size allocations also take the
+    // mmap path and receive hint_pages() treatment.  256 MB covers the
+    // smaller id columns of typical melts; large ones (multi-GB) go to
+    // mmap anyway.
+    mallopt(M_MMAP_THRESHOLD, 256 * 1024 * 1024);
     mallopt(M_TRIM_THRESHOLD, INT_MAX);
-    mallopt(M_TOP_PAD, 64 * 1024 * 1024);
+    mallopt(M_TOP_PAD, 128 * 1024 * 1024);
   }
 #endif
   init_cpu_features();
@@ -962,7 +843,7 @@ static void melt_lazy_init() {
 } // anonymous namespace
 
 // ============================================================================
-// Column index parsing
+//  Column resolution / NA helpers
 // ============================================================================
 static void infer_id_cols(SEXP df, std::vector<int>& id_idx, std::vector<int>& meas_idx) {
   int ncols = Rf_length(df);
@@ -983,40 +864,31 @@ static void resolve_id(SEXP df, SEXP id_spec,
   id_idx.reserve(ncols); meas_idx.reserve(ncols);
   if (Rf_isNull(id_spec)) { infer_id_cols(df, id_idx, meas_idx); return; }
 
+  char stack_mask[512];
+  char* mask = (ncols <= 512) ? stack_mask : (char*)std::malloc((size_t)ncols);
+  if (!mask) { infer_id_cols(df, id_idx, meas_idx); return; }
+  std::memset(mask, 0, (size_t)ncols);
+
   if (TYPEOF(id_spec) == INTSXP) {
     R_xlen_t len = XLENGTH(id_spec);
     const int* ptr = INTEGER(id_spec);
-    if ((int)g_scratch.is_id.size() < ncols) g_scratch.is_id.resize(ncols);
-    char* mask = g_scratch.is_id.data();
-    std::memset(mask, 0, (size_t)ncols);
     bool has_neg = false;
     for (R_xlen_t i = 0; i < len; ++i) if (ptr[i] < 0) { has_neg = true; break; }
     if (has_neg) {
-      if ((int)g_scratch.is_meas.size() < ncols) g_scratch.is_meas.resize(ncols);
-      char* mm = g_scratch.is_meas.data();
-      std::memset(mm, 0, (size_t)ncols);
+      std::memset(mask, 1, (size_t)ncols);
       for (R_xlen_t i = 0; i < len; ++i) {
         int a = std::abs(ptr[i]) - 1;
-        if (a >= 0 && a < ncols) mm[a] = 1;
+        if (a >= 0 && a < ncols) mask[a] = 0;
       }
-      for (int i = 0; i < ncols; ++i) if (!mm[i]) mask[i] = 1;
     } else {
       for (R_xlen_t i = 0; i < len; ++i) {
         int a = ptr[i] - 1;
         if (a >= 0 && a < ncols) mask[a] = 1;
       }
     }
-    for (int i = 0; i < ncols; ++i) (mask[i] ? id_idx : meas_idx).push_back(i);
-    return;
-  }
-
-  if (TYPEOF(id_spec) == STRSXP) {
+  } else if (TYPEOF(id_spec) == STRSXP) {
     SEXP names = Rf_getAttrib(df, R_NamesSymbol);
-    if (Rf_isNull(names)) stop("data frame has no column names");
     R_xlen_t len = XLENGTH(id_spec);
-    if ((int)g_scratch.is_id.size() < ncols) g_scratch.is_id.resize(ncols);
-    char* mask = g_scratch.is_id.data();
-    std::memset(mask, 0, (size_t)ncols);
     for (R_xlen_t i = 0; i < len; ++i) {
       const char* tgt = CHAR(STRING_ELT(id_spec, i));
       for (int j = 0; j < ncols; ++j) {
@@ -1025,15 +897,15 @@ static void resolve_id(SEXP df, SEXP id_spec,
         }
       }
     }
-    for (int i = 0; i < ncols; ++i) (mask[i] ? id_idx : meas_idx).push_back(i);
-    return;
+  } else {
+    if (mask != stack_mask) std::free(mask);
+    stop("invalid id argument");
   }
-  stop("invalid id argument");
+
+  for (int i = 0; i < ncols; ++i) (mask[i] ? id_idx : meas_idx).push_back(i);
+  if (mask != stack_mask) std::free(mask);
 }
 
-// ============================================================================
-// NA helpers
-// ============================================================================
 static inline R_xlen_t count_keep_col(const void* ptr, SEXPTYPE t, bool fac, R_xlen_t n) {
   if (DATAPREP_UNLIKELY(fac)) return 0;
   if (t == REALSXP) return count_keep_double_ptr((const double*)ptr, n);
@@ -1080,9 +952,6 @@ static inline const void* readonly_ptr(SEXP x) {
   }
 }
 
-// ============================================================================
-// variable column: factor -> character conversion (post-build)
-// ============================================================================
 static void maybe_make_var_character(SEXP out, int n_id, R_xlen_t total_out) {
   SEXP var_col = VECTOR_ELT(out, n_id);
   if (TYPEOF(var_col) != INTSXP) return;
@@ -1104,7 +973,7 @@ static void maybe_make_var_character(SEXP out, int n_id, R_xlen_t total_out) {
 }
 
 // ============================================================================
-// Small-shape fast paths
+//  Tiny / small fast paths
 // ============================================================================
 DATAPREP_HOT
 static SEXP melt_tiny_cpp(SEXP df,
@@ -1150,26 +1019,24 @@ static SEXP melt_tiny_cpp(SEXP df,
   double* pval = REAL(val_col);
 
   if (row_major) {
-    // ---- Row-major: iterate rows outermost --------------------------------
-    std::vector<const void*>  mp(n_meas);
-    std::vector<SEXPTYPE>     mt(n_meas);
-    std::vector<char>         mfac(n_meas);
+    std::vector<const void*> mp(n_meas);
+    std::vector<SEXPTYPE>    mt(n_meas);
+    std::vector<char>        mfac(n_meas);
     for (int k = 0; k < n_meas; ++k) {
       SEXP col = VECTOR_ELT(df, meas_idx[k]);
-      mp[k]    = readonly_ptr(col);
-      mt[k]    = TYPEOF(col);
-      mfac[k]  = (char)(mt[k] == INTSXP && Rf_isFactor(col));
+      mp[k]   = readonly_ptr(col);
+      mt[k]   = TYPEOF(col);
+      mfac[k] = (char)(mt[k] == INTSXP && Rf_isFactor(col));
     }
-    std::vector<const void*>  ip(n_id);
-    std::vector<void*>        idp(n_id);
-    std::vector<SEXPTYPE>     it(n_id);
+    std::vector<const void*> ip(n_id);
+    std::vector<void*>       idp(n_id);
+    std::vector<SEXPTYPE>    it(n_id);
     for (int i = 0; i < n_id; ++i) {
       SEXP s = VECTOR_ELT(df, id_idx[i]);
       ip[i]  = readonly_ptr(s);
       idp[i] = writable_ptr(VECTOR_ELT(out, i));
       it[i]  = TYPEOF(s);
     }
-
     for (R_xlen_t r = 0; r < n; ++r) {
       double* vr = pval + r * n_meas;
       int*    kr = pvar + r * n_meas;
@@ -1177,9 +1044,8 @@ static SEXP melt_tiny_cpp(SEXP df,
         SEXPTYPE t = mt[k];
         const void* src = mp[k];
         double v = NA_REAL;
-        if (t == REALSXP) {
-          v = ((const double*)src)[r];
-        } else if (t == INTSXP && !mfac[k]) {
+        if (t == REALSXP) v = ((const double*)src)[r];
+        else if (t == INTSXP && !mfac[k]) {
           int x = ((const int*)src)[r];
           v = (x == NA_INTEGER) ? NA_REAL : (double)x;
         } else if (t == LGLSXP) {
@@ -1209,16 +1075,15 @@ static SEXP melt_tiny_cpp(SEXP df,
       }
     }
   } else {
-    // ---- Column-major: iterate measure columns outermost ------------------
     for (int k = 0; k < n_meas; ++k) {
       SEXP col = VECTOR_ELT(df, meas_idx[k]);
       SEXPTYPE t = TYPEOF(col);
       const int kk = k + 1;
       double* pd = pval + (R_xlen_t)k * n;
       int*    pv = pvar + (R_xlen_t)k * n;
-      nt_fill_i32(pv, kk, n);
+      for (R_xlen_t i = 0; i < n; ++i) pv[i] = kk;
       if (t == REALSXP) {
-        nt_copy_pd(pd, (const double*)readonly_ptr(col), n);
+        copy_pd(pd, (const double*)readonly_ptr(col), n);
       } else if (t == INTSXP && !Rf_isFactor(col)) {
         int2double_ptr((const int*)readonly_ptr(col), pd, (size_t)n, false);
       } else if (t == LGLSXP) {
@@ -1227,7 +1092,6 @@ static SEXP melt_tiny_cpp(SEXP df,
         std::fill(pd, pd + n, NA_REAL);
       }
     }
-
     for (int i = 0; i < n_id; ++i) {
       SEXP s_col = VECTOR_ELT(df, id_idx[i]);
       SEXP d_col = VECTOR_ELT(out, i);
@@ -1236,7 +1100,6 @@ static SEXP melt_tiny_cpp(SEXP df,
       char* dst_base = (char*)writable_ptr(d_col);
       size_t es = sizeof_sexp(t);
       if (!es) continue;
-
       if (t == STRSXP) {
         copy_sexp((SEXP*)dst_base, (const SEXP*)src, n);
       } else if (t == REALSXP) {
@@ -1246,27 +1109,20 @@ static SEXP melt_tiny_cpp(SEXP df,
       } else {
         std::memcpy(dst_base, src, (size_t)n * es);
       }
-
       size_t filled = 1;
       while (filled < (size_t)n_meas) {
         size_t tc = filled;
         if (tc > (size_t)n_meas - filled) tc = (size_t)n_meas - filled;
         char* dst_out = dst_base + filled * (size_t)n * es;
-
-        if (t == STRSXP) {
+        if (t == STRSXP || t == REALSXP) {
           for (size_t b = 0; b < tc; ++b) {
-            nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                       (const double*)dst_base, n);
-          }
-        } else if (t == REALSXP) {
-          for (size_t b = 0; b < tc; ++b) {
-            nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                       (const double*)dst_base, n);
+            copy_pd((double*)(dst_out + b * (size_t)n * es),
+                    (const double*)dst_base, n);
           }
         } else if (t == INTSXP || t == LGLSXP) {
           for (size_t b = 0; b < tc; ++b) {
-            nt_copy_i32((int*)(dst_out + b * (size_t)n * es),
-                        (const int*)dst_base, n);
+            copy_i32((int*)(dst_out + b * (size_t)n * es),
+                     (const int*)dst_base, n);
           }
         } else {
           std::memcpy(dst_out, dst_base, tc * (size_t)n * es);
@@ -1365,9 +1221,9 @@ static SEXP melt_small_cpp(SEXP df,
     for (int k = 0; k < n_meas; ++k, pv2 += n, pv += n) {
       SEXPTYPE t = src_types[k];
       int kk = k + 1;
-      nt_fill_i32(pv, kk, n);
+      for (R_xlen_t i = 0; i < n; ++i) pv[i] = kk;
       if (t == REALSXP) {
-        nt_copy_pd(pv2, (const double*)src_ptrs[k], n);
+        copy_pd(pv2, (const double*)src_ptrs[k], n);
       } else if (t == INTSXP && !src_is_factor[k]) {
         int2double_ptr((const int*)src_ptrs[k], pv2, (size_t)n, false);
       } else if (t == LGLSXP) {
@@ -1376,16 +1232,12 @@ static SEXP melt_small_cpp(SEXP df,
         std::fill(pv2, pv2 + n, NA_REAL);
       }
     }
-
-    // Id columns: doubling copy
     for (int i = 0; i < n_id; ++i) {
       SEXPTYPE t = id_type[i];
       size_t es = id_es[i];
       if (!es) continue;
       const char* s = (const char*)id_src[i];
       char* d_base = (char*)id_dst[i];
-
-      // First copy (normal store)
       if (t == STRSXP) {
         copy_sexp((SEXP*)d_base, (const SEXP*)s, n);
       } else if (t == REALSXP) {
@@ -1395,28 +1247,20 @@ static SEXP melt_small_cpp(SEXP df,
       } else {
         std::memcpy(d_base, s, (size_t)n * es);
       }
-
-      // Doubling (NT stores)
       size_t filled = 1;
       while (filled < (size_t)n_meas) {
         size_t tc = filled;
         if (tc > (size_t)n_meas - filled) tc = (size_t)n_meas - filled;
         char* dst_out = d_base + filled * (size_t)n * es;
-
-        if (t == STRSXP) {
+        if (t == STRSXP || t == REALSXP) {
           for (size_t b = 0; b < tc; ++b) {
-            nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                       (const double*)d_base, n);
-          }
-        } else if (t == REALSXP) {
-          for (size_t b = 0; b < tc; ++b) {
-            nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                       (const double*)d_base, n);
+            copy_pd((double*)(dst_out + b * (size_t)n * es),
+                    (const double*)d_base, n);
           }
         } else if (t == INTSXP || t == LGLSXP) {
           for (size_t b = 0; b < tc; ++b) {
-            nt_copy_i32((int*)(dst_out + b * (size_t)n * es),
-                        (const int*)d_base, n);
+            copy_i32((int*)(dst_out + b * (size_t)n * es),
+                     (const int*)d_base, n);
           }
         } else {
           std::memcpy(dst_out, d_base, tc * (size_t)n * es);
@@ -1479,208 +1323,132 @@ static SEXP melt_small_cpp(SEXP df,
 }
 
 // ============================================================================
-// Fused column-major kernel for task-pool fallback
+//  Phase A: measure + variable, k-parallel, NT stores
 // ============================================================================
 DATAPREP_HOT
-static inline void fused_col_range(
+static void melt_phase_a(
     const std::vector<const void*>& meas_ptrs,
-    const std::vector<const void*>& id_ptrs,
-    const std::vector<SEXPTYPE>&    id_types,
-    const std::vector<void*>&       out_id_ptrs,
-    const std::vector<size_t>&      id_elem_sizes,
+    const std::vector<SEXPTYPE>&    meas_types,
+    const std::vector<char>&        meas_is_factor,
     int*    pvar,
     double* pval,
-    int n_id, R_xlen_t n,
-    int k, R_xlen_t r0, R_xlen_t r1)
+    int     n_meas,
+    R_xlen_t n,
+    R_xlen_t block_rows,
+    int     n_threads)
 {
-  R_xlen_t len = r1 - r0;
-  if (len <= 0) return;
-
-  // Touch pages
-  {
-    touch_2m_in_range(pval + (R_xlen_t)k * n,
-                      (size_t)n * sizeof(double),
-                      r0, len, sizeof(double));
-    touch_2m_in_range(pvar + (R_xlen_t)k * n,
-                      (size_t)n * sizeof(int),
-                      r0, len, sizeof(int));
-    for (int i = 0; i < n_id; ++i) {
-      const size_t es = id_elem_sizes[i];
-      if (es == 0) continue;
-      touch_2m_in_range((const char*)out_id_ptrs[i] + (R_xlen_t)k * n * es,
-                        (size_t)n * es,
-                        r0, len, es);
-    }
-  }
-
-  // Measure + variable columns (NT stores)
-  const double* src = (const double*)meas_ptrs[k] + r0;
-  double* pd = pval + (R_xlen_t)k * n + r0;
-  int*    pv = pvar + (R_xlen_t)k * n + r0;
-  nt_fill_i32(pv, k + 1, len);
-  nt_copy_pd (pd, src, len);
-
-  // Numeric id columns first (NT stores)
-  for (int i = 0; i < n_id; ++i) {
-    SEXPTYPE it = id_types[i];
-    if (it == STRSXP) continue;
-    size_t es = id_elem_sizes[i];
-    if (!es) continue;
-    char* dst_i = (char*)out_id_ptrs[i] + ((R_xlen_t)k * n + r0) * es;
-    const char* src_i = (const char*)id_ptrs[i] + r0 * es;
-    if (it == REALSXP) {
-      nt_copy_pd((double*)dst_i, (const double*)src_i, len);
-    } else if (it == INTSXP || it == LGLSXP) {
-      nt_copy_i32((int*)dst_i, (const int*)src_i, len);
-    }
-  }
-
-  // String id columns last (normal stores, input still in cache)
-  for (int i = 0; i < n_id; ++i) {
-    if (id_types[i] != STRSXP) continue;
-    size_t es = id_elem_sizes[i];
-    if (!es) continue;
-    SEXP* dst_i = (SEXP*)((char*)out_id_ptrs[i] + ((R_xlen_t)k * n + r0) * es);
-    const SEXP* src_i = (const SEXP*)((const char*)id_ptrs[i] + r0 * es);
-    copy_sexp(dst_i, src_i, len);
-  }
-}
-
-// ============================================================================
-// SPMD column-major kernel (blocked id doubling optimization)
-// ============================================================================
-DATAPREP_HOT
-static void melt_cpp_spmd_col_major(
-    const std::vector<const void*>& meas_ptrs,
-    const std::vector<const void*>& id_ptrs,
-    const std::vector<SEXPTYPE>&    id_types,
-    const std::vector<void*>&       out_id_ptrs,
-    const std::vector<size_t>&      id_elem_sizes,
-    int*    pvar,
-    double* pval,
-    int n_id, int n_meas, R_xlen_t n,
-    int n_threads)
-{
-  // Block size for id-column doubling (fits in L2 cache)
-  constexpr R_xlen_t ID_BLOCK_ROWS = 16384;
+  const int n_blk = (int)((n + block_rows - 1) / block_rows);
+  const int total = n_meas * n_blk;
+  if (total <= 0) return;
 
 #ifdef _OPENMP
-#pragma omp parallel num_threads(n_threads) if(n_threads > 1)
+#pragma omp parallel for schedule(dynamic, 1) \
+    num_threads(n_threads) if(n_threads > 1 && total > 1)
 #endif
-{
-  int tid = 0;
-  int nth = 1;
-#ifdef _OPENMP
-  tid = omp_get_thread_num();
-  nth = omp_get_num_threads();
-#endif
-  if (nth < 1) nth = 1;
-  if (tid < 0) tid = 0;
-  if (tid >= nth) tid = nth - 1;
+  for (int t = 0; t < total; ++t) {
+    const int k = t / n_blk;
+    const int b = t - k * n_blk;
+    const R_xlen_t r0 = (R_xlen_t)b * block_rows;
+    const R_xlen_t r1 = std::min(r0 + block_rows, n);
+    const R_xlen_t len = r1 - r0;
+    if (len <= 0) continue;
 
-  const R_xlen_t r0 = (R_xlen_t)tid * n / (R_xlen_t)nth;
-  const R_xlen_t r1 = (R_xlen_t)(tid + 1) * n / (R_xlen_t)nth;
-  const R_xlen_t len = r1 - r0;
+    const void* mp = meas_ptrs[k];
+    const SEXPTYPE mt = meas_types[k];
+    const bool fac = (meas_is_factor[k] != 0);
 
-  if (len > 0) {
-    // Phase 1: parallel THP fault-in for all columns
-    {
-      for (int k = 0; k < n_meas; ++k) {
-        touch_2m_in_range(pval + (R_xlen_t)k * n,
-                          (size_t)n * sizeof(double),
-                          r0, len, sizeof(double));
-        touch_2m_in_range(pvar + (R_xlen_t)k * n,
-                          (size_t)n * sizeof(int),
-                          r0, len, sizeof(int));
-      }
-      for (int i = 0; i < n_id; ++i) {
-        const size_t es = id_elem_sizes[i];
-        if (es == 0) continue;
-        for (int k = 0; k < n_meas; ++k) {
-          touch_2m_in_range((const char*)out_id_ptrs[i] + (R_xlen_t)k * n * es,
-                            (size_t)n * es,
-                            r0, len, es);
-        }
-      }
-    }
+    double* pd = pval + (R_xlen_t)k * n + r0;
+    int*    pv = pvar + (R_xlen_t)k * n + r0;
 
-    // Phase 2: measure columns + variable column (all NT stores, no cache pollution)
-    for (int k = 0; k < n_meas; ++k) {
-      const double* src = (const double*)meas_ptrs[k] + r0;
-      double* pd = pval + (R_xlen_t)k * n + r0;
-      int*    pv = pvar + (R_xlen_t)k * n + r0;
-      nt_fill_i32(pv, k + 1, len);
-      nt_copy_pd (pd, src, len);
-    }
-
-    // Phase 3: numeric id columns (blocked doubling)
-    for (int i = 0; i < n_id; ++i) {
-      SEXPTYPE it = id_types[i];
-      if (it == STRSXP) continue;
-      const size_t es = id_elem_sizes[i];
-      if (es == 0) continue;
-
-      char* dst_base = (char*)out_id_ptrs[i];
-      const char* src_i = (const char*)id_ptrs[i] + r0 * es;
-
-      // Process in L2-sized blocks
-      for (R_xlen_t b = 0; b < len; b += ID_BLOCK_ROWS) {
-        R_xlen_t blen = std::min(ID_BLOCK_ROWS, len - b);
-        const char* src_block = src_i + b * es;
-        char* dst0_block = dst_base + (r0 + b) * es;
-
-        // Step 1: copy input to first segment (normal store, into cache)
-        if (it == REALSXP) {
-          copy_pd((double*)dst0_block, (const double*)src_block, blen);
-        } else if (it == INTSXP || it == LGLSXP) {
-          copy_i32((int*)dst0_block, (const int*)src_block, blen);
-        }
-
-        // Step 2: replicate to remaining segments (NT stores, from cache)
-        for (int k = 1; k < n_meas; ++k) {
-          char* dstk_block = dst_base + ((R_xlen_t)k * n + r0 + b) * es;
-          if (it == REALSXP) {
-            nt_copy_pd((double*)dstk_block, (const double*)dst0_block, blen);
-          } else if (it == INTSXP || it == LGLSXP) {
-            nt_copy_i32((int*)dstk_block, (const int*)dst0_block, blen);
-          }
-        }
-      }
-    }
-
-    // Phase 4: string id columns (blocked doubling, same strategy)
-    for (int i = 0; i < n_id; ++i) {
-      if (id_types[i] != STRSXP) continue;
-      const size_t es = id_elem_sizes[i];
-      if (es == 0) continue;
-
-      char* dst_base = (char*)out_id_ptrs[i];
-      const SEXP* src_i = (const SEXP*)((const char*)id_ptrs[i] + r0 * es);
-
-      for (R_xlen_t b = 0; b < len; b += ID_BLOCK_ROWS) {
-        R_xlen_t blen = std::min(ID_BLOCK_ROWS, len - b);
-        const SEXP* src_block = src_i + b;
-        SEXP* dst0_block = (SEXP*)(dst_base + (r0 + b) * es);
-
-        // First copy (normal store, cached)
-        copy_sexp(dst0_block, src_block, blen);
-
-        // Replicate (NT stores)
-        for (int k = 1; k < n_meas; ++k) {
-          SEXP* dstk_block = (SEXP*)(dst_base + ((R_xlen_t)k * n + r0 + b) * es);
-          nt_copy_pd((double*)dstk_block, (const double*)dst0_block, blen);
-        }
-      }
+    nt_fill_i32(pv, k + 1, len);
+    if (mt == REALSXP) {
+      nt_copy_pd(pd, (const double*)mp + r0, len);
+    } else if (mt == INTSXP && !fac) {
+      int2double_ptr((const int*)mp + r0, pd, (size_t)len, false);
+    } else if (mt == LGLSXP) {
+      int2double_ptr((const int*)mp + r0, pd, (size_t)len, true);
+    } else {
+      std::fill(pd, pd + len, NA_REAL);
     }
   }
-
   nt_flush();
 }
+
+// ============================================================================
+//  Phase B: id doubling, split into two passes
+// ============================================================================
+//
+//  Pass 1 : src[i]  -> dst[i][0]      (all (i, block) pairs)
+//  Pass 2 : dst[i][0] -> dst[i][k]    (for k = 1..n_meas-1)
+//
+//  Pass 1 already produces one output column's worth of data (the k=0
+//  column of each id).  Pass 2 replicates that column into the remaining
+//  n_meas-1 output columns.  Each pass has the crucial property that a
+//  worker, at any instant, writes to exactly ONE destination stream, so
+//  the write-combining buffer pressure is bounded by n_threads rather
+//  than n_threads * n_meas.
+//
+DATAPREP_HOT
+static void melt_phase_b(
+    const std::vector<const void*>& id_ptrs,
+    const std::vector<SEXPTYPE>&    id_types,
+    const std::vector<void*>&       out_id_ptrs,
+    const std::vector<size_t>&      id_elem_sizes,
+    int     n_id,
+    int     n_meas,
+    R_xlen_t n,
+    R_xlen_t block_rows,
+    int     n_threads)
+{
+  if (n_id <= 0 || n_meas <= 0) return;
+  const int n_blk = (int)((n + block_rows - 1) / block_rows);
+  const int total = n_id * n_blk;
+  if (total <= 0) return;
+
+  // One task per (i, block).  Read the source block ONCE (stays in L1/L2
+  // across the k loop), then NT-store it into all n_meas output columns.
+  // No intermediate dst[i][0] write-read round-trip; no RFO anywhere.
+  // At any instant a thread has exactly ONE active NT write stream.
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic, 1) \
+  num_threads(n_threads) if(n_threads > 1 && total > 1)
+#endif
+    for (int t = 0; t < total; ++t) {
+      const int i = t / n_blk;
+      const int b = t - i * n_blk;
+      const R_xlen_t r0 = (R_xlen_t)b * block_rows;
+      const R_xlen_t r1 = std::min(r0 + block_rows, n);
+      const R_xlen_t len = r1 - r0;
+      if (len <= 0) continue;
+
+      const SEXPTYPE it = id_types[i];
+      const size_t  es  = id_elem_sizes[i];
+      if (es == 0) continue;
+
+      const char* s        = (const char*)id_ptrs[i] + r0 * es;
+      char*       dst_base = (char*)out_id_ptrs[i];
+
+      if (it == STRSXP || it == REALSXP) {
+        const double* sd = (const double*)s;
+        for (int k = 0; k < n_meas; ++k) {
+          double* dk = (double*)(dst_base + ((R_xlen_t)k * n + r0) * es);
+          nt_copy_pd(dk, sd, len);
+        }
+      } else {
+        const int* si = (const int*)s;
+        for (int k = 0; k < n_meas; ++k) {
+          int* dk = (int*)(dst_base + ((R_xlen_t)k * n + r0) * es);
+          nt_copy_i32(dk, si, len);
+        }
+      }
+    }
+    nt_flush();
 }
 
-// ----------------------------------------------------------------------------
-// Compute sub-block count for task pool
-// ----------------------------------------------------------------------------
+// ============================================================================
+//  NA-removal sub-block count
+// ============================================================================
 static inline int compute_num_subs(int n_meas, R_xlen_t n, int threads) {
   if (n_meas >= threads * 4) return 1;
   constexpr int64_t TARGET_ROWS = 25000;
@@ -1694,7 +1462,7 @@ static inline int compute_num_subs(int n_meas, R_xlen_t n, int threads) {
 }
 
 // ============================================================================
-// Main entry point
+//  Main entry
 // ============================================================================
 // [[Rcpp::export]]
 SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
@@ -1712,6 +1480,8 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
   g_scratch.id_elem_sizes.clear();
 
   const size_t l3_size = g_l3_size;
+  (void)l3_size;
+
   std::vector<int>& id_idx   = g_scratch.id_idx;
   std::vector<int>& meas_idx = g_scratch.meas_idx;
   resolve_id(df, id, id_idx, meas_idx);
@@ -1724,9 +1494,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
   const R_xlen_t n = XLENGTH(VECTOR_ELT(df, 0));
   const R_xlen_t total = n * n_meas;
 
-  // Layout dispatch: default is column-major (reshape2-compatible).
-  // Only an explicit `major = "row"` triggers the row-major (tidyr-compatible)
-  // path. There is no automatic switching based on input shape.
   bool row_major = false;
   if (!Rf_isNull(major) && TYPEOF(major) == STRSXP && XLENGTH(major) > 0) {
     std::string s = CHAR(STRING_ELT(major, 0));
@@ -1734,12 +1501,10 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
     row_major = (s == "row");
   }
 
-  // Tiny fast path
   if (DATAPREP_LIKELY(!na_rm) && n <= 2048 && n_meas <= 64 && n_id <= 8) {
     return melt_tiny_cpp(df, id_idx, meas_idx, col_names,
                          variable_name, value_name, row_major, as_factor);
   }
-  // Small fast path
   if (!na_rm && total <= 131072 && n_meas <= 256) {
     return melt_small_cpp(df, id_idx, meas_idx, col_names,
                           variable_name, value_name, row_major, as_factor);
@@ -1761,10 +1526,12 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
     meas_is_factor.push_back(fac);
     if (t != REALSXP || fac) all_real_meas = false;
   }
+  (void)all_real_meas;
 
   R_xlen_t total_out = total;
   R_xlen_t* col_off = nullptr;
   R_xlen_t* row_off = nullptr;
+
   if (na_rm) {
     const R_xlen_t work = (R_xlen_t)n * (R_xlen_t)n_meas;
     const bool par_count = work >= 50000LL;
@@ -1786,12 +1553,13 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
           col_off[k + 1] = count_keep_col(meas_ptrs[k], meas_types[k],
                                           meas_is_factor[k], n);
         }
-        // Prefix sum stays serial: only the counting loop above is parallel.
         for (int k = 1; k <= n_meas; ++k) col_off[k] += col_off[k - 1];
       } else {
-        for (int k = 0; k < n_meas; ++k)
+        for (int k = 0; k < n_meas; ++k) {
           col_off[k + 1] = col_off[k] + count_keep_col(meas_ptrs[k],
-                                                       meas_types[k], meas_is_factor[k], n);
+                                                       meas_types[k],
+                                                       meas_is_factor[k], n);
+        }
       }
       total_out = col_off[n_meas];
     } else {
@@ -1834,7 +1602,9 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
   for (int i = 0; i < n_id; ++i) {
     SEXP src = VECTOR_ELT(df, id_idx[i]);
     SEXPTYPE t = TYPEOF(src);
-    SEXP dst = PROTECT(alloc_hint(t, total_out));
+    SEXP dst = PROTECT(t == STRSXP
+                         ? alloc_string_col(total_out)
+                           : alloc_hint(t, total_out));
     Rf_copyMostAttrib(src, dst);
     SET_VECTOR_ELT(out, i, dst);
     SET_STRING_ELT(out_names, i, STRING_ELT(col_names, id_idx[i]));
@@ -1864,180 +1634,118 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
                  (!Rf_isNull(value_name) && TYPEOF(value_name) == STRSXP) ?
                    STRING_ELT(value_name, 0) : g_val_name("value"));
 
-  bool use_parallel = false;
+  // Compact path for very wide tables.
+  if (!row_major && !na_rm && all_real_meas &&
+      n_meas >= 2048 && n <= 8192 && n_id <= 4) {
+
+    int actual_threads_compact = 1;
+    bool go_par = false;
+#ifdef _OPENMP
+    {
+      int hw = omp_get_max_threads();
+      int cap = get_thread_cap();
+      if (n_threads == 0) {
+        R_xlen_t work = (R_xlen_t)n_meas * n;
+        int calc = (int)std::min<R_xlen_t>((R_xlen_t)cap,
+                                           work / 20000 + 1);
+        calc = std::max(1, std::min(calc, hw));
+        actual_threads_compact = calc;
+      } else if (n_threads > 1) {
+        actual_threads_compact = std::max(1, std::min(n_threads, hw));
+        actual_threads_compact = std::min(actual_threads_compact, cap);
+      } else {
+        actual_threads_compact = 1;
+      }
+      go_par = (actual_threads_compact > 1);
+    }
+#else
+    (void)n_threads;
+#endif
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic, 8) \
+    num_threads(actual_threads_compact) if(go_par)
+#endif
+    for (int k = 0; k < n_meas; ++k) {
+      const double* src = (const double*)meas_ptrs[k];
+      double* pd = pval + (R_xlen_t)k * n;
+      int*    pv = pvar + (R_xlen_t)k * n;
+
+      nt_fill_i32(pv, k + 1, n);
+      nt_copy_pd (pd, src, n);
+
+      for (int i = 0; i < n_id; ++i) {
+        const SEXPTYPE it = id_types[i];
+        const size_t es = id_elem_sizes[i];
+        if (es == 0) continue;
+        char* dst_base = (char*)out_id_ptrs[i] + (R_xlen_t)k * n * es;
+        const char* src_i = (const char*)id_ptrs[i];
+        if (it == REALSXP) {
+          nt_copy_pd((double*)dst_base, (const double*)src_i, n);
+        } else if (it == INTSXP || it == LGLSXP) {
+          nt_copy_i32((int*)dst_base, (const int*)src_i, n);
+        } else if (it == STRSXP) {
+          copy_sexp((SEXP*)dst_base, (const SEXP*)src_i, n);
+        }
+      }
+    }
+    nt_flush();
+
+    if (DATAPREP_UNLIKELY(!as_factor)) {
+      maybe_make_var_character(out, n_id, total_out);
+    }
+    Rf_setAttrib(out, R_NamesSymbol, out_names);
+    {
+      SEXP rn = PROTECT(Rf_allocVector(INTSXP, 2));
+      INTEGER(rn)[0] = NA_INTEGER;
+      INTEGER(rn)[1] = (total_out <= (R_xlen_t)INT_MAX) ?
+      -(int)total_out : NA_INTEGER;
+      Rf_setAttrib(out, R_RowNamesSymbol, rn);
+      Rf_setAttrib(out, R_ClassSymbol, g_df_class("data.frame"));
+      UNPROTECT(1);
+    }
+    UNPROTECT(4);
+    return out;
+  }
+
+  // Thread count for two-phase scheduler.
   int actual_threads = 1;
 #ifdef _OPENMP
-  constexpr R_xlen_t MIN_PARALLEL_WORK = 50000LL;
-  constexpr R_xlen_t ELEMS_PER_THREAD  = 5000LL;
-  const int thread_cap = get_thread_cap();
-  if (n_threads == 1) {
-    use_parallel = false;
-  } else if (n_threads > 1) {
-    int hw = omp_get_max_threads();
-    actual_threads = std::max(1, std::min(n_threads, hw));
-    use_parallel = actual_threads > 1;
-  } else {
-    R_xlen_t eff = (R_xlen_t)total_out + (R_xlen_t)n * (R_xlen_t)n_id;
-    if (eff >= MIN_PARALLEL_WORK) {
-      int hw = omp_get_max_threads();
-      R_xlen_t calc = (eff + ELEMS_PER_THREAD - 1) / ELEMS_PER_THREAD;
-      R_xlen_t cap_x = (R_xlen_t)thread_cap;
-      actual_threads = (int)std::max<R_xlen_t>(1,
-                        std::min<R_xlen_t>(cap_x, std::min<R_xlen_t>(calc, hw)));
-      use_parallel = actual_threads > 1;
+  {
+    const int hw  = omp_get_max_threads();
+    const int cap = get_thread_cap();
+    if (n_threads == 1) actual_threads = 1;
+    else if (n_threads > 1) {
+      actual_threads = std::max(1, std::min(n_threads, hw));
+      actual_threads = std::min(actual_threads, cap);
+    } else {
+      actual_threads = std::max(1, std::min(hw, cap));
     }
   }
 #else
-  (void)n_threads; (void)l3_size;
+  (void)n_threads;
 #endif
 
-  // ---- Column-major path ----
   if (!row_major) {
     if (!na_rm) {
-      const bool fused_ok = all_real_meas;
-
-      if (fused_ok) {
-        const R_xlen_t rows_per_thread =
-          (actual_threads > 0) ? (n / (R_xlen_t)actual_threads) : n;
-        const bool spmd_ok =
-          use_parallel &&
-          (actual_threads > 1) &&
-          (rows_per_thread >= 4096);
-
-        if (spmd_ok) {
-          melt_cpp_spmd_col_major(meas_ptrs, id_ptrs, id_types,
-                                  out_id_ptrs, id_elem_sizes,
-                                  pvar, pval, n_id, n_meas, n,
-                                  actual_threads);
-        } else {
-          const int num_subs = use_parallel
-          ? compute_num_subs(n_meas, n, actual_threads)
-            : 1;
-          const int total_tasks = n_meas * num_subs;
-
-          if (use_parallel && total_tasks > 1) {
-#ifdef _OPENMP
-#pragma omp parallel num_threads(actual_threads)
-{
-#pragma omp for schedule(static) nowait
-  for (int t = 0; t < total_tasks; ++t) {
-    int k = t / num_subs;
-    int s = t % num_subs;
-    R_xlen_t r0 = (R_xlen_t)s * n / (R_xlen_t)num_subs;
-    R_xlen_t r1 = (R_xlen_t)(s + 1) * n / (R_xlen_t)num_subs;
-    fused_col_range(meas_ptrs, id_ptrs, id_types,
-                    out_id_ptrs, id_elem_sizes,
-                    pvar, pval, n_id, n, k, r0, r1);
-  }
-  nt_flush();
-}
-#endif
-          } else {
-            for (int k = 0; k < n_meas; ++k) {
-              fused_col_range(meas_ptrs, id_ptrs, id_types,
-                              out_id_ptrs, id_elem_sizes,
-                              pvar, pval, n_id, n, k, 0, n);
-            }
-            nt_flush();
-          }
-        }
-      } else {
-        // Non-fused path: measure columns first
-        const int num_subs = use_parallel
-        ? compute_num_subs(n_meas, n, actual_threads)
-          : 1;
-        const int total_tasks = n_meas * num_subs;
-
-        auto process_range = [&](int k, R_xlen_t r0, R_xlen_t r1) {
-          R_xlen_t len = r1 - r0;
-          if (len <= 0) return;
-          const void* mp = meas_ptrs[k];
-          SEXPTYPE t = meas_types[k];
-          bool fac = meas_is_factor[k];
-          nt_fill_i32(pvar + (R_xlen_t)k * n + r0, k + 1, len);
-          double* pd = pval + (R_xlen_t)k * n + r0;
-          if (t == REALSXP) {
-            nt_copy_pd(pd, (const double*)mp + r0, len);
-          } else if (t == INTSXP && !fac) {
-            int2double_ptr((const int*)mp + r0, pd, (size_t)len, false);
-          } else if (t == LGLSXP) {
-            int2double_ptr((const int*)mp + r0, pd, (size_t)len, true);
-          } else {
-            std::fill(pd, pd + len, NA_REAL);
-          }
-        };
-
-        if (use_parallel && total_tasks > 1) {
-#ifdef _OPENMP
-#pragma omp parallel num_threads(actual_threads)
-{
-#pragma omp for schedule(static) nowait
-  for (int t = 0; t < total_tasks; ++t) {
-    int k = t / num_subs;
-    int s = t % num_subs;
-    R_xlen_t r0 = (R_xlen_t)s * n / (R_xlen_t)num_subs;
-    R_xlen_t r1 = (R_xlen_t)(s + 1) * n / (R_xlen_t)num_subs;
-    process_range(k, r0, r1);
-  }
-  nt_flush();
-}
-#endif
-        } else {
-          for (int k = 0; k < n_meas; ++k) process_range(k, 0, n);
-          nt_flush();
-        }
-
-        // Id columns: blocked doubling
-        for (int pass = 0; pass < 2; ++pass) {
-          bool do_str = (pass == 1);
-          for (int i = 0; i < n_id; ++i) {
-            bool is_str = (id_types[i] == STRSXP);
-            if (is_str != do_str) continue;
-            SEXPTYPE it = id_types[i];
-            size_t es = id_elem_sizes[i];
-            if (!es) continue;
-            const char* s = (const char*)id_ptrs[i];
-            char* d_base = (char*)out_id_ptrs[i];
-
-            // First copy (normal store)
-            if (is_str) {
-              copy_sexp((SEXP*)d_base, (const SEXP*)s, n);
-            } else if (it == REALSXP) {
-              copy_pd((double*)d_base, (const double*)s, n);
-            } else if (it == INTSXP || it == LGLSXP) {
-              copy_i32((int*)d_base, (const int*)s, n);
-            }
-
-            // Doubling (NT stores)
-            size_t filled = 1;
-            while (filled < (size_t)n_meas) {
-              size_t tc = filled;
-              if (tc > (size_t)n_meas - filled) tc = (size_t)n_meas - filled;
-              char* dst_out = d_base + filled * (size_t)n * es;
-
-              if (is_str) {
-                for (size_t b = 0; b < tc; ++b) {
-                  nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                             (const double*)d_base, n);
-                }
-              } else if (it == REALSXP) {
-                for (size_t b = 0; b < tc; ++b) {
-                  nt_copy_pd((double*)(dst_out + b * (size_t)n * es),
-                             (const double*)d_base, n);
-                }
-              } else if (it == INTSXP || it == LGLSXP) {
-                for (size_t b = 0; b < tc; ++b) {
-                  nt_copy_i32((int*)(dst_out + b * (size_t)n * es),
-                              (const int*)d_base, n);
-                }
-              }
-              filled += tc;
-            }
-          }
-        }
+      // Small block_rows when many ids share the WCBs; large when only one id
+      // writes (single stream-set, WCB reuse is trivial).
+      R_xlen_t block_rows = 32768;
+      if (n < block_rows) block_rows = n;
+      {
+        R_xlen_t min_blocks = std::max<R_xlen_t>(4, (R_xlen_t)actual_threads * 4);
+        R_xlen_t cap = (n + min_blocks - 1) / min_blocks;
+        if (block_rows > cap) block_rows = cap;
+        if (block_rows < 4096) block_rows = 4096;
       }
+
+      melt_phase_a(meas_ptrs, meas_types, meas_is_factor,
+                   pvar, pval, n_meas, n,
+                   block_rows, actual_threads);
+      melt_phase_b(id_ptrs, id_types, out_id_ptrs, id_elem_sizes,
+                   n_id, n_meas, n,
+                   block_rows, actual_threads);
     } else {
-      // NA removal path (column-major)
       std::vector<R_xlen_t>& tl_keep = g_scratch.keep_idx;
       auto process_col_na_rm = [&](int k) {
         R_xlen_t off = col_off[k];
@@ -2078,7 +1786,7 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
         }
       };
       const int team = std::min(actual_threads, n_meas);
-      if (use_parallel && team > 1) {
+      if (team > 1) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) num_threads(team)
 #endif
@@ -2087,16 +1795,14 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
         for (int k = 0; k < n_meas; ++k) process_col_na_rm(k);
       }
     }
-  }
-  // ---- Row-major path ----
-  else {
+  } else {
     size_t bytes_per_row = (size_t)n_meas * (sizeof(double) + sizeof(int));
     for (size_t es : id_elem_sizes) bytes_per_row += es;
     if (!bytes_per_row) bytes_per_row = 1;
     R_xlen_t calc_block = (R_xlen_t)((l3_size / 2) / bytes_per_row);
     calc_block = std::max<R_xlen_t>(256, std::min<R_xlen_t>(65536, calc_block));
     R_xlen_t BLOCK_SIZE = calc_block;
-    if (use_parallel) {
+    if (actual_threads > 1) {
       R_xlen_t by_t = n / (R_xlen_t)(4 * actual_threads);
       BLOCK_SIZE = std::max<R_xlen_t>(calc_block / 4, by_t);
       BLOCK_SIZE = std::min<R_xlen_t>(BLOCK_SIZE, calc_block);
@@ -2130,7 +1836,6 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
           std::memcpy(pvar + (size_t)r * n_meas, var_pat8,
                       (size_t)n_meas * sizeof(int));
         }
-        // Id columns
         for (int ii = 0; ii < n_id; ++ii) {
           SEXPTYPE it = id_types[ii];
           if (it == STRSXP) {
@@ -2160,7 +1865,7 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
           }
         }
       };
-      if (use_parallel) {
+      if (actual_threads > 1) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) num_threads(actual_threads)
 #endif
@@ -2206,7 +1911,7 @@ SEXP melt_cpp(SEXP df, SEXP id = R_NilValue,
           }
         }
       };
-      if (use_parallel) {
+      if (actual_threads > 1) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) num_threads(actual_threads)
 #endif

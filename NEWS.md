@@ -1,4 +1,24 @@
-# dataprep 0.1.8
+# dataprep 0.1.8.1
+
+## Reshaping backends
+
+* `melt()` and `dcast()` receive further C++ / SIMD / OpenMP optimisations.
+* Benchmark harness updated to v15:
+  - warmup excluded;
+  - adaptive iterations;
+  - sentinel vector;
+  - mixed-type id columns by default;
+  - median is the primary metric;
+  - `collapse` added as the 9th engine;
+  - aggregated dcast consistency and benchmark added.
+
+## Documentation
+
+* `README.md`, `vignette("dataprep-performance")`,
+  `vignette("dataprep-melt-dcast")`, `man/melt.Rd`, and
+  `man/dcast.Rd` updated to 0.1.8.1.
+  
+# dataprep 0.1.8.1
 
 ## Upgrading from 0.1.5? Read this first
 
@@ -11,7 +31,7 @@ quantified comparison below before upgrading.
    implementation collapsed all selected columns into one long
    vector before computing missing runs; this changed NA run
    boundaries and could both over-delete boundary rows and retain
-   rows that should have been deleted. The 0.1.8 implementation
+   rows that should have been deleted. The 0.1.8.1 implementation
    scans each column independently: a row is deleted when
    *any* selected column has a missing run longer than `half`
    minutes on both sides.
@@ -19,13 +39,13 @@ quantified comparison below before upgrading.
 2. **`half` is now always in minutes, and the boundary is
    inclusive.** In 0.1.5, `half` counted grid rows in units of
    `by`: with `by = "5 min", half = 30` the effective window was
-   150 minutes. In 0.1.8, `half` is always in minutes, independent
+   150 minutes. In 0.1.8.1, `half` is always in minutes, independent
    of `by`. Rows whose nearest anchor is exactly `half` minutes
    away are retained (`within half minutes` is a `<=` condition).
 
 3. **`optisolu()` no longer crashes with `cores > 16`.** The 0.1.5
    `parallel::makeCluster()` path exhausted memory when the worker
-   processes each received a full copy of the input. The 0.1.8
+   processes each received a full copy of the input. The 0.1.8.1
    implementation loads the package on each worker, exports the
    input data only once per worker, and runs each `(interval,
    times)` case in a separate task, so `cores = 64` and
@@ -37,7 +57,7 @@ On SMEAR I Varrio 2025 (49,422 rows × 61 numeric channels,
 10-minute sampling), running the same pipeline with the same
 parameters:
 
-| Stage | 0.1.5 | 0.1.8 | Δ |
+| Stage | 0.1.5 | 0.1.8.1 | Δ |
 |---|---:|---:|---:|
 | `varidele` | 25 columns deleted | 25 columns deleted | 0 |
 | `obsedele` | 1,494 rows deleted | 1,496 rows deleted | +2 |
@@ -114,7 +134,7 @@ hardware.
 
 ## Performance summary
 
-### Cleaning pipeline (dataprep 0.1.5 → 0.1.8)
+### Cleaning pipeline (dataprep 0.1.5 → 0.1.8.1)
 
 Speedup relative to 0.1.5 on the same input, same parameters.
 Values below 1.0× mean the new implementation is marginally
@@ -138,7 +158,7 @@ both versions and the new code path has little room for improvement.
 > **Note on `optisolu` cores.** The 0.1.5 implementation could
 > crash when `cores > 16`. The benchmark above used
 > `cores = 16` for both versions to keep the comparison fair.
-> 0.1.8 loads the package on each worker, exports the input data
+> 0.1.8.1 loads the package on each worker, exports the input data
 > once per worker, and runs each `(interval, times)` case as a
 > separate task, so `cores = 64` is safe. The practical speed-up
 > on a many-core host is **larger** than the table above.
@@ -222,7 +242,7 @@ shipped under `inst/`.
 
 ### `obsedele()` semantics
 
-The 0.1.8 C++ backend (`obsedele_cpp`) implements the retention
+The 0.1.8.1 C++ backend (`obsedele_cpp`) implements the retention
 criterion with an **anchor-based scan**: for each missing value and
 each selected column, the time distance to the nearest non-missing
 anchor on the left and on the right is computed directly. A row is
@@ -244,7 +264,7 @@ in 0.1.0 and the `rleid`-based criterion used in 0.1.5, but:
 
 The 0.1.5 `parallel::makeCluster()` path gave each worker a full
 copy of the input. With `cores > 16` and large data this exhausted
-memory and aborted the R session. The 0.1.8 implementation shares
+memory and aborted the R session. The 0.1.8.1 implementation shares
 read-only data across workers and accepts up to 64 cores safely.
 
 ### `melt()` new `major` and `as.factor` arguments
@@ -427,7 +447,7 @@ Seven vignettes ship with the package:
   the four cleaning steps.
 * `vignette("dataprep-performance")` — full benchmark tables and
   8-engine consistency checks.
-* `vignette("dataprep-migration")` — 0.1.5 → 0.1.8 upgrade guide.
+* `vignette("dataprep-migration")` — 0.1.5 → 0.1.8.1 upgrade guide.
 * `vignette("dataprep-workflow")` — leakage-free preprocessing
   with `prep_fit()` / `prep_transform()`.
 * `vignette("dataprep-melt-dcast")` — fast reshaping usage and
@@ -460,13 +480,13 @@ produce, is slow for downstream complex statistics because every
 element access re-enters the virtual-object layer, which shifts the
 cost from `dataprep` to the caller's analysis code. 
 
-The shipped 0.1.8 backends therefore keep the standard allocation path, and the
+The shipped 0.1.8.1 backends therefore keep the standard allocation path, and the
 reported speed-ups stand as measured: `melt()` spans 0.6×–1628.9×
 and `dcast()` spans 1.9×–799.8× across the two reference hosts, with
 the sub-1.0× `melt()` cells confined to the 1e7-row (Ubuntu) and
 1e5-row (Windows) shapes with 10 id columns, where `polars` is faster
 than `dataprep`. On the cleaning pipeline the
-0.1.5 → 0.1.8 speed-ups of 1.1×–1146× stand as reported;
+0.1.5 → 0.1.8.1 speed-ups of 1.1×–1146× stand as reported;
 `Rf_allocVector3` and ALTREP were not evaluated there.
 
 ## Environment variables (optional)

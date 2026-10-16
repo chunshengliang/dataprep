@@ -27,32 +27,32 @@ set.seed(1)
 
 ## Why another reshape implementation
 
-`melt()` and `dcast()` in `dataprep` 0.1.8 are drop-in replacements
+`melt()` and `dcast()` in `dataprep` 0.1.8.1 are drop-in replacements
 for `reshape2::melt` / `reshape2::dcast`, but the underlying code is
 written in C++ with SIMD (AVX2 / AVX-512) and optional OpenMP
 parallelism. Both functions produce output identical to
 `reshape2`, `data.table`, `tidyr`, `pandas`, `polars`, `dask`, and
 `duckdb` on every tested shape, within `tol = 1e-12`.
 
-The speed-up relative to each of the seven alternatives spans:
+The speed-up relative to each of the **eight** alternatives spans:
 
 | Operation | Range across both hosts |
 |---|---:|
-| `melt`  | 0.6–1628.9× |
-| `dcast` | 1.9–799.8× |
+| `melt`  | 0.3×–1750.0× |
+| `dcast` | 0.9×–1849.5× |
 
 The median across all tested cells and all competitors is
-11.3× on Ubuntu and 5.6× on Windows for `melt`, and 46.5× on
-Ubuntu and 41.4× on Windows for `dcast`. The mean is 67.8× and
-46.6× for `melt`, and 90.2× and 76.6× for `dcast`, respectively.
+9.6× on Ubuntu and 3.7× on Windows for `melt`, and 74.5× on
+Ubuntu and 42.2× on Windows for `dcast`. The mean is 71.0× and
+31.8× for `melt`, and 128.9× and 91.1× for `dcast`, respectively.
 The `melt` median is pulled down by the 1e5-row small tables; at
 larger scales the speed-up is much higher. Full tables —
 including mean, median, and per-competitor ranges — are in
 `vignette("dataprep-performance")` and `README.md`.
 
 The sub-1.0× cells are `polars` at 1e7 rows × 10 id + 9 val on
-Ubuntu (0.6×), and `polars` at 1e5 rows × 10 id + 9 val on
-Windows (0.7×). Every other cell has `dataprep` ahead of or on
+Ubuntu (0.3×), and `polars` at 1e5 rows × 10 id + 9 val on
+Windows (0.6×). Every other cell has `dataprep` ahead of or on
 par with the fastest competitor.
 
 ## Test environment
@@ -192,7 +192,7 @@ Output vectors larger than 512 KB are allocated through
 so the kernel can back them with 2 MB pages. This reduces
 first-touch page faults on the 1e8-row case. There is no custom
 `R_allocator_t`, no `MAP_POPULATE`, and no free pool: those were
-described in earlier drafts but are not part of the shipped 0.1.8
+described in earlier drafts but are not part of the shipped 0.1.8.1
 backend.
 
 ### 4. Fast paths for small inputs
@@ -320,39 +320,54 @@ The full pipeline is described in the `dcast()` help page.
 
 ## Where the gap is narrowest
 
-The `dcast` 1e6 × 100 `id` cell is the only case in the entire
-benchmark suite where a competitor reaches a single-digit ratio:
-`polars` at 6.7× on Ubuntu and 2.6× on Windows. Both remain behind
-`dataprep`. This is because `polars`'s SIMD hash is competitive
-when the row key is very wide (100 columns), while `dcast_cpp`'s
-96-bit fingerprint verification is `O(n_id)` per row in that regime.
+On `melt()`, the narrowest cells are the `10 id + 9 val` shapes at
+1e7 rows on Ubuntu (`polars` at 0.3×) and 1e5 rows on Windows
+(`polars` at 0.6×). `polars`'s SIMD hash and native strided
+unpivot are competitive when the id block is wide and the output is
+long; every other `melt()` cell has `dataprep` ahead of or on par
+with the fastest competitor.
+
+On `dcast()`, the narrowest cell is the smallest Windows case
+(`n_long = 1,000`, 1 id, 10 levels), where `collapse` is about 8 %
+faster (0.9×). Every other `dcast()` cell has `dataprep` ahead of
+every other engine, including the aggregated `dcast()` cells, where
+the closest competitor (`polars`) stays within 2.0×–3.5× on
+both hosts.
 
 ## Cross-engine consistency
 
-`melt()` and `dcast()` produce output identical to `reshape2` (the
-reference implementation) on every tested cell. All pairs of engines
-agree pairwise within `tol = 1e-12`.
+`melt()`, `dcast()`, and aggregated `dcast()` produce output
+identical to `reshape2` (the reference implementation) on every
+tested cell. All pairs of engines agree pairwise within
+`tol = 1e-12` for melt / dcast and `tol = 1e-10` for aggregated
+dcast.
 
 ### `melt` consistency
 
 | rows | n_id | n_val | engines passed | pairwise |
 |---:|---:|---:|---:|---|
-| 1,000 | 1 | 9 | 8/8 | all consistent |
-| 100,000 | 1 | 9 | 8/8 | all consistent |
-| 1,000 | 1 | 100 | 8/8 | all consistent |
-| 10,000 | 10 | 10 | 8/8 | all consistent |
+| 1,000 | 1 | 9 | 9/9 | all consistent |
+| 100,000 | 1 | 9 | 9/9 | all consistent |
+| 1,000 | 1 | 100 | 9/9 | all consistent |
+| 10,000 | 10 | 10 | 9/9 | all consistent |
 
-Engines: `dataprep`, `reshape2`, `data.table`, `tidyr`, `pandas`,
-`polars`, `dask`, `duckdb`.
+Engines: `dataprep`, `reshape2`, `data.table`, `tidyr`,
+`collapse`, `pandas`, `polars`, `dask`, `duckdb`.
 
 ### `dcast` consistency
 
 | n_long | n_id | n_levels | engines passed | pairwise |
 |---:|---:|---:|---:|---|
-| 5,000 | 2 | 5 | 8/8 | all consistent |
-| 50,000 | 1 | 50 | 8/8 | all consistent |
-| 50,000 | 10 | 10 | 8/8 | all consistent |
-| 1,000,000 | 1 | 10 | 8/8 | all consistent |
+| 5,000 | 2 | 5 | 9/9 | all consistent |
+| 50,000 | 1 | 50 | 9/9 | all consistent |
+| 50,000 | 10 | 10 | 9/9 | all consistent |
+| 1,000,000 | 1 | 10 | 9/9 | all consistent |
+
+### `dcast(agg)` consistency
+
+| cells | aggs | engines passed | pairwise |
+|---:|---:|---:|---|
+| 2 shapes | sum, mean, min, max, count | 9/9 | all consistent |
 
 The consistency scripts are shipped under `inst/`:
 
@@ -361,6 +376,7 @@ Sys.setenv(DATAPREP_RUN_BENCHMARK = "1")
 source(system.file("benchmark_melt_dcast.R", package = "dataprep"))
 melt_all_engines(10000L, n_id = 1L, n_val = 9L)
 dcast_all_engines(1000L, n_id = 2L, n_val = 5L)
+dcast_agg_all_engines(10000L, n_levels = 10L, K = 3L)
 ```
 
 ## Round-trip example
@@ -384,15 +400,17 @@ per-cell tables are in `vignette("dataprep-performance")`.
 
 | Operation | Min | Median | Mean | Max |
 |---|---:|---:|---:|---:|
-| `melt()`  | 0.6× (polars @ 1e7 × 19 × 10 × 9) | 11.3× | 67.8× | 1628.9× (dask @ 1e3 × 10001 × 1 × 10000) |
-| `dcast()` | 1.9× (reshape2 @ 1e3 × 1 × 10)    | 46.5× | 90.2× | 463.8× (data.table @ 1e8 × 1 × 100)      |
+| `melt()`  | 0.3× (polars @ 10M rows, 10 id + 9 val) | 9.6× | 71.0× | 1750.0× (dask @ 1e3 rows, 1 id + 10000 val) |
+| `dcast()` | 1.8× (collapse @ 10K rows, 1 id + 100 lvl) | 74.5× | 128.9× | 651.5× (duckdb @ 10M rows, 1 id + 100 lvl) |
+| `dcast(agg)` | 2.3× (polars @ 100M rows, count) | 27.4× | 68.6× | 733.5× (reshape2 @ 10M rows, min) |
 
 ### Windows 11 Pro for Workstations
 
 | Operation | Min | Median | Mean | Max |
 |---|---:|---:|---:|---:|
-| `melt()`  | 0.7× (polars @ 1e5 × 19 × 10 × 9) | 5.6× | 46.6× | 893.2× (dask @ 1e3 × 10001 × 1 × 10000) |
-| `dcast()` | 2.6× (polars @ 1e6 × 100 × 10)   | 41.4× | 76.6× | 799.8× (duckdb @ 1e8 × 1 × 100)         |
+| `melt()`  | 0.6× (polars @ 100K rows, 10 id + 9 val) | 3.7× | 31.8× | 435.2× (dask @ 1e3 rows, 10 id + 10000 val) |
+| `dcast()` | 0.9× (collapse @ 1K rows, 1 id + 10 lvl) | 42.2× | 91.1× | 1849.5× (duckdb @ 1M rows, 1 id + 10000 lvl) |
+| `dcast(agg)` | 2.0× (polars @ 1M rows, count) | 17.9× | 61.8× | 872.4× (reshape2 @ 100M rows, min) |
 
 For `melt()`, on the largest cells (1e8 rows, 8 GB of input), `dataprep` is the
 only engine that completes within 2.5 s: under 0.3 s on Ubuntu and

@@ -13,6 +13,14 @@ create_lags_cpp <- function(x, group, lags, fill_na = TRUE) {
     .Call(`_dataprep_create_lags_cpp`, x, group, lags, fill_na)
 }
 
+dcast_aggregate_cpp <- function(data, id = NULL, variable = NULL, value = NULL, agg_fn = 1L, na_rm = FALSE, cores = 0L) {
+    .Call(`_dataprep_dcast_aggregate_cpp`, data, id, variable, value, agg_fn, na_rm, cores)
+}
+
+dcast_fast_cpp <- function(data, var_idx, val_idx, id_idx, fill, cores) {
+    .Call(`_dataprep_dcast_fast_cpp`, data, var_idx, val_idx, id_idx, fill, cores)
+}
+
 dcast_cpp <- function(data, id = NULL, variable = NULL, value = NULL, variable_name = NULL, cores = 0L, fill = NULL, na_rm = FALSE) {
     .Call(`_dataprep_dcast_cpp`, data, id, variable, value, variable_name, cores, fill, na_rm)
 }

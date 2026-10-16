@@ -1,37 +1,26 @@
 # ============================================================================
-# Shared helpers for adaptive per-tool benchmarks (melt / dcast).
+# Shared helpers for adaptive per-tool benchmarks (melt / dcast / agg dcast).
 #
-# Design notes (v12):
+# Design notes (v15):
 #   * bench_one runs the first call as a warmup and EXCLUDES it from the
 #     reported statistics. The first call absorbs OpenMP thread-pool
 #     creation, kernel THP initialisation, and glibc malloc pool growth.
-#     All of these are one-time costs that every engine pays (data.table
-#     mean/median ~ 19x, reshape2 ~ 13x on small shapes); including them
-#     in the quantiles inflates the mean by 4-8x and makes the number
-#     unstable. Median and trimmed mean are the steady-state metrics.
+#     All of these are one-time costs that every engine pays.
 #   * Sentinel: a large numeric vector kept alive for the whole cell
-#     forces R's GC trigger above any single tool's working set. Without
-#     it, gc() inside the timing loop turns any output above ~100 MB
-#     into a GC benchmark rather than a melt benchmark.
+#     forces R's GC trigger above any single tool's working set.
 #   * Mixed-type inputs: id columns alternate between integer and
-#     character for n_id >= 2, matching real composite keys
-#     (station_id, month) or (user_id, city). Pure numeric ids miss the
-#     STRXP / Utf8 / object-dtype code paths in every engine. Set
-#     DATAPREP_MIXED_TYPES=FALSE to force the all-integer baseline.
-#   * Labels use id_desc() so the header text is generated from the
-#     same parameters that drive make_wide_input / make_long. This
-#     keeps the log line and the "mixed=" flag consistent, and avoids
-#     repeating the row / id / val dimensions twice.
+#     character for n_id >= 2, matching real composite keys.
+#   * make_agg_input builds a long table where every (id, variable) pair
+#     appears exactly K times. Any tool that silently takes "first"
+#     instead of aggregating will differ from the base-R reference.
 # ============================================================================
-# ---- Python bootstrap (strict) ---------------------------------------------
-# Policy: the benchmark harness NEVER installs Python or Python packages.
-# If the interpreter or any required module is missing, it stops with a
-# clear message telling the user exactly what to fix.
-#
-# Rationale: silently downloading Miniconda or running pip inside a
-# benchmark script is surprising, slow, and can pollute a carefully
-# managed virtualenv. Environment setup is the caller's job.
 
+# ---- persistent helper state (survives re-source of this file) --------------
+if (!exists(".bench_helpers_env", envir = globalenv(), inherits = FALSE)) {
+  .bench_helpers_env <- new.env(parent = emptyenv())
+}
+
+# ---- Python bootstrap (strict) ---------------------------------------------
 ensure_python <- function() {
   if (!requireNamespace("reticulate", quietly = TRUE))
     stop("Package 'reticulate' is required.", call. = FALSE)
@@ -51,15 +40,16 @@ ensure_python <- function() {
   }
 
   cfg <- reticulate::py_config()
-  message("Using Python: ", cfg$python)
+  # Announce the interpreter only once per R session, even if this file
+  # is sourced several times by the driver script.
+  if (!isTRUE(.bench_helpers_env$py_announced)) {
+    message("Using Python: ", cfg$python)
+    .bench_helpers_env$py_announced <- TRUE
+  }
   invisible(TRUE)
 }
 
 # ---- Python dependencies (strict) -------------------------------------------
-# Each entry maps an importable module name to the pip spec that provides it.
-# The split matters: pip extras like "dask[dataframe]" are NOT valid module
-# names, so py_module_available("dask[dataframe]") always returns FALSE.
-# We check importability with `module` and only ever pass `pip` to pip.
 PY_PKGS <- list(
   list(module = "pandas",         pip = "pandas"),
   list(module = "polars",         pip = "polars"),
@@ -133,7 +123,7 @@ if (!.run_bench) {
 }
 
 if (.run_bench) {
-  required <- c("Rcpp", "reticulate",
+  required <- c("Rcpp", "reticulate", "collapse",
                 "data.table", "reshape2", "tidyr", "dataprep")
   missing_pkgs <- required[!vapply(required, requireNamespace,
                                    logical(1), quietly = TRUE)]
@@ -141,7 +131,7 @@ if (.run_bench) {
     stop("Missing R packages: ", paste(missing_pkgs, collapse = ", "))
 
   suppressPackageStartupMessages({
-    library(Rcpp); library(reticulate)
+    library(Rcpp); library(reticulate); library(collapse)
     library(data.table); library(reshape2); library(tidyr); library(dataprep)
   })
 
@@ -156,6 +146,24 @@ if (.run_bench) {
   py_run_string("import warnings; warnings.filterwarnings('ignore')")
   options(scipen = 999)
 
+  # ------------------------------------------------------------------
+  # Python entry points.
+  #
+  # NOTE on dask: dask.dataframe.compute() returns a pandas DataFrame
+  # whose index is the concatenation of per-partition 0..k ranges, so
+  # the index contains duplicates.  reticulate's automatic pandas ->
+  # data.frame conversion then emits "index contains duplicated values:
+  # row names not set" on every such call.
+  #
+  # For melt (long output) we drop the index; there is no meaningful
+  # index to keep.
+  #
+  # For pivot/pivot_table (wide output) the id column is the *index*
+  # of the pivot_table result, so `.reset_index(drop=True)` would drop
+  # it.  We must use plain `.reset_index()`: that moves id back into a
+  # column and yields a fresh, unique 0..n-1 row index, which is what
+  # reticulate wants.
+  # ------------------------------------------------------------------
   reticulate::py_run_string("
 def bench_melt_pandas():
     return bench_pd_df.melt(id_vars=bench_id_cols,
@@ -166,7 +174,8 @@ def bench_melt_polars():
                                value_name='value')
 def bench_melt_dask():
     return bench_ddf.melt(id_vars=bench_id_cols,
-                          var_name='variable', value_name='value').compute()
+                          var_name='variable',
+                          value_name='value').compute().reset_index(drop=True)
 def bench_melt_duckdb():
     return bench_con.sql(bench_sql).df()
 def bench_dcast_pandas():
@@ -216,8 +225,6 @@ bench_reset_disabled <- function(family = NULL) {
 
 
 # ---- sentinel ---------------------------------------------------------------
-# Sentinel multiplier. Raise via DATAPREP_SENTINEL_MULT if the
-# median/min ratio on your machine is still > 2.
 sentinel_mult <- function() {
   v <- suppressWarnings(as.numeric(Sys.getenv("DATAPREP_SENTINEL_MULT")))
   if (!is.finite(v) || v < 1) v <- 4
@@ -258,12 +265,6 @@ bench_skipped_row <- function(tool, first_sec = NA_real_, times = 0L)
 
 
 # ---- single-tool timed run --------------------------------------------------
-# The first call is executed as a warmup and reported separately in
-# `first_run_sec`. It is NOT included in the quantile statistics.
-# Rationale: the first call absorbs OpenMP thread-pool creation,
-# kernel THP state initialisation, and glibc malloc pool growth.
-# All engines pay this cost; including it inflates mean/median ratios
-# by 10-20x on small shapes without any useful signal.
 bench_one <- function(fn, tool, family = "melt", unit = "ms",
                       verbose = TRUE, pre_gc = TRUE) {
   if (bench_is_disabled(family, tool)) {
@@ -274,7 +275,6 @@ bench_one <- function(fn, tool, family = "melt", unit = "ms",
 
   if (pre_gc) { gc(verbose = FALSE, full = TRUE); py_gc_collect() }
 
-  # ---- warmup call (excluded from stats) -----------------------------------
   t_ns <- now_ns()
   ok <- TRUE; msg <- ""
   tryCatch(invisible(fn()),
@@ -288,7 +288,6 @@ bench_one <- function(fn, tool, family = "melt", unit = "ms",
     return(bench_skipped_row(tool, first_sec = warmup_sec, times = 0L))
   }
 
-  # ---- batch factor for sub-microsecond operations -------------------------
   batch <- 1L
   if (warmup_sec < 1e-6) {
     batch <- max(2L, as.integer(ceiling(1e-6 / max(warmup_sec, 1e-9))))
@@ -304,7 +303,6 @@ bench_one <- function(fn, tool, family = "melt", unit = "ms",
     warmup_sec <- ((now_ns() - t_ns) * 1e-9) / batch
   }
 
-  # ---- formal measurement --------------------------------------------------
   times <- max(1L, as.integer(choose_times(warmup_sec)))
 
   if (verbose)
@@ -341,10 +339,6 @@ bench_one <- function(fn, tool, family = "melt", unit = "ms",
 
 
 # ---- write one cell's results to a CSV --------------------------------------
-# Appends to `path` when it already exists, so every cell in a sweep lands in
-# the same table instead of overwriting the previous cell's rows. Callers add
-# a per-cell `label` column so results can be grouped / filtered afterwards.
-# Pass overwrite = TRUE (or delete the file beforehand) to truncate.
 write_result <- function(sm, path, overwrite = FALSE) {
   if (overwrite || !file.exists(path)) {
     write.csv(sm, path, row.names = FALSE)
@@ -371,25 +365,11 @@ write_result <- function(sm, path, overwrite = FALSE) {
 # Mixed-type input construction
 # ============================================================================
 
-# When TRUE, id columns alternate between integer and character for
-# n_id >= 2. Set DATAPREP_MIXED_TYPES=FALSE to force the all-integer
-# baseline that earlier releases were benchmarked on.
 mixed_types_enabled <- function() {
   v <- Sys.getenv("DATAPREP_MIXED_TYPES", unset = "TRUE")
   !identical(toupper(v), "FALSE")
 }
 
-# Human-readable descriptor for the id columns produced by
-# make_wide_input() / make_long().
-#
-#   n_id == 1                  -> "1 id"
-#   n_id >= 2, mixed enabled   -> "N id (A int + B chr)" with A = ceil(N/2)
-#                                                       B = floor(N/2)
-#   n_id >= 2, mixed disabled  -> "N id"
-#
-# Used by every benchmark label so the log header and the "mixed" flag
-# always agree on the layout, and so the row / id / val dimensions are
-# printed exactly once per cell.
 id_desc <- function(n_id) {
   if (n_id <= 1L) return("1 id")
   if (mixed_types_enabled()) {
@@ -401,12 +381,6 @@ id_desc <- function(n_id) {
 }
 
 # Build a wide data.frame with mixed id types.
-#
-# n_id = 1 : single integer id (the most common single-key case)
-# n_id >= 2: odd  positions -> integer id sampled from 1..int_card
-#            even positions -> character id sampled from chr_levels
-#
-# Value columns are all double.
 make_wide_input <- function(n_rows, n_id, n_val,
                             int_card   = 100L,
                             chr_levels = c("alpha", "beta", "gamma",
@@ -438,11 +412,7 @@ make_wide_input <- function(n_rows, n_id, n_val,
 }
 
 # Build a canonical long table for dcast. Every (id, variable) pair
-# appears exactly once, so dcast takes the block path.
-#
-# id types mirror make_wide_input: n_id >= 2 alternates integer /
-# character. Character ids are deterministic (not random) so that the
-# block-path detection in dcast_cpp stays valid.
+# appears exactly once.
 make_long <- function(n_long, n_id, n_levels,
                       chr_levels = c("alpha", "beta", "gamma",
                                      "delta", "epsilon")) {
@@ -477,4 +447,134 @@ make_long <- function(n_long, n_id, n_levels,
   long$variable <- rep(paste0("v", seq_len(n_levels)), times = n_comb)
   long$value    <- rnorm(n_long)
   long
+}
+
+# ============================================================================
+# Aggregation input / registry
+# ============================================================================
+
+# Build a long table suitable for testing aggregation semantics.
+#
+#   nlong    : desired input row count (approximate; rounded to the
+#              nearest multiple of n_levels * K)
+#   n_levels : number of distinct `variable` values
+#   K        : number of times each (id, variable) pair appears
+#
+# Every (id, variable) pair appears exactly K times, so any tool that
+# silently takes "first" instead of aggregating will differ from the
+# base-R reference computed by agg_reference().
+make_agg_input <- function(nlong, n_levels = 10L, K = 3L) {
+  n_levels  <- as.integer(n_levels)
+  K         <- as.integer(K)
+  n_groups  <- max(1L, as.integer(nlong %/% (n_levels * K)))
+  nlong_out <- n_groups * n_levels * K
+  id        <- rep(seq_len(n_groups), each = n_levels * K)
+  var_idx   <- rep(rep(seq_len(n_levels), each = K), times = n_groups)
+  variable  <- paste0("v", var_idx)
+  value     <- rnorm(nlong_out)
+  data.frame(id = id, variable = variable, value = value,
+             stringsAsFactors = FALSE)
+}
+
+# Aggregation name -> R function.
+#
+# IMPORTANT: keep the entries of R_AGGS as the *unwrapped* base functions.
+# dataprep::dcast() selects its C++ aggregation kernel by testing
+# `identical(fun.aggregate, base::min)` (and friends); wrapping them
+# would silently push dataprep onto its slow stats::aggregate fallback
+# and make the benchmark unfair.
+R_AGGS <- list(
+  sum   = base::sum,
+  mean  = base::mean,
+  min   = base::min,
+  max   = base::max,
+  count = base::length
+)
+
+# ---------------------------------------------------------------------------
+# reshape2-safe aggregation wrappers.
+#
+# reshape2:::vaggregate() probes `fun.aggregate` with an empty vector
+# (`.value[0]`) to infer the return type.  base::min(numeric(0)) and
+# base::max(numeric(0)) emit "all arguments are missing" warnings and
+# return Inf / -Inf to the probe.  The wrappers below avoid that by
+# returning NA_real_ for empty input and computing min / max via sort()
+# (which is warning-free on empty vectors).
+#
+# For non-empty input the wrappers are bit-identical to base::min /
+# base::max with the same na.rm semantics, so reshape2's aggregation
+# results are unchanged.
+#
+# Only reshape2 needs these.  dataprep selects its C++ kernel via
+# identical(fun.aggregate, base::min) and must be given the raw base
+# functions; collapse and data.table never probe with an empty vector.
+# ---------------------------------------------------------------------------
+safe_min <- function(x, na.rm = FALSE) {
+  if (length(x) == 0L) return(NA_real_)
+  if (na.rm) x <- x[!is.na(x)]
+  if (anyNA(x)) return(NA_real_)
+  v <- sort(x)
+  v[1L]
+}
+
+safe_max <- function(x, na.rm = FALSE) {
+  if (length(x) == 0L) return(NA_real_)
+  if (na.rm) x <- x[!is.na(x)]
+  if (anyNA(x)) return(NA_real_)
+  v <- sort(x)
+  v[length(v)]
+}
+
+R_AGGS_RESHAPE2 <- list(
+  sum   = function(x, na.rm = FALSE) {
+    if (length(x) == 0L) 0 else base::sum(x, na.rm = na.rm)
+  },
+  mean  = function(x, na.rm = FALSE) {
+    if (length(x) == 0L) NA_real_ else base::mean(x, na.rm = na.rm)
+  },
+  min   = safe_min,
+  max   = safe_max,
+  count = function(x) base::length(x)
+)
+
+# Aggregation name -> polars / pandas aggregate name.
+PY_AGGS <- list(
+  sum   = "sum",
+  mean  = "mean",
+  min   = "min",
+  max   = "max",
+  count = "count"
+)
+
+# Aggregation name -> SQL aggregate keyword.
+SQL_AGGS <- list(
+  sum   = "SUM",
+  mean  = "AVG",
+  min   = "MIN",
+  max   = "MAX",
+  count = "COUNT"
+)
+
+# Compute the base-R wide reference for a small long data.frame.
+agg_reference <- function(long, agg_fn) {
+  ids  <- sort(unique(long$id))
+  vars <- sort(unique(long$variable))
+  M <- matrix(NA_real_, length(ids), length(vars),
+              dimnames = list(ids, vars))
+  for (i in seq_along(ids)) for (j in seq_along(vars)) {
+    vals <- long$value[long$id == ids[i] & long$variable == vars[j]]
+    M[i, j] <- agg_fn(vals)
+  }
+  M
+}
+
+# Normalize any tool's output to a numeric, id-sorted, var-sorted matrix.
+agg_to_matrix <- function(df) {
+  df <- as.data.frame(df, stringsAsFactors = FALSE)
+  id_name <- names(df)[1]
+  df <- df[order(df[[id_name]]), , drop = FALSE]
+  var_cols <- sort(setdiff(names(df), id_name))
+  m <- as.matrix(df[, var_cols, drop = FALSE])
+  storage.mode(m) <- "double"
+  m
 }

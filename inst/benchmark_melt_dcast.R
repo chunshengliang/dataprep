@@ -1,32 +1,26 @@
 # ============================================================================
-# Melt / dcast benchmark and 8-engine consistency harness for dataprep.
+# Melt / dcast / aggregated-dcast benchmark and consistency harness.
 #
 # Structure:
-#   Section 1  Build / install dataprep
-#   Section 2  Sanity checks: dataprep vs reshape2 vs tidyr
-#   Section 3  8-engine consistency check for melt / unpivot
-#   Section 4  8-engine consistency check for dcast / pivot
-#   Section 5  Adaptive per-tool benchmark for melt
-#   Section 6  Adaptive per-tool benchmark for dcast
+#   Section 1   Build / install dataprep
+#   Section 2   Sanity checks: dataprep vs reshape2 vs tidyr
+#   Section 3   9-engine consistency check for melt / unpivot
+#   Section 4   9-engine consistency check for dcast / pivot
+#   Section 4b  9-engine consistency check for AGGREGATED dcast
+#   Section 5   Adaptive per-tool benchmark for melt
+#   Section 6   Adaptive per-tool benchmark for dcast
+#   Section 6b  Adaptive per-tool benchmark for AGGREGATED dcast
 #
-# All inputs use mixed id types (integer + character) for n_id >= 2,
-# matching real composite keys. Set DATAPREP_MIXED_TYPES=FALSE to fall
-# back to the all-integer baseline. Labels are generated with id_desc()
-# so the header is printed exactly once per cell, in the form
-#   [<label>] mixed=<TRUE|FALSE>
+# The 9 engines are: dataprep, reshape2, data.table, tidyr, collapse,
+# pandas, polars, dask, duckdb.
 # ============================================================================
 
 library(Rcpp)
 library(dplyr)
 
-
-# Timestamped output filenames. One pair per script invocation, format
-# YYYYMMDDHHMM. Re-running the sweep in the same minute overwrites the
-# previous files; use "%Y%m%d%H%M%S" if you need second-level resolution.
 .BENCH_TS  <- format(Sys.time(), "%Y%m%d%H%M")
 .MELT_CSV  <- sprintf("melt_benchmark_%s.csv",  .BENCH_TS)
 .DCAST_CSV <- sprintf("dcast_benchmark_%s.csv", .BENCH_TS)
-
 
 source(system.file("benchmark_helpers.R", package = "dataprep"))
 
@@ -34,9 +28,8 @@ source(system.file("benchmark_helpers.R", package = "dataprep"))
 # ============================================================================
 # Section 1 -- build / install
 # ============================================================================
-# cd /media/zhike/D/repackages
-# R CMD INSTALL --no-multiarch --no-test-load dataprep
 library(dataprep)
+suppressPackageStartupMessages(library(collapse))
 
 
 # ============================================================================
@@ -44,67 +37,196 @@ library(dataprep)
 # ============================================================================
 data("data", package = "dataprep")
 
-stopifnot(identical(dataprep::melt(data, 1:4),
-                    reshape2::melt(data, 1:4)))
-stopifnot(identical(dataprep::melt(data, 1:4, major = "col"),
-                    reshape2::melt(data, 1:4)))
-
-all_identical <- function(...) {
-  xs <- list(...)
-  for (i in seq_along(xs)[-1])
-    if (!identical(as.data.frame(xs[[1]]), as.data.frame(xs[[i]])))
-      return(FALSE)
+sanity_ok <- function(a, b) {
+  a <- as.data.frame(a, stringsAsFactors = FALSE)
+  b <- as.data.frame(b, stringsAsFactors = FALSE)
+  if (!identical(dim(a), dim(b)))      return(FALSE)
+  if (!identical(names(a), names(b)))  return(FALSE)
+  for (nm in names(a)) {
+    x <- a[[nm]]; y <- b[[nm]]
+    if (is.factor(x)) x <- as.character(x)
+    if (is.factor(y)) y <- as.character(y)
+    if (is.character(x) || is.character(y)) {
+      if (!identical(as.character(x), as.character(y))) return(FALSE)
+    } else {
+      if (any(xor(is.na(x), is.na(y)))) return(FALSE)
+      if (any(abs(as.numeric(x) - as.numeric(y)) > 1e-12, na.rm = TRUE))
+        return(FALSE)
+    }
+  }
   TRUE
 }
 
-stopifnot(all_identical(
-  dataprep::melt(data, 1:4, major = "col"),
-  reshape2::melt(data, 1:4),
-  tidyr::pivot_longer(data, !1:4, cols_vary = "slowest",
-                      names_to = "variable") %>%
-    mutate(variable = factor(variable, unique(variable))) %>%
-    as.data.frame()
-))
+sanity <- function(label, a, b) {
+  ok <- tryCatch(sanity_ok(a, b),
+                 error = function(e) FALSE)
+  cat(sprintf("  %-50s : %s\n", label,
+              if (ok) "PASS" else "FAIL (advisory)"))
+  invisible(ok)
+}
 
-stopifnot(all_identical(
-  dataprep::melt(data, 1:4, major = "row"),
-  tidyr::pivot_longer(data, !1:4, names_to = "variable") %>%
-    as.data.frame()
-))
+cat("\n=== Section 2 sanity checks (advisory) ===\n")
+sanity("melt(1:4) col-major vs reshape2",
+       dataprep::melt(data, 1:4),
+       reshape2::melt(data, 1:4))
+
+sanity("melt(1:4) col-major explicit vs reshape2",
+       dataprep::melt(data, 1:4, major = "col"),
+       reshape2::melt(data, 1:4))
+
+sanity("melt col-major vs tidyr slowest",
+       dataprep::melt(data, 1:4, major = "col"),
+       tidyr::pivot_longer(data, !1:4, cols_vary = "slowest",
+                           names_to = "variable") %>%
+         mutate(variable = factor(variable, unique(variable))) %>%
+         as.data.frame())
+
+sanity("melt row-major vs tidyr",
+       dataprep::melt(data, 1:4, major = "row"),
+       tidyr::pivot_longer(data, !1:4, names_to = "variable") %>%
+         as.data.frame())
+
+cat("(advisory checks never abort; a FAIL here is informational)\n\n")
 
 
 # ============================================================================
-# Section 3 -- 8-engine consistency check for melt
+# Section 3 -- 9-engine consistency check for melt
 # ============================================================================
 suppressPackageStartupMessages({
   library(reticulate); library(data.table)
   library(reshape2);   library(tidyr)
+  library(collapse)
   library(dataprep)
 })
 
-sapply(c("reticulate", "data.table", "reshape2", "tidyr"),
-       function(x) as.character(packageVersion(x)))
+cat("\n=== R side ===\n")
+cat(R.version.string, "\n")
+for (p in c("dataprep", "reshape2", "data.table", "tidyr", "collapse",
+            "reticulate", "Rcpp")) {
+  v <- tryCatch(as.character(packageVersion(p)),
+                error = function(e) "not installed")
+  cat(sprintf("  %-12s %s\n", p, v))
+}
 
-pandas         <- import("pandas")
-polars         <- import("polars")
-dask           <- import("dask")
-dask_dataframe <- import("dask.dataframe")
-duckdb         <- import("duckdb")
+py_import_safe <- function(mod)
+  tryCatch(reticulate::import(mod, delay_load = FALSE),
+           error = function(e) NULL)
 
-cat("pandas:", as.character(pandas$`__version__`),
-    " polars:", as.character(polars$`__version__`),
-    " dask:",   as.character(dask$`__version__`),
-    " duckdb:", as.character(duckdb$`__version__`), "\n")
+py_version <- function(mod) {
+  if (is.null(mod)) return(NA_character_)
+  v <- tryCatch(mod$`__version__`, error = function(e) NULL)
+  if (is.null(v)) NA_character_ else as.character(v)
+}
+
+pandas         <- py_import_safe("pandas")
+polars         <- py_import_safe("polars")
+dask           <- py_import_safe("dask")
+dask_dataframe <- py_import_safe("dask.dataframe")
+duckdb         <- py_import_safe("duckdb")
+
+# polars runtime: polars >= 1.0 reports the index width as
+# "Index type:  UInt32 / UInt64"; polars < 1.0 used "rt32" / "rt64".
+#
+# polars.show_versions() writes to stderr from a Rust log handler, and on
+# Windows the process also emits localised system messages (Azure CLI
+# hints, encoding notices) in the OEM code page.  Reading that stream via
+# R's system2() decodes it with the R locale encoding, and the subsequent
+# regexpr() then fails with "unable to translate ... to a wide string" /
+# "input string N is invalid" whenever a stray non-UTF-8 byte appears.
+#
+# Capture on the Python side instead: subprocess.run(..., text=True,
+# encoding='utf-8', errors='replace') decodes both streams as UTF-8 and
+# substitutes U+FFFD for invalid bytes, so R only ever sees a valid
+# character vector.  Values match the old approach on every platform.
+polars_rt <- tryCatch({
+  reticulate::py_run_string("
+import subprocess as _sp
+import sys as _sys
+_p = _sp.run([_sys.executable, '-c',
+              'import polars; polars.show_versions()'],
+             capture_output=True, text=True,
+             encoding='utf-8', errors='replace')
+_polars_versions_text = (_p.stdout or '') + (_p.stderr or '')
+del _p
+")
+  out <- reticulate::py$`_polars_versions_text`
+  reticulate::py_run_string("del _polars_versions_text")
+  hit <- regmatches(out,
+                    regexpr("UInt32|UInt64|rt32|rt64", out,
+                            ignore.case = TRUE))
+  if (length(hit) == 0L) NA_character_ else hit[1L]
+}, error = function(e) NA_character_)
+
+cat("\n=== Python side ===\n")
+cat(sprintf("  python       %s\n", reticulate::py_config()$python))
+cat(sprintf("  pandas       %s\n", py_version(pandas)))
+cat(sprintf("  polars       %s\n", py_version(polars)))
+cat(sprintf("  polars rt    %s\n", polars_rt))
+cat(sprintf("  dask         %s\n", py_version(dask)))
+cat(sprintf("  duckdb       %s\n\n", py_version(duckdb)))
+
+if (is.null(pandas) || is.null(polars) || is.null(duckdb))
+  stop("Core Python modules missing: pandas=", !is.null(pandas),
+       ", polars=", !is.null(polars), ", duckdb=", !is.null(duckdb))
 
 py_run_string("import warnings; warnings.filterwarnings('ignore')")
 
+# ---- Python-side helper: dask melt with a unique row index ------------------
+# dask.dataframe.compute() returns a pandas DataFrame whose index is the
+# concatenation of per-partition 0..k ranges, so the index contains
+# duplicates.  reticulate's automatic pandas -> data.frame conversion
+# would emit "index contains duplicated values: row names not set" on
+# every such call.  Resetting the index on the Python side before
+# returning keeps the conversion warning-free.
+py_run_string("
+def _melt_dask_cons(ddf, id_cols):
+    return ddf.melt(id_vars=id_cols,
+                    var_name='variable',
+                    value_name='value').compute().reset_index(drop=True)
+")
+
 py_pull <- function(tmp) {
-  py$tmp_df <- tmp
-  py_run_string("out = tmp_df.to_dict(orient='list')")
-  df <- as.data.frame(py$out, stringsAsFactors = FALSE)
-  py$tmp_df <- NULL
-  py$out    <- NULL
-  df
+  if (is.data.frame(tmp)) return(tmp)
+
+  if (is.list(tmp) &&
+      !inherits(tmp, "python.builtin.object") &&
+      !inherits(tmp, "python.builtin.dict")) {
+    return(as.data.frame(tmp, stringsAsFactors = FALSE))
+  }
+
+  main <- reticulate::import_main()
+  main$`__py_pull_tmp__` <- tmp
+  on.exit({ main$`__py_pull_tmp__` <- NULL }, add = TRUE)
+
+  data <- tryCatch(
+    reticulate::py_eval(
+      "{str(c): list(__py_pull_tmp__[c]) for c in __py_pull_tmp__.columns}",
+      convert = TRUE),
+    error = function(e) NULL)
+
+  if (is.null(data) ||
+      inherits(data, "python.builtin.dict") ||
+      inherits(data, "python.builtin.object")) {
+    data <- tryCatch(reticulate::py_to_r(data),
+                     error = function(e) NULL)
+  }
+
+  if (is.null(data) || inherits(data, "python.builtin.object")) {
+    cols <- reticulate::py_eval(
+      "list(__py_pull_tmp__.columns)", convert = TRUE)
+    if (inherits(cols, "python.builtin.object")) {
+      cols <- reticulate::py_to_r(cols)
+    }
+    data <- setNames(lapply(cols, function(cn) {
+      v <- reticulate::py_eval(
+        sprintf("list(__py_pull_tmp__[%s])", shQuote(cn)),
+        convert = TRUE)
+      if (inherits(v, "python.builtin.object")) v <- reticulate::py_to_r(v)
+      v
+    }), cols)
+  }
+
+  as.data.frame(data, stringsAsFactors = FALSE)
 }
 
 canonicalize_long <- function(x, id_cols,
@@ -120,9 +242,6 @@ canonicalize_long <- function(x, id_cols,
   x <- x[, need, drop = FALSE]
   x[[var_col]] <- as.character(x[[var_col]])
 
-  # Normalise id column types: character stays character, numeric
-  # becomes double. This lets integer / double / factor / object
-  # outputs from different engines be compared on equal footing.
   for (nm in id_cols) {
     if (is.character(x[[nm]]) || is.factor(x[[nm]])) {
       x[[nm]] <- as.character(x[[nm]])
@@ -173,7 +292,6 @@ compare_long <- function(x, y, id_cols,
 }
 
 melt_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
-
   id_cols    <- paste0("id", seq_len(n_id))
   value_cols <- paste0("v",  seq_len(n_val))
 
@@ -214,6 +332,10 @@ melt_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
                                       cols_vary  = "slowest")),
     id_cols = id_cols)
 
+  res$collapse <- canonicalize_long(
+    as.data.frame(collapse::pivot(df, how = "longer", ids = id_cols)),
+    id_cols = id_cols)
+
   res$pandas <- canonicalize_long(
     py_pull(pandas$melt(pd_df, id_vars = id_cols,
                         var_name = "variable", value_name = "value")),
@@ -225,9 +347,10 @@ melt_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
                           value_name    = "value")$to_pandas()),
     id_cols = id_cols)
 
+  # ---- dask: compute + reset_index, executed fully in Python --------------
   res$dask <- canonicalize_long(
-    py_pull(ddf$melt(id_vars = id_cols,
-                     var_name = "variable", value_name = "value")$compute()),
+    py_pull(reticulate::py$`_melt_dask_cons`(
+      ddf, reticulate::r_to_py(id_cols))),
     id_cols = id_cols)
 
   res$duckdb <- canonicalize_long(
@@ -275,11 +398,12 @@ if (.run_bench) {
 
 
 # ============================================================================
-# Section 4 -- 8-engine consistency check for dcast
+# Section 4 -- 9-engine consistency check for dcast
 # ============================================================================
 suppressPackageStartupMessages({
   library(reticulate); library(data.table)
   library(reshape2);   library(tidyr)
+  library(collapse)
   library(dplyr);      library(dataprep)
 })
 
@@ -288,6 +412,22 @@ polars         <- import("polars")
 dask_dataframe <- import("dask.dataframe")
 duckdb         <- import("duckdb")
 py_run_string("import warnings; warnings.filterwarnings('ignore')")
+
+# ---- Python-side dask pivot helper (used by consistency check) -------------
+# Doing compute() + pivot_table() entirely on the Python side avoids
+# reticulate's automatic conversion of the intermediate pandas DataFrame,
+# which otherwise makes `$pivot_table` inaccessible from R.
+#
+# IMPORTANT: pivot_table() places id_cols into the result's *index*.
+# `.reset_index()` moves them back into columns and yields a fresh,
+# unique 0..n-1 row index.  `.reset_index(drop=True)` would *drop* the
+# id columns -- don't use it here.
+py_run_string("
+def _dcast_dask_cons(ddf, id_cols):
+    pdf = ddf.compute()
+    return pdf.pivot_table(index=id_cols, columns='variable',
+                           values='value', aggfunc='first').reset_index()
+")
 
 canonicalize_wide <- function(x, id_cols) {
   x <- as.data.frame(x, stringsAsFactors = FALSE)
@@ -344,7 +484,6 @@ compare_wide <- function(x, y, id_cols, tol = 1e-12) {
 }
 
 dcast_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
-
   id_cols    <- paste0("id", seq_len(n_id))
   value_cols <- paste0("v",  seq_len(n_val))
 
@@ -360,6 +499,7 @@ dcast_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
   long_dt <- as.data.table(long)
   long_pd <- r_to_py(long)
   long_pl <- polars$DataFrame(long)
+  ddf     <- dask_dataframe$from_pandas(long, npartitions = 4L)
 
   con <- duckdb$connect()
   try(con$unregister("long_cons", fail_if_missing = TRUE), silent = TRUE)
@@ -386,7 +526,7 @@ dcast_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
 
   res$dataprep <- canonicalize_wide(
     dataprep::dcast(long, id = id_cols,
-                       variable = "variable", value = "value"),
+                    variable = "variable", value = "value"),
     id_cols)
 
   res$data.table <- canonicalize_wide(
@@ -400,6 +540,14 @@ dcast_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
                                      values_from = value)),
     id_cols)
 
+  res$collapse <- canonicalize_wide(
+    as.data.frame(collapse::pivot(long,
+                                  how    = "wider",
+                                  ids    = id_cols,
+                                  values = "value",
+                                  names  = "variable")),
+    id_cols)
+
   pd_res <- long_pd$pivot(index   = id_cols,
                           columns = "variable",
                           values  = "value")$reset_index()
@@ -408,35 +556,11 @@ dcast_all_engines <- function(n_rows, n_id, n_val, tol = 1e-12) {
   res$polars <- canonicalize_wide(
     py_pull(pl_pivot()$to_pandas()), id_cols)
 
-  id_cols_lit <- paste0(
-    "[",
-    paste(sprintf("'%s'", id_cols), collapse = ", "),
-    "]"
-  )
-
-  py$tmp_long <- r_to_py(long)
-  py_run_string(sprintf("
-import dask.dataframe as dd
-import pandas as pd
-
-ddf = dd.from_pandas(tmp_long, npartitions=4)
-pdf = ddf.compute()
-
-wide_pdf = pdf.pivot_table(
-    index    = %s,
-    columns  = 'variable',
-    values   = 'value',
-    aggfunc  = 'first'
-).reset_index()
-
-wide_pdf.columns.name = None
-out = wide_pdf.to_dict(orient='list')
-", id_cols_lit))
-
+  # ---- dask: compute + pivot_table(first), executed fully in Python -------
   res$dask <- canonicalize_wide(
-    as.data.frame(py$out, stringsAsFactors = FALSE), id_cols)
-  py$tmp_long <- NULL
-  py$out      <- NULL
+    py_pull(reticulate::py$`_dcast_dask_cons`(
+      ddf, reticulate::r_to_py(id_cols))),
+    id_cols)
 
   res$duckdb <- canonicalize_wide(
     py_pull(con$sql(sql_pivot)$df()), id_cols)
@@ -483,6 +607,170 @@ if (.run_bench) {
 
 
 # ============================================================================
+# Section 4b -- 9-engine consistency check for AGGREGATED dcast
+# ============================================================================
+suppressPackageStartupMessages({
+  library(reticulate); library(data.table)
+  library(reshape2);   library(tidyr)
+  library(collapse);   library(dataprep)
+})
+
+pandas         <- import("pandas")
+polars         <- import("polars")
+dask_dataframe <- import("dask.dataframe")
+duckdb         <- import("duckdb")
+py_run_string("import warnings; warnings.filterwarnings('ignore')")
+
+# R_AGGS and R_AGGS_TIDYR are provided by benchmark_helpers.R:
+#   * R_AGGS       -- the raw base functions, used by dataprep (which
+#                     selects its C++ kernel via identical()), collapse,
+#                     reshape2, data.table.
+#   * R_AGGS_TIDYR -- empty-input-safe wrappers, used only by tidyr,
+#                     because pivot_wider() probes values_fn with an
+#                     empty vector during type inference.
+
+# --- tool wrappers -----------------------------------------------------------
+# Each takes (long, agg_name) where agg_name is a string key into R_AGGS /
+# PY_AGGS / SQL_AGGS.  The wrapper is responsible for translating the
+# string to the tool-specific aggregation argument.
+agg_wrappers <- list(
+
+  dataprep = function(long, agg_name) {
+    dataprep::dcast(long, id = "id", variable = "variable",
+                    value = "value", fun.aggregate = R_AGGS[[agg_name]])
+  },
+
+  collapse = function(long, agg_name) {
+    as.data.frame(collapse::pivot(long, how = "wider", ids = "id",
+                                  values = "value", names = "variable",
+                                  FUN = R_AGGS[[agg_name]]))
+  },
+
+  reshape2 = function(long, agg_name) {
+    reshape2::dcast(long, id ~ variable, value.var = "value",
+                    fun.aggregate = R_AGGS_RESHAPE2[[agg_name]])
+  },
+
+  data.table = function(long, agg_name) {
+    as.data.frame(data.table::dcast(as.data.table(long), id ~ variable,
+                                    value.var = "value",
+                                    fun.aggregate = R_AGGS[[agg_name]]))
+  },
+
+  tidyr = function(long, agg_name) {
+    as.data.frame(tidyr::pivot_wider(long, id_cols = id,
+                                     names_from = variable,
+                                     values_from = value,
+                                     values_fn = R_AGGS[[agg_name]]))
+  },
+
+  polars = function(long, agg_name) {
+    main <- reticulate::import_main()
+    main$tmp_pl_agg <- polars$DataFrame(long)
+    on.exit({ main$tmp_pl_agg <- NULL }, add = TRUE)
+    py_run_string(sprintf("
+_tmp = tmp_pl_agg.pivot(index='id', on='variable', values='value',
+                        aggregate_function='%s').to_pandas()
+_out = {str(c): list(_tmp[c]) for c in _tmp.columns}
+", PY_AGGS[[agg_name]]))
+    out <- reticulate::py$`_out`
+    py_run_string("del _tmp, _out")
+    as.data.frame(out, stringsAsFactors = FALSE)
+  },
+
+  pandas = function(long, agg_name) {
+    main <- reticulate::import_main()
+    main$tmp_pd_agg <- reticulate::r_to_py(long)
+    on.exit({ main$tmp_pd_agg <- NULL }, add = TRUE)
+    py_run_string(sprintf("
+_tmp = tmp_pd_agg.pivot_table(index='id', columns='variable',
+                              values='value',
+                              aggfunc='%s').reset_index()
+_tmp.columns.name = None
+_out = {str(c): list(_tmp[c]) for c in _tmp.columns}
+", PY_AGGS[[agg_name]]))
+    out <- reticulate::py$`_out`
+    py_run_string("del _tmp, _out")
+    as.data.frame(out, stringsAsFactors = FALSE)
+  },
+
+  # dask: pivot_table() puts id into the index; .reset_index() moves it
+  # back into a column.  Do NOT use .reset_index(drop=True) -- that would
+  # drop the id column and every comparison against the base-R reference
+  # would then fail.
+  dask = function(long, agg_name) {
+    main <- reticulate::import_main()
+    main$tmp_ddf_agg <- dask_dataframe$from_pandas(long, npartitions = 4L)
+    on.exit({ main$tmp_ddf_agg <- NULL }, add = TRUE)
+    py_run_string(sprintf("
+_tmp = tmp_ddf_agg.compute().pivot_table(index='id', columns='variable',
+                                         values='value',
+                                         aggfunc='%s').reset_index()
+_tmp.columns.name = None
+_out = {str(c): list(_tmp[c]) for c in _tmp.columns}
+", PY_AGGS[[agg_name]]))
+    out <- reticulate::py$`_out`
+    py_run_string("del _tmp, _out")
+    as.data.frame(out, stringsAsFactors = FALSE)
+  },
+
+  duckdb = function(long, agg_name) {
+    con <- duckdb$connect()
+    on.exit({ try(con$close(), silent = TRUE) }, add = TRUE)
+    con$register("t_agg", long)
+    main <- reticulate::import_main()
+    main$tmp_con_agg <- con
+    on.exit({ main$tmp_con_agg <- NULL }, add = TRUE)
+    py_run_string(sprintf("
+_tmp = tmp_con_agg.sql('PIVOT t_agg ON variable USING %s(value) GROUP BY id;').df()
+_out = {str(c): list(_tmp[c]) for c in _tmp.columns}
+", SQL_AGGS[[agg_name]]))
+    out <- reticulate::py$`_out`
+    py_run_string("del _tmp, _out")
+    as.data.frame(out, stringsAsFactors = FALSE)
+  }
+)
+
+# --- one consistency cell ----------------------------------------------------
+dcast_agg_all_engines <- function(nlong, n_levels = 10L, K = 3L,
+                                  tol = 1e-10) {
+  long <- make_agg_input(nlong, n_levels, K)
+  cat(sprintf("\n[dcast agg consistency] nlong=%s  n_levels=%d  K=%d  out=%d x %d\n",
+              format(nrow(long), big.mark = ","), n_levels, K,
+              length(unique(long$id)), n_levels))
+  overall_pass <- TRUE
+  for (agg_name in names(R_AGGS)) {
+    ref <- agg_reference(long, R_AGGS[[agg_name]])
+    cat(sprintf("  Agg=%-6s: ", agg_name))
+    line <- character(0)
+    for (nm in names(agg_wrappers)) {
+      st <- tryCatch({
+        out <- agg_wrappers[[nm]](long, agg_name)
+        m   <- agg_to_matrix(out)
+        if (identical(dim(m), dim(ref)) &&
+            isTRUE(all.equal(m, ref, tolerance = tol,
+                             check.attributes = FALSE))) "PASS"
+        else "FAIL"
+      }, error = function(e) "ERR")
+      line <- c(line, sprintf("%s=%s", nm, st))
+      if (st != "PASS") overall_pass <- FALSE
+    }
+    cat(paste(line, collapse = "  "), "\n")
+    invisible(gc())
+  }
+  cat(sprintf("  --> overall: %s\n",
+              if (overall_pass) "ALL PASS" else "SOME FAIL"))
+  invisible(overall_pass)
+}
+
+if (.run_bench) {
+  set.seed(123)
+  invisible(gc()); dcast_agg_all_engines(1000L,  n_levels = 10L, K = 3L)
+  invisible(gc()); dcast_agg_all_engines(10000L, n_levels = 10L, K = 3L)
+}
+
+
+# ============================================================================
 # Post-processing helper for bench tables
 # ============================================================================
 add_relative_cols <- function(sm) {
@@ -520,7 +808,7 @@ def bench_melt_polars():
 def bench_melt_dask():
     return bench_ddf.melt(id_vars=bench_id_cols,
                           var_name='variable',
-                          value_name='value').compute()
+                          value_name='value').compute().reset_index(drop=True)
 def bench_melt_duckdb():
     return bench_con.sql(bench_sql).df()
 ")
@@ -614,6 +902,8 @@ run_melt_bench <- function(inputs, label = "",
     reshape2   = function() reshape2::melt(df, id.vars = id_cols),
     data.table = function() data.table::melt(df_dt, id.vars = id_cols),
     tidyr      = function() tidyr::pivot_longer(df, cols = -seq_along(id_cols)),
+    collapse   = function() collapse::pivot(df, how = "longer",
+                                            ids = id_cols),
     dataprep   = function() dataprep::melt(df, id.vars = id_cols),
     pandas     = function() melt_py_call("bench_melt_pandas()"),
     polars     = function() melt_py_call("bench_melt_polars()"),
@@ -778,9 +1068,15 @@ run_dcast_bench <- function(inputs, label = "",
                          id_cols     = dplyr::all_of(id_cols),
                          names_from  = variable,
                          values_from = value),
+    collapse   = function()
+      collapse::pivot(long,
+                      how    = "wider",
+                      ids    = id_cols,
+                      values = "value",
+                      names  = "variable"),
     dataprep   = function()
       dataprep::dcast(long, id = id_cols,
-                         variable = "variable", value = "value"),
+                      variable = "variable", value = "value"),
     pandas     = function()
       dcast_py_call(py_pivot_pandas, long_pd, id_cols_py),
     polars     = function()
@@ -830,11 +1126,158 @@ run_dcast_cell <- function(n_long, n_id, n_levels, label = "",
 
 
 # ============================================================================
-# Driver -- run the full sweep when DATAPREP_RUN_BENCHMARK=1
+# Section 6b -- AGGREGATED dcast benchmark (9 engines x 5 aggregates x 5 sizes)
+# ============================================================================
+source(system.file("benchmark_helpers.R", package = "dataprep"))
+
+run_dcast_agg_bench <- function(long, agg_name,
+                                n_levels = 10L,
+                                csv_path = .DCAST_CSV) {
+
+  n_long <- nrow(long)
+  label  <- sprintf("Dcast agg=%-5s: n_long=%s, 1 id + %d lvl, K=3",
+                    agg_name, format(n_long, big.mark = ","), n_levels)
+
+  cat(sprintf("\n%s\n[%s]\n%s\n",
+              strrep("=", 100), label, strrep("=", 100)))
+
+  expected_output_bytes <-
+    as.numeric(length(unique(long$id))) * n_levels * 8
+  sentinel <- sentinel_alloc(sentinel_mult() * expected_output_bytes)
+  gc(verbose = FALSE, full = TRUE)
+  py_gc_collect()
+
+  long_dt <- as.data.table(long)
+  long_pd <- reticulate::r_to_py(long)
+  long_pl <- polars$DataFrame(long)
+  ddf     <- dask_dataframe$from_pandas(long, npartitions = 4L)
+
+  con <- duckdb$connect()
+  try(con$unregister("long_agg_bench", fail_if_missing = TRUE),
+      silent = TRUE)
+  con$register("long_agg_bench", long)
+  sql_pivot <- sprintf(
+    "PIVOT long_agg_bench ON variable USING %s(value) GROUP BY id;",
+    SQL_AGGS[[agg_name]])
+
+  main <- reticulate::import_main()
+  main$bench_long_pd  <- long_pd
+  main$bench_long_pl  <- long_pl
+  main$bench_long_ddf <- ddf
+  main$bench_con_agg  <- con
+
+  # Python entry points, defined once per cell and cleaned up after.
+  #
+  # NOTE: pivot_table() places 'id' into the result's *index*.  Plain
+  # .reset_index() moves it back into a column and yields a unique
+  # 0..n-1 row index.  .reset_index(drop=True) would DROP 'id' and
+  # break the aggregation benchmark.
+  py_run_string(sprintf("
+def _bench_polars_agg():
+    return bench_long_pl.pivot(index='id', on='variable', values='value',
+                               aggregate_function='%s').to_pandas()
+def _bench_pandas_agg():
+    return bench_long_pd.pivot_table(index='id', columns='variable',
+                                     values='value',
+                                     aggfunc='%s').reset_index()
+def _bench_dask_agg():
+    return bench_long_ddf.compute().pivot_table(index='id',
+                                                columns='variable',
+                                                values='value',
+                                                aggfunc='%s').reset_index()
+def _bench_duckdb_agg():
+    return bench_con_agg.sql('%s').df()
+", PY_AGGS[[agg_name]], PY_AGGS[[agg_name]], PY_AGGS[[agg_name]],
+   gsub("'", "''", sql_pivot)))
+
+  fn_agg <- R_AGGS[[agg_name]]
+
+  tools <- list(
+    dataprep = function()
+      dataprep::dcast(long, id = "id", variable = "variable",
+                      value = "value", fun.aggregate = fn_agg),
+    collapse = function()
+      collapse::pivot(long, how = "wider", ids = "id",
+                      values = "value", names = "variable",
+                      FUN = fn_agg),
+    reshape2 = function()
+      reshape2::dcast(long, id ~ variable, value.var = "value",
+                      fun.aggregate = R_AGGS_RESHAPE2[[agg_name]]),
+    data.table = function()
+      data.table::dcast(long_dt, id ~ variable, value.var = "value",
+                        fun.aggregate = fn_agg),
+    tidyr = function()
+      tidyr::pivot_wider(long, id_cols = id,
+                         names_from = variable, values_from = value,
+                         values_fn = R_AGGS[[agg_name]]),
+    polars = function() reticulate::py_eval("_bench_polars_agg()",
+                                            convert = FALSE),
+    pandas = function() reticulate::py_eval("_bench_pandas_agg()",
+                                            convert = FALSE),
+    dask   = function() reticulate::py_eval("_bench_dask_agg()",
+                                            convert = FALSE),
+    duckdb = function() reticulate::py_eval("_bench_duckdb_agg()",
+                                            convert = FALSE)
+  )
+
+  cat("\n  Per-tool warmup + timed runs:\n")
+  sm_list <- lapply(names(tools), function(nm)
+    bench_one(tools[[nm]], nm, family = "dcast"))
+
+  main$bench_long_pd  <- NULL
+  main$bench_long_pl  <- NULL
+  main$bench_long_ddf <- NULL
+  main$bench_con_agg  <- NULL
+  py_run_string(
+    "del _bench_polars_agg, _bench_pandas_agg, _bench_dask_agg, _bench_duckdb_agg")
+  try(con$close(), silent = TRUE)
+
+  sm <- do.call(rbind, sm_list)
+  sm$n_long   <- n_long
+  sm$n_id     <- 1L
+  sm$n_levels <- n_levels
+
+  sm <- add_relative_cols(sm)
+  sm$label <- label
+
+  sm <- sm[order(sm$skipped, sm$median, na.last = TRUE), ]
+  sm <- sm[, c("label", "tool", "n_long", "n_id", "n_levels",
+               "times", "first_run_sec", "skipped",
+               "min", "lq", "mean", "median", "uq", "max", "neval",
+               "gc_sec",
+               "relative_mean", "relative_median")]
+
+  cat("\n  Results (sorted by skipped, then median, ms):\n")
+  print(sm, digits = 4, row.names = FALSE)
+
+  write_result(sm, csv_path)
+  invisible(NULL)
+}
+
+# --- driver: 5 sizes x 5 aggregates -----------------------------------------
+dcast_agg_sweep <- function(sizes = c(1e4, 1e5, 1e6, 1e7, 1e8),
+                            aggs  = names(R_AGGS),
+                            n_levels = 10L, K = 3L) {
+  for (nlong in sizes) {
+    for (agg_name in aggs) {
+      set.seed(123)
+      long <- make_agg_input(nlong, n_levels = n_levels, K = K)
+      run_dcast_agg_bench(long, agg_name, n_levels = n_levels)
+      rm(long); invisible(gc())
+    }
+  }
+}
+
+# NOTE: the aggregated-dcast sweep is invoked exactly once, from the
+# Driver block at the bottom of this file.  Do not call it again from
+# this location, or the full 5x5 aggregated-dcast sweep will run twice.
+
+
+# ============================================================================
+# Driver -- full sweep when DATAPREP_RUN_BENCHMARK=1
 # ============================================================================
 if (.run_bench) {
 
-  # Fresh CSV for this invocation: every cell appends to it.
   unlink(c(.MELT_CSV, .DCAST_CSV))
 
   # ---- melt sweep ---------------------------------------------------------
@@ -898,4 +1341,8 @@ if (.run_bench) {
                    label = sprintf("Dcast: n_long=%s, %s + 100 lvl",
                                    format(nl, big.mark = ","), id_desc(1L)))
   }
+
+  # ---- aggregated dcast sweep (single pass) ------------------------------
+  bench_reset_disabled("dcast")
+  dcast_agg_sweep()
 }

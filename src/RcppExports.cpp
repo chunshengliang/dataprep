@@ -62,6 +62,39 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dcast_aggregate_cpp
+SEXP dcast_aggregate_cpp(SEXP data, SEXP id, SEXP variable, SEXP value, int agg_fn, bool na_rm, int cores);
+RcppExport SEXP _dataprep_dcast_aggregate_cpp(SEXP dataSEXP, SEXP idSEXP, SEXP variableSEXP, SEXP valueSEXP, SEXP agg_fnSEXP, SEXP na_rmSEXP, SEXP coresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type id(idSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type variable(variableSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type value(valueSEXP);
+    Rcpp::traits::input_parameter< int >::type agg_fn(agg_fnSEXP);
+    Rcpp::traits::input_parameter< bool >::type na_rm(na_rmSEXP);
+    Rcpp::traits::input_parameter< int >::type cores(coresSEXP);
+    rcpp_result_gen = Rcpp::wrap(dcast_aggregate_cpp(data, id, variable, value, agg_fn, na_rm, cores));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dcast_fast_cpp
+SEXP dcast_fast_cpp(SEXP data, int var_idx, int val_idx, SEXP id_idx, SEXP fill, int cores);
+RcppExport SEXP _dataprep_dcast_fast_cpp(SEXP dataSEXP, SEXP var_idxSEXP, SEXP val_idxSEXP, SEXP id_idxSEXP, SEXP fillSEXP, SEXP coresSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< int >::type var_idx(var_idxSEXP);
+    Rcpp::traits::input_parameter< int >::type val_idx(val_idxSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type id_idx(id_idxSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type fill(fillSEXP);
+    Rcpp::traits::input_parameter< int >::type cores(coresSEXP);
+    rcpp_result_gen = Rcpp::wrap(dcast_fast_cpp(data, var_idx, val_idx, id_idx, fill, cores));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dcast_cpp
 SEXP dcast_cpp(SEXP data, SEXP id, SEXP variable, SEXP value, SEXP variable_name, int cores, SEXP fill, bool na_rm);
 RcppExport SEXP _dataprep_dcast_cpp(SEXP dataSEXP, SEXP idSEXP, SEXP variableSEXP, SEXP valueSEXP, SEXP variable_nameSEXP, SEXP coresSEXP, SEXP fillSEXP, SEXP na_rmSEXP) {
@@ -404,6 +437,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dataprep_bin_data_cpp", (DL_FUNC) &_dataprep_bin_data_cpp, 3},
     {"_dataprep_condextr_cpp", (DL_FUNC) &_dataprep_condextr_cpp, 15},
     {"_dataprep_create_lags_cpp", (DL_FUNC) &_dataprep_create_lags_cpp, 4},
+    {"_dataprep_dcast_aggregate_cpp", (DL_FUNC) &_dataprep_dcast_aggregate_cpp, 7},
+    {"_dataprep_dcast_fast_cpp", (DL_FUNC) &_dataprep_dcast_fast_cpp, 6},
     {"_dataprep_dcast_cpp", (DL_FUNC) &_dataprep_dcast_cpp, 8},
     {"_dataprep_desc_stats_cpp", (DL_FUNC) &_dataprep_desc_stats_cpp, 3},
     {"_dataprep_detect_outliers_cpp", (DL_FUNC) &_dataprep_detect_outliers_cpp, 5},

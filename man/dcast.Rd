@@ -43,9 +43,15 @@ dcast(data, id = NULL, formula = NULL,
     input with value \code{NA} keep \code{NA} unless \code{na.rm =
     TRUE}. Default \code{NA_real_}.}
   \item{fun.aggregate}{Optional function used to reduce duplicate
-    \code{(id, variable)} pairs. Called with a single argument
-    (the vector of values for that pair) plus \code{na.rm = TRUE}.
-    Without it, the last occurrence wins.}
+    \code{(id, variable)} pairs.  The C++ backend recognises
+    \code{base::sum}, \code{base::mean}, \code{base::min},
+    \code{base::max}, \code{base::length}, \code{stats::median}
+    (or \code{base::median}), and functions of the form
+    \code{function(x) x[1]} / \code{function(x) x[length(x)]}
+    for first / last, and routes them to a specialised kernel.
+    Any other function falls back to a base-R
+    \code{stats::aggregate()} pre-pass.  Without it, the last
+    occurrence wins.}
   \item{na.rm}{Logical; if \code{TRUE}, rows whose value is \code{NA}
     or \code{NaN} are skipped during scatter, so the corresponding
     output cell keeps the \code{fill} value. Default \code{FALSE}.}
@@ -75,24 +81,55 @@ keys replaces the hash table entirely; and when the block path is
 taken and the id column is a permutation of \code{1..n_blocks}, a
 direct-index shortcut bypasses both.
 
-The output is identical to \code{reshape2::dcast},
-\code{data.table::dcast}, \code{tidyr::pivot_wider},
-\code{pandas.pivot}, \code{polars.pivot}, \code{duckdb PIVOT}, and
-\code{dask} on every tested shape, within \code{tol = 1e-12}. See
-\code{vignette("dataprep-melt-dcast")} for the implementation notes
-and \code{vignette("dataprep-performance")} for the benchmark
-tables.
+0.1.8.1 adds three implementation shortcuts: a zero-copy
+\code{dcast_fast_cpp} entry point used when the call shape is
+canonical; a 16x16 AVX-512 register transpose for
+\code{period == 16}; and a dedicated
+\code{dcast_aggregate_cpp} kernel for \code{fun.aggregate} that
+recognises \code{sum}, \code{mean}, \code{min}, \code{max},
+\code{length}, \code{median}, \code{first}, and \code{last}.
+Output buffers use \code{MADV_HUGEPAGE} and, on Linux 6.1+,
+\code{MADV_POPULATE_WRITE} to avoid first-touch page faults;
+input columns are promoted with \code{MADV_COLLAPSE}.
+
+When \code{fun.aggregate} is supplied, \code{dcast()} routes to a
+fused C++ kernel that reads the long input once and writes the
+aggregated wide output directly, without materialising an
+intermediate long table. The output is identical to
+\code{reshape2::dcast(..., fun.aggregate = f)},
+\code{data.table::dcast(..., fun.aggregate = f)},
+\code{collapse::pivot(..., FUN = f)},
+\code{tidyr::pivot_wider(..., values_fn = f)},
+\code{pandas.pivot_table(..., aggfunc = f)},
+\code{polars.pivot(..., aggregate_function = f)},
+\code{dask.pivot_table(..., aggfunc = f)}, and
+\code{duckdb PIVOT ... USING f(value)} within \code{tol = 1e-10}
+on every tested shape.
+
+\strong{Benchmarks.}  \code{dcast()} is benchmarked against all
+eight major alternatives in the R and Python ecosystems:
+\code{reshape2}, \code{data.table}, \code{tidyr}, \code{collapse},
+\code{pandas}, \code{polars}, \code{dask}, and \code{duckdb}.
+Every cell is measured with a C++ steady-clock timer.  The first
+call is a warmup and is excluded from the reported statistics; an
+adaptive rule picks the number of timed iterations from the warmup
+time.  Mixed-type id columns (integer / character alternation for
+\code{n_id >= 2}) are the default; set
+\code{DATAPREP_MIXED_TYPES=FALSE} to force the all-integer baseline.
 
 On the canonical long-to-wide shape, \code{dcast()} is faster than
-every tested alternative. The speed-up relative to \code{reshape2},
-\code{data.table}, \code{tidyr}, \code{pandas}, \code{polars},
-\code{dask}, and \code{duckdb} spans \code{1.9x} (against
-\code{reshape2} on 1e3 rows and 10 levels, Ubuntu 25.10) to
-\code{799.8x} (against \code{duckdb} on 1e8 rows and 100 levels,
-Windows 11 Pro for Workstations). The median across all tested
-cells and all competitors is \code{46.5x} on Ubuntu 25.10 and
-\code{41.4x} on Windows 11 Pro for Workstations; the mean is
-\code{90.2x} and \code{76.6x}, respectively.
+every tested alternative in most cells.  The median speed-up
+relative to each competitor spans \code{1.82x} to \code{651.52x} on
+Ubuntu 25.10 (\code{median = 74.46x}) and \code{0.92x} to
+\code{1849.52x} on Windows 11 Pro for Workstations
+(\code{median = 42.22x}).  The single sub-1.0x cell is
+\code{collapse @ n_long=1,000, 1 id + 10 lvl} on Windows
+(\code{0.92x}).
+
+For aggregated \code{dcast()}, the median speed-up spans
+\code{2.32x} to \code{733.49x} on Ubuntu 25.10
+(\code{median = 27.41x}) and \code{1.99x} to \code{872.38x} on
+Windows 11 Pro for Workstations (\code{median = 17.93x}).
 }
 \value{
 A wide-format data frame with one row per unique \code{id}

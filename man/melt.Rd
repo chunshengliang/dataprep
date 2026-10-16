@@ -12,7 +12,7 @@ melt(data, id = NULL, measure.vars = NULL,
      variable.name = "variable", value.name = "value",
      na.rm = FALSE, cores = NULL, major = NULL,
      as.factor = NULL,
-     verbose = FALSE, parallel_threshold = 5e6, id.vars = NULL)
+     verbose = FALSE, parallel_threshold = 2e4, id.vars = NULL)
 }
 \arguments{
   \item{data}{A data frame to reshape. Numeric, integer, logical,
@@ -30,9 +30,12 @@ melt(data, id = NULL, measure.vars = NULL,
     indices, a logical mask, or \code{NULL}. If supplied, all other
     columns become IDs. Only one of \code{id} and \code{measure.vars}
     should be supplied.}
-  \item{variable.name}{Name of the new column that stores the
-    original column names of the measure variables. Default
-    \code{"variable"}. See \code{as.factor} for its type.}
+  \item{variable.name}{Length-1 character; name of the output column that
+    records which measure column each row came from.  Defaults to
+    \code{"variable"}.  The column is a \code{factor} whose levels are
+    the names of the measure columns when \code{as.factor} resolves to
+    \code{TRUE} (the default for \code{major = "col"}), and a
+    \code{character} vector otherwise.}
   \item{value.name}{Name of the new numeric column that stores the
     melted values. Default \code{"value"}.}
   \item{na.rm}{Logical; if \code{TRUE}, rows where the value column is
@@ -46,60 +49,80 @@ melt(data, id = NULL, measure.vars = NULL,
     result matching the row order of \code{tidyr::pivot_longer}
     (rows grouped by id). There is no automatic switching based on
     the input shape.}
-  \item{as.factor}{Whether the \code{variable} column is a factor.
-    \code{NULL} (default) uses \code{TRUE} when \code{major} is
-    \code{"col"} and \code{FALSE} when \code{major} is \code{"row"}.
-    Explicit \code{TRUE} / \code{FALSE} overrides that default. The
-    return value is always a plain \code{data.frame}; no
-    \code{tibble} attributes are attached.}
+  \item{as.factor}{Logical or \code{NULL}.  If \code{TRUE}, the
+    \code{variable.name} column is returned as a \code{factor}.  If
+    \code{FALSE}, it is returned as \code{character}.  \code{NULL} (the
+    default) uses \code{TRUE} when \code{major} is \code{"col"} and
+    \code{FALSE} when \code{major} is \code{"row"}.  Explicit \code{TRUE}
+    or \code{FALSE} overrides that default.}
   \item{verbose}{Logical; if \code{TRUE}, prints timing messages.}
   \item{parallel_threshold}{Minimum number of output elements, i.e.\
     \code{nrow(data) * length(measure.vars)}, before automatic
-    parallelism is enabled. Default \code{5e6}.}
+    parallelism is enabled. Default \code{2e4}.}
   \item{id.vars}{Alias of \code{id}, provided for reshape2 / data.table
     compatibility. Supplying both is an error.}
 }
 \details{
-\code{melt()} is the fast, drop-in replacement for
-\code{reshape2::melt} and \code{tidyr::pivot_longer}. The C++
-backend (\code{melt_cpp}) has been benchmarked against \strong{all
-seven major alternatives} in the R and Python ecosystems:
-\code{reshape2}, \code{data.table}, \code{tidyr}, \code{pandas},
-\code{polars}, \code{dask}, and \code{duckdb}. Every cell is
-measured with a C++ steady-clock timer and an adaptive \code{times}
-rule.
+\strong{Shape.}  A \code{data.frame} with \code{n} rows and
+\code{k = length(measure.vars)} measure columns becomes a
+\code{data.frame} with \code{n * k} rows.  Identity columns are
+replicated \code{k} times; a factor \code{variable} column records the
+source column; a \code{double} \code{value} column holds the stacked
+data.
 
-\strong{Speed-up relative to each competitor spans
-\code{0.6x} to \code{1628.9x}.} The median across all tested cells
-and all competitors is \code{11.3x} on Ubuntu 25.10 and
-\code{5.6x} on Windows 11 Pro for Workstations; the mean is
-\code{67.8x} and \code{46.6x}, respectively. The largest gaps
-appear on wide tables (many value columns, few rows); the smallest
-gaps appear on small tables where initialization overhead dominates.
+\strong{Implementation.}  The heavy lifting is done by a C++17 kernel
+compiled with OpenMP and dispatched to AVX-512 / AVX2 / SSE4.2
+implementations of \code{memcpy}-like primitives at first use.  Output
+buffers are pre-faulted via \code{madvise(MADV_HUGEPAGE)} on Linux and
+\code{mallopt(M_MMAP_THRESHOLD, ...)} on glibc.  Threads scale with
+input size up to a hardware-aware cap; per-column write-combining-buffer
+pressure caps the thread count further when many measure columns are
+being written at once.
 
-Representative cells (means; numbers in parentheses are the
-speed-up of \code{melt()} relative to that competitor) taken from
-the Ubuntu 25.10 host:
+The general path uses a two-phase, cache-aware schedule.  Phase A
+writes the value and variable columns with non-temporal stores.
+Phase B replicates the id columns with L2-sized blocking so that
+each worker has exactly one active non-temporal write stream at a
+time; this avoids saturating the x86 write-combining buffers when
+many id columns are present.
 
-\itemize{
-  \item \strong{1e6 rows, 1 id, 9 value columns} ---
-        \code{3.474 ms} vs \code{9.646 ms} (\code{data.table},
-        \code{2.8x}), \code{80.014 ms} (\code{tidyr}, \code{23.0x}),
-        \code{648.895 ms} (\code{duckdb}, \code{186.8x}).
-  \item \strong{1e7 rows, 1 id, 9 value columns} ---
-        \code{33.412 ms} vs \code{365.065 ms} (\code{data.table},
-        \code{10.9x}), \code{1083.987 ms} (\code{tidyr}, \code{32.4x}),
-        \code{6389.564 ms} (\code{duckdb}, \code{191.2x}).
-  \item \strong{1e3 rows, 1 id, 10000 value columns} ---
-        \code{2.295 ms} vs \code{12.415 ms} (\code{data.table},
-        \code{5.4x}), \code{19.408 ms} (\code{polars}, \code{8.5x}),
-        \code{3737.866 ms} (\code{dask}, \strong{\code{1628.9x}}).
-  \item \strong{1e3 rows, 10 id, 10000 value columns} ---
-        \code{25.009 ms} vs \code{71.605 ms} (\code{polars},
-        \code{2.9x}), \code{182.019 ms} (\code{data.table},
-        \code{7.3x}), \code{23777.051 ms} (\code{dask},
-        \strong{\code{950.7x}}).
-}
+\strong{Fast paths.}  Three code paths exist, chosen automatically:
+a tiny-input path for \code{nrow <= 2048} with at most 64 measure
+columns; a small-input path for at most 131072 output elements; and a
+general two-phase path for everything else.  Passing \code{verbose =
+TRUE} disables the two fast paths so that all calls exercise the same
+kernel; this is intended for testing, not production.
+
+\strong{Memory.}  Peak memory is roughly
+\code{(n_id + 2) * n * k * 8} bytes plus the input.  For very large
+inputs the R heap is briefly reserved with a same-sized sentinel so
+that glibc's \code{M_MMAP_THRESHOLD} rises before the output
+allocation; the sentinel is released before the C++ kernel runs.
+
+\strong{Benchmarks.}  \code{melt()} is benchmarked against all
+eight major alternatives in the R and Python ecosystems:
+\code{reshape2}, \code{data.table}, \code{tidyr}, \code{collapse},
+\code{pandas}, \code{polars}, \code{dask}, and \code{duckdb}.
+Every cell is measured with a C++ steady-clock timer.  The first
+call is a warmup and is excluded from the reported statistics; an
+adaptive rule picks the number of timed iterations from the warmup
+time.  Mixed-type id columns (integer / character alternation for
+\code{n_id >= 2}) are the default; set
+\code{DATAPREP_MIXED_TYPES=FALSE} to force the all-integer baseline.
+
+The median speed-up of \code{melt()} relative to each competitor
+spans \code{0.35x} to \code{1750x} on Ubuntu 25.10 and
+\code{0.62x} to \code{435x} on Windows 11 Pro for Workstations.
+The median across all tested cells and all competitors is
+\code{9.64x} on Ubuntu 25.10 and \code{3.72x} on Windows 11 Pro
+for Workstations.
+
+The sub-1.0x cells are concentrated on the \code{1 id + 9 value}
+shape, where \code{polars} is faster than \code{melt()}:
+\code{polars @ rows=10,000,000, 10 id + 9 val} on Ubuntu
+(\code{0.35x}), and \code{polars @ rows=100,000, 10 id + 9 val}
+on Windows (\code{0.62x}).  Every other cell has \code{melt()}
+ahead of or on par with the fastest competitor.
 
 The speed-up comes from three design choices:
 
@@ -135,13 +158,13 @@ engine even on tables of a few thousand rows.
 
 The output is identical to \code{reshape2::melt},
 \code{data.table::melt}, \code{tidyr::pivot_longer},
-\code{pandas.melt}, \code{polars.unpivot}, \code{dask}, and
-\code{duckdb UNPIVOT} on every tested shape, within
-\code{tol = 1e-12}. See \code{vignette("dataprep-melt-dcast")} for
-the implementation notes and
-\code{vignette("dataprep-performance")} for the full benchmark
-tables, including \code{mean}, \code{median}, and the per-competitor
-gradient at every tested scale.
+\code{collapse::pivot(how = "longer")}, \code{pandas.melt},
+\code{polars.unpivot}, \code{dask}, and \code{duckdb UNPIVOT} on
+every tested shape, within \code{tol = 1e-12}. See
+\code{vignette("dataprep-melt-dcast")} for the implementation notes
+and \code{vignette("dataprep-performance")} for the full benchmark
+tables, including \code{mean}, \code{median}, and the
+per-competitor gradient at every tested scale.
 }
 \value{
 A data frame in long format. When \code{na.rm = FALSE}, it has
@@ -152,6 +175,10 @@ Columns are the ID columns, a column named
 \code{variable.name} (a factor when \code{as.factor} resolves to
 \code{TRUE}, otherwise a character vector), and a numeric column
 named \code{value.name}.
+
+When \code{as.factor = NULL} and \code{major = "row"}, the
+\code{variable} column is a \code{character} vector, matching
+\code{tidyr::pivot_longer()}.
 }
 \references{
 1. Example data is from \url{https://smear.avaa.csc.fi/download}.
