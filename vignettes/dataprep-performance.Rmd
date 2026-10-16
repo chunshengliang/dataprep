@@ -453,9 +453,9 @@ is faster than `dataprep`) and 0.9× (`dcast()` on Windows,
 1849.5× for `dcast()`, and 872.4× for aggregated `dcast()`.
 
 For `melt()` on the largest cells (1e8 rows, 1 id + 9 val, 8 GB
-of input), `dataprep` is the only engine that completes within
-2.5 s on Ubuntu; on Windows the closest competitor is `data.table`
-at 2.4 s.
+of input), `dataprep` finishes in **0.4 s on Ubuntu** and **1.8 s
+on Windows**. The next-fastest engine takes 2.6 s (`polars`) on
+Ubuntu and 2.4 s (`data.table`) on Windows.
 
 Complete tables — including per-cell medians and the full
 per-competitor gradient — are in
@@ -466,8 +466,10 @@ per-competitor gradient — are in
 `melt()`, `dcast()`, and aggregated `dcast()` produce output
 identical to `reshape2`, `data.table`, `tidyr`, `collapse`,
 `pandas`, `polars`, `dask`, and `duckdb` on every tested shape,
-within `tol = 1e-12` (melt / dcast) and `tol = 1e-10`
-(aggregated dcast):
+`melt()` and `dcast()` are pure data movement, so their output is
+bit-identical; aggregated `dcast()` matches to `tol = 1e-10`
+because `sum` and `mean` accumulate in different orders across
+engines:
 
 | Operation | Cells tested | Engines | Pairwise |
 |---|---:|---:|---|

@@ -31,8 +31,9 @@ set.seed(1)
 for `reshape2::melt` / `reshape2::dcast`, but the underlying code is
 written in C++ with SIMD (AVX2 / AVX-512) and optional OpenMP
 parallelism. Both functions produce output identical to
-`reshape2`, `data.table`, `tidyr`, `pandas`, `polars`, `dask`, and
-`duckdb` on every tested shape, within `tol = 1e-12`.
+`reshape2`, `data.table`, `tidyr`, `collapse`, `pandas`, `polars`,
+`dask`, and `duckdb` on every tested shape. `melt()` and `dcast()`
+are pure data movement, so the output is bit-identical.
 
 The speed-up relative to each of the **eight** alternatives spans:
 
@@ -338,9 +339,10 @@ both hosts.
 
 `melt()`, `dcast()`, and aggregated `dcast()` produce output
 identical to `reshape2` (the reference implementation) on every
-tested cell. All pairs of engines agree pairwise within
-`tol = 1e-12` for melt / dcast and `tol = 1e-10` for aggregated
-dcast.
+tested cell. `melt()` and `dcast()` are pure data movement, so all
+pairs of engines agree **exactly**; aggregated `dcast()` matches
+to `tol = 1e-10` because `sum` and `mean` accumulate in different
+orders across engines.
 
 ### `melt` consistency
 
@@ -412,9 +414,10 @@ per-cell tables are in `vignette("dataprep-performance")`.
 | `dcast()` | 0.9× (collapse @ 1K rows, 1 id + 10 lvl) | 42.2× | 91.1× | 1849.5× (duckdb @ 1M rows, 1 id + 10000 lvl) |
 | `dcast(agg)` | 2.0× (polars @ 1M rows, count) | 17.9× | 61.8× | 872.4× (reshape2 @ 100M rows, min) |
 
-For `melt()`, on the largest cells (1e8 rows, 8 GB of input), `dataprep` is the
-only engine that completes within 2.5 s: under 0.3 s on Ubuntu and
-under 1.0 s on Windows.
+For `melt()`, on the largest cells (1e8 rows, 8 GB of input),
+`dataprep` finishes in **0.4 s on Ubuntu** and **1.8 s on Windows**;
+the next-fastest engine takes 2.6 s (`polars`) on Ubuntu and 2.4 s
+(`data.table`) on Windows.
 
 ## Session info
 

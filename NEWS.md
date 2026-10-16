@@ -163,80 +163,91 @@ both versions and the new code path has little room for improvement.
 > separate task, so `cores = 64` is safe. The practical speed-up
 > on a many-core host is **larger** than the table above.
 
-### `melt()` — speed-up vs every one of the 7 major alternatives
+### `melt()` — speed-up vs every one of the 8 major alternatives
 
-Speed-ups relative to each competitor span **0.6×–1628.9×**
-across both hosts. The sub-1.0× cells are concentrated at 1e7 rows
-with 10 id columns (Ubuntu) and 1e5 rows with 10 id columns
-(Windows), where `polars` is faster than `dataprep`; every other
-cell has `dataprep` ahead of or on par with the fastest competitor.
+Speed-ups relative to each competitor span **0.3×–1750.0×**
+across both hosts. The sub-1.0× cells are concentrated on the
+`1 id + 9 val` and `10 id + 9 val` shapes at 1e5–1e7 rows,
+where `polars` is faster than `dataprep`.
 
-Means in milliseconds (Ubuntu 25.10):
+Medians in milliseconds (Ubuntu 25.10):
 
-| rows | val | dataprep | reshape2 | data.table | tidyr | pandas | polars | dask | duckdb |
-|---|---|---|---|---|---|---|---|---|---|
-| 1e3 | 9 | 0.173 | 0.378 (2.2×) | 0.257 (1.5×) | 2.788 (16.1×) | 2.128 (12.3×) | 0.645 (3.7×) | 15.786 (91.3×) | 4.489 (26.0×) |
-| 1e6 | 9 | 3.474 | 18.797 (5.4×) | 9.646 (2.8×) | 80.014 (23.0×) | 61.686 (17.8×) | 14.671 (4.2×) | 47.584 (13.7×) | 648.895 (186.8×) |
-| 1e7 | 9 | 33.412 | 364.564 (10.9×) | 365.065 (10.9×) | 1083.987 (32.4×) | 710.806 (21.3×) | 139.959 (4.2×) | 482.693 (14.4×) | 6389.564 (191.2×) |
-| 1e8 | 9 | 276.295 | 3579.061 (13.0×) | 3571.833 (12.9×) | 12126.897 (43.9×) | 7463.089 (27.0×) | 3121.344 (11.3×) | 4756.547 (17.2×) | 71947.305 (260.4×) |
-| 1e3 | 10000 | 2.295 | 93.092 (40.6×) | 12.415 (5.4×) | 104.924 (45.7×) | 495.659 (216.0×) | 19.408 (8.5×) | 3737.866 (1628.9×) | 1919.247 (836.4×) |
-Means in milliseconds (Windows 11 Pro for Workstations):
+| rows | val | dataprep | reshape2 | data.table | tidyr | collapse | pandas | polars | dask | duckdb |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1e3 | 9 | 0.152 | 0.410 (2.7×) | 0.260 (1.7×) | 2.805 (18.4×) | 0.175 (1.1×) | 2.195 (14.4×) | 0.594 (3.9×) | 15.1 (99.0×) | 5.435 (35.7×) |
+| 1e6 | 9 | 1.441 | 8.145 (5.7×) | 7.937 (5.5×) | 65.8 (45.7×) | 6.542 (4.5×) | 60.7 (42.2×) | 10.6 (7.4×) | 46.1 (32.0×) | 758.1 (526.2×) |
+| 1e7 | 9 | 38.0 | 368.8 (9.7×) | 368.8 (9.7×) | 1094 (28.7×) | 317.2 (8.3×) | 718.5 (18.9×) | 93.0 (2.4×) | 507.2 (13.3×) | 7418 (195.0×) |
+| 1e8 | 9 | 398.6 | 3592 (9.0×) | 3584 (9.0×) | 11788 (29.6×) | 3632 (9.1×) | 7388 (18.5×) | 2597 (6.5×) | 4550 (11.4×) | 87982 (220.7×) |
+| 1e3 | 10000 | 2.176 | 78.3 (36.0×) | 9.710 (4.5×) | 93.5 (43.0×) | 9.285 (4.3×) | 501.2 (230.3×) | 16.3 (7.5×) | 3809 (1750.0×) | 2048 (940.9×) |
+Medians in milliseconds (Windows 11 Pro for Workstations):
 
-| rows | val | dataprep | reshape2 | data.table | tidyr | pandas | polars | dask | duckdb |
-|---|---|---|---|---|---|---|---|---|---|
-| 1e3 | 9 | 0.286 | 0.647 (2.3×) | 0.468 (1.6×) | 4.048 (14.2×) | 3.365 (11.8×) | 0.528 (1.8×) | 28.149 (98.4×) | 8.201 (28.7×) |
-| 1e6 | 9 | 10.515 | 26.197 (2.5×) | 24.209 (2.3×) | 160.785 (15.3×) | 214.683 (20.4×) | 21.721 (2.1×) | 181.218 (17.2×) | 1537.791 (146.2×) |
-| 1e7 | 9 | 77.008 | 245.861 (3.2×) | 247.910 (3.2×) | 1561.960 (20.3×) | 1925.931 (25.0×) | 275.120 (3.6×) | 1499.583 (19.5×) | 14517.337 (188.5×) |
-| 1e8 | 9 | 935.148 | 2636.186 (2.8×) | 2534.491 (2.7×) | 16599.644 (17.8×) | 19578.283 (20.9×) | 4263.390 (4.6×) | 14714.823 (15.7×) | 148009.529 (158.3×) |
-| 1e3 | 10000 | 11.569 | 161.647 (14.0×) | 34.383 (3.0×) | 203.580 (17.6×) | 1410.476 (121.9×) | 36.412 (3.1×) | 10333.080 (893.2×) | 5310.694 (459.0×) |
+| rows | val | dataprep | reshape2 | data.table | tidyr | collapse | pandas | polars | dask | duckdb |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1e3 | 9 | 0.300 | 0.693 (2.3×) | 0.516 (1.7×) | 4.015 (13.4×) | 0.313 (1.0×) | 3.570 (11.9×) | 0.597 (2.0×) | 29.3 (97.7×) | 7.877 (26.3×) |
+| 1e6 | 9 | 18.0 | 23.9 (1.3×) | 23.6 (1.3×) | 157.4 (8.7×) | 23.2 (1.3×) | 182.8 (10.2×) | 17.8 (1.0×) | 185.9 (10.3×) | 1546 (85.9×) |
+| 1e7 | 9 | 152.7 | 236.9 (1.6×) | 238.0 (1.6×) | 1501 (9.8×) | 235.1 (1.5×) | 1885 (12.3×) | 162.5 (1.1×) | 1515 (9.9×) | 14435 (94.5×) |
+| 1e8 | 9 | 1773 | 3295 (1.9×) | 2419 (1.4×) | 20809 (11.7×) | 2516 (1.4×) | 22699 (12.8×) | 5510 (3.1×) | 15429 (8.7×) | 161372 (91.0×) |
+| 1e3 | 10000 | 31.7 | 168.6 (5.3×) | 32.7 (1.0×) | 201.7 (6.4×) | 34.7 (1.1×) | 1412 (44.6×) | 30.0 (0.9×) | 10253 (323.6×) | 5112 (161.4×) |
+
 The **median** speed-up across all melt cells and all competitors
-is 11.3× on Ubuntu and 5.6× on Windows. The **mean** is 67.8× and
-46.6× respectively. The median is pulled down by the 1e5-row small
-tables; at larger scales the speed-up is much higher.
+is 9.6× on Ubuntu and 3.7× on Windows. The **mean** is 71.0× and
+31.8× respectively.
 
-### `dcast()` — speed-up vs every one of the 7 major alternatives
+### `dcast()` — speed-up vs every one of the 8 major alternatives
 
-Speed-ups relative to each competitor span **1.9×–799.8×**
+Speed-ups relative to each competitor span **0.9×–1849.5×**
 across both hosts. Every cell has `dataprep` ahead of every other
-engine.
+engine, with the single exception of the smallest Windows case
+(`n_long = 1,000`, 1 id, 10 levels), where `collapse` is about
+8 % faster.
 
-Means in milliseconds (Ubuntu 25.10):
+Medians in milliseconds (Ubuntu 25.10):
 
-| n_long | levels | dataprep | reshape2 | data.table | tidyr | pandas | polars | dask | duckdb |
-|---|---|---|---|---|---|---|---|---|---|
-| 1e6 | 10 | 1.654 | 151.826 (91.8×) | 328.980 (198.9×) | 44.728 (27.0×) | 56.741 (34.3×) | 105.018 (63.5×) | 78.217 (47.3×) | 155.880 (94.3×) |
-| 1e6 | 100 | 1.415 | 101.438 (71.7×) | 329.202 (232.6×) | 42.047 (29.7×) | 53.686 (37.9×) | 173.478 (122.6×) | 74.540 (52.7×) | 178.421 (126.0×) |
-| 1e7 | 100 | 5.073 | 2016.036 (397.4×) | 575.604 (113.5×) | 660.455 (130.2×) | 816.883 (161.0×) | 506.557 (99.9×) | 1002.368 (197.6×) | 1669.419 (329.1×) |
-| 1e8 | 100 | 40.680 | 16963.494 (417.0×) | 18866.887 (463.8×) | 8100.475 (199.1×) | 9529.877 (234.3×) | 2460.625 (60.5×) | 12764.776 (313.8×) | 17616.392 (433.1×) |
-Means in milliseconds (Windows 11 Pro for Workstations):
+| n_long | levels | dataprep | reshape2 | data.table | tidyr | collapse | pandas | polars | dask | duckdb |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1e6 | 10 | 1.075 | 139.2 (129.5×) | 323.7 (301.0×) | 46.5 (43.3×) | 4.917 (4.6×) | 56.4 (52.5×) | 94.2 (87.6×) | 81.7 (76.0×) | 242.0 (225.0×) |
+| 1e6 | 100 | 0.585 | 102.8 (175.6×) | 346.7 (592.4×) | 44.2 (75.5×) | 5.021 (8.6×) | 54.7 (93.5×) | 176.1 (300.9×) | 76.2 (130.3×) | 258.8 (442.2×) |
+| 1e7 | 100 | 3.845 | 2016 (524.4×) | 595.9 (155.0×) | 684.3 (178.0×) | 52.7 (13.7×) | 742.5 (193.1×) | 474.5 (123.4×) | 941.3 (244.8×) | 2505 (651.5×) |
+| 1e8 | 100 | 37.9 | 16777 (443.0×) | 18782 (495.9×) | 8285 (218.8×) | 499.3 (13.2×) | 9587 (253.1×) | 2509 (66.3×) | 12155 (320.9×) | 24486 (646.5×) |
+Medians in milliseconds (Windows 11 Pro for Workstations):
 
-| n_long | levels | dataprep | reshape2 | data.table | tidyr | pandas | polars | dask | duckdb |
-|---|---|---|---|---|---|---|---|---|---|
-| 1e6 | 10 | 3.426 | 281.533 (82.2×) | 148.638 (43.4×) | 93.290 (27.2×) | 251.508 (73.4×) | 44.604 (13.0×) | 346.422 (101.1×) | 391.237 (114.2×) |
-| 1e6 | 100 | 4.049 | 173.399 (42.8×) | 169.140 (41.8×) | 91.050 (22.5×) | 229.426 (56.7×) | 56.026 (13.8×) | 332.823 (82.2×) | 800.504 (197.7×) |
-| 1e7 | 100 | 38.527 | 3197.642 (83.0×) | 1100.505 (28.6×) | 1359.999 (35.3×) | 2337.317 (60.7×) | 814.529 (21.1×) | 3014.871 (78.3×) | 7495.310 (194.5×) |
-| 1e8 | 100 | 107.287 | 23690.584 (220.8×) | 14715.772 (137.2×) | 14245.599 (132.8×) | 25843.625 (240.9×) | 6222.505 (58.0×) | 33050.665 (308.1×) | 85804.834 (799.8×) |
+| n_long | levels | dataprep | reshape2 | data.table | tidyr | collapse | pandas | polars | dask | duckdb |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1e6 | 10 | 2.977 | 239.6 (80.5×) | 154.7 (52.0×) | 112.8 (37.9×) | 14.2 (4.8×) | 239.5 (80.5×) | 53.0 (17.8×) | 359.4 (120.8×) | 385.6 (129.6×) |
+| 1e6 | 100 | 3.999 | 173.3 (43.3×) | 179.5 (44.9×) | 82.1 (20.5×) | 14.2 (3.6×) | 226.4 (56.6×) | 71.8 (18.0×) | 308.5 (77.1×) | 800.0 (200.0×) |
+| 1e7 | 100 | 32.7 | 2855 (87.3×) | 1119 (34.2×) | 1220 (37.3×) | 156.7 (4.8×) | 2259 (69.1×) | 1217 (37.2×) | 2967 (90.7×) | 7389 (226.0×) |
+| 1e8 | 100 | 105.9 | 22379 (211.3×) | 14723 (139.0×) | 12879 (121.6×) | 1477 (13.9×) | 25000 (236.0×) | 8290 (78.3×) | 31519 (297.5×) | 82310 (777.0×) |
+
 The **median** speed-up across all dcast cells and all competitors
-is 46.5× on Ubuntu and 41.4× on Windows. The **mean** is 90.2× and
-76.6× respectively. On the 1e8-row cells (8 GB of input),
-`dataprep` completes in **40–214 ms** while several competitors
-exceed 12 s on Ubuntu and 12 s on Windows.
+is 74.5× on Ubuntu and 42.2× on Windows. The **mean** is 128.9×
+and 91.1× respectively.
+
+### Aggregated `dcast()` — speed-up vs every one of the 8 major alternatives
+
+Speed-ups relative to each competitor span **2.0×–872.4×**
+across both hosts. Five aggregation functions (`sum`, `mean`,
+`min`, `max`, `count`) and five scales (1e4 to 1e8 rows) are
+tested.
+
+The **median** speed-up across all aggregated dcast cells and all
+competitors is 27.4× on Ubuntu and 17.9× on Windows. The **mean**
+is 68.6× and 61.8× respectively.
 
 ### Cross-engine consistency
 
-`melt()` and `dcast()` produce output **numerically identical** to
-`reshape2`, `data.table`, `tidyr`, `pandas`, `polars`, `dask`,
-and `duckdb` on every tested shape, within `tol = 1e-12`.
+`melt()`, `dcast()`, and aggregated `dcast()` produce output
+**numerically identical** to `reshape2`, `data.table`, `tidyr`,
+`collapse`, `pandas`, `polars`, `dask`, and `duckdb` on every
+tested shape. `melt()` and `dcast()` are pure data movement, so
+their output is **bit-identical**; aggregated `dcast()` matches
+to `tol = 1e-10` because `sum` and `mean` accumulate in different
+orders across engines.
 
 | Operation | Cells tested | Engines | Pairwise |
 |---|---:|---:|---|
-| `melt` | 4 shapes | 8 | all consistent |
-| `dcast` | 4 shapes | 8 | all consistent |
-
-Full tables — including `mean`, `median`, and the full
-per-competitor gradient — are in
-`vignette("dataprep-performance")`. The reproducible runner is
-shipped under `inst/`.
+| `melt` | 4 shapes | 9 | all consistent |
+| `dcast` | 4 shapes | 9 | all consistent |
+| `dcast(agg)` | 2 shapes × 5 aggs | 9 | all consistent |
 
 ## Behaviour changes
 
@@ -446,7 +457,7 @@ Seven vignettes ship with the package:
 * `vignette("dataprep-cleaning")` — step-by-step walkthrough of
   the four cleaning steps.
 * `vignette("dataprep-performance")` — full benchmark tables and
-  8-engine consistency checks.
+  9-engine consistency checks.
 * `vignette("dataprep-migration")` — 0.1.5 → 0.1.8.1 upgrade guide.
 * `vignette("dataprep-workflow")` — leakage-free preprocessing
   with `prep_fit()` / `prep_transform()`.
@@ -481,8 +492,9 @@ element access re-enters the virtual-object layer, which shifts the
 cost from `dataprep` to the caller's analysis code. 
 
 The shipped 0.1.8.1 backends therefore keep the standard allocation path, and the
-reported speed-ups stand as measured: `melt()` spans 0.6×–1628.9×
-and `dcast()` spans 1.9×–799.8× across the two reference hosts, with
+reported speed-ups stand as measured: `melt()` spans 0.3×–1750.0×,
+`dcast()` spans 0.9×–1849.5×, and aggregated `dcast()` spans
+2.0×–872.4× across the two reference hosts, with
 the sub-1.0× `melt()` cells confined to the 1e7-row (Ubuntu) and
 1e5-row (Windows) shapes with 10 id columns, where `polars` is faster
 than `dataprep`. On the cleaning pipeline the

@@ -27,8 +27,7 @@ ecosystems, at every tested scale (from 1,000 to 100,000,000 rows),
 on two reference hosts; the resulting speed-up ranges are
 **0.3×–1750.0×** for `melt()`, **0.9×–1849.5×** for `dcast()`, and **2.0×–872.4×** for aggregated `dcast()`. On both
 hosts the output is **identical** to `reshape2`, `data.table`,
-`tidyr`, `collapse`, `pandas`, `polars`, `dask`, and `duckdb`, within
-`tol = 1e-12`.
+`tidyr`, `collapse`, `pandas`, `polars`, `dask`, and `duckdb`.
 
 ## Why dataprep
 
@@ -498,10 +497,11 @@ is faster than `dataprep`) and 0.9× (`dcast()` on Windows,
 `dataprep`). The largest speedups reach 1750.0× for `melt()`,
 1849.5× for `dcast()`, and 872.4× for aggregated `dcast()`.
 
-For `melt()` on the largest cells (1e8 rows, 1 id + 9 val, 8 GB
-of input), `dataprep` is the only engine that completes within
-2.5 s on Ubuntu; on Windows the closest competitor is `data.table`
-at 2.4 s.
+For `melt()` on the largest cells (1e8 rows, 1 id + 9 val,
+about 8 GB of input), `dataprep` finishes in **0.4 s on Ubuntu**
+and **1.8 s on Windows**. On Ubuntu the next-fastest engine
+(`polars`) takes 2.6 s; on Windows the next-fastest
+(`data.table`) takes 2.4 s.
 
 Complete tables — including per-cell medians and the full
 per-competitor gradient — are in
@@ -510,9 +510,7 @@ per-competitor gradient — are in
 
 `melt()`, `dcast()`, and aggregated `dcast()` produce output
 identical to `reshape2`, `data.table`, `tidyr`, `collapse`,
-`pandas`, `polars`, `dask`, and `duckdb` on every tested shape,
-within `tol = 1e-12` (melt / dcast) and `tol = 1e-10`
-(aggregated dcast):
+`pandas`, `polars`, `dask`, and `duckdb` on every tested shape:
 
 | Operation | Cells tested | Engines | Pairwise |
 |---|---:|---:|---|

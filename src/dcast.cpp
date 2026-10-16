@@ -272,6 +272,7 @@ static void init_cpu_features() {
 // =====================================================================
 // [3] 16x16 AVX-512 register transpose
 // =====================================================================
+#if DCAST_GNUC && DCAST_X86
 DCAST_TARGET("avx512f,avx512vl") DCAST_ALWAYS_INLINE
 static inline void transpose16x16_avx512(
     __m512d r0, __m512d r1, __m512d r2, __m512d r3,
@@ -646,6 +647,37 @@ static void gather_f64_avx512(
   }
   for (; i < n; ++i) dst[i] = src[idx[i]];
 }
+#endif  // DCAST_GNUC && DCAST_X86
+
+// Non-x86 fallbacks for the SIMD entry points above.  They are
+// never reached at runtime because g_have_avx512 and
+// g_have_avx512_gather stay false on platforms without AVX-512;
+// they exist only so the call sites inside dcast_core() compile
+// on ARM64 and other non-x86 targets.
+#if !(DCAST_GNUC && DCAST_X86)
+
+template <int TILE>
+static void transpose_16row_avx512(
+    const int32_t*, const double*, double* const*,
+    R_xlen_t, int, int, int) {}
+
+static void transpose_8x8_rows(
+    const int32_t*, const double*, double* const*,
+    R_xlen_t, int, int, int, bool, double) {}
+
+static inline void gather_i32_avx512(
+    int* __restrict__ dst, const int* __restrict__ src,
+    const int32_t* __restrict__ idx, R_xlen_t n) {
+  for (R_xlen_t i = 0; i < n; ++i) dst[i] = src[idx[i]];
+}
+
+static inline void gather_f64_avx512(
+    double* __restrict__ dst, const double* __restrict__ src,
+    const int32_t* __restrict__ idx, R_xlen_t n) {
+  for (R_xlen_t i = 0; i < n; ++i) dst[i] = src[idx[i]];
+}
+
+#endif  // !(DCAST_GNUC && DCAST_X86)
 
 // =====================================================================
 // [6b] Single-pass scatter with cache-aware tiling
