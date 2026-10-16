@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
   comment   = "#>",
   fig.align = "center",
   fig.width = 6,
-  fig.height = 5.5,
+  fig.height = 7.5,
   out.width = "75%",
   fig.retina = 2
 )
@@ -62,7 +62,7 @@ mean the two statistics agree; points above the line mean the
 mean is inflated by a long right tail in the per-iteration
 timings.
 
-```{r mean-vs-median, fig.width = 7, fig.height = 4.2, fig.retina = 2}
+```{r mean-vs-median, fig.width = 6, fig.height = 7.5, fig.retina = 2}
 suppressPackageStartupMessages(library(ggplot2))
 
 read_bench <- function(fname, op) {
@@ -86,7 +86,7 @@ ggplot(bench, aes(median, mean)) +
   geom_point(alpha = 0.45, size = 1.4) +
   scale_x_log10() +
   scale_y_log10() +
-  facet_wrap(~ tool, ncol = 4) +
+  facet_wrap(~ tool, ncol = 3) +
   labs(x = "median (ms, log scale)",
        y = "mean (ms, log scale)") +
   theme_bw(base_size = 10)
@@ -98,7 +98,7 @@ visible exceptions are the few `dask` and `duckdb` cells in the
 up by up to 50 %; those are also the cells where the two
 statistics disagree the most on the speed-up ratio. For the
 `dataprep` column itself the two statistics never differ by more
-than a few percent, which is why the mean-based numbers quoted
+than a few percent, which is why the median-based numbers quoted
 throughout this vignette are representative of the steady state.
 
 ## Test environment
