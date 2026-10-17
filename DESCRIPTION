@@ -54,7 +54,7 @@ ByteCompile: TRUE
 Imports: Rcpp (>= 1.0.10), ggplot2, stats, parallel
 LinkingTo: Rcpp (>= 1.0.10)
 Suggests: knitr, rmarkdown, testthat (>= 3.0.0), data.table, reshape2,
-        tidyr, dplyr, microbenchmark, reticulate
+        tidyr, collapse, dplyr, microbenchmark, reticulate
 VignetteBuilder: knitr, rmarkdown
 SystemRequirements: C++17, optional OpenMP
 License: GPL (>= 2)

@@ -111,8 +111,8 @@ time.  Mixed-type id columns (integer / character alternation for
 \code{DATAPREP_MIXED_TYPES=FALSE} to force the all-integer baseline.
 
 The median speed-up of \code{melt()} relative to each competitor
-spans \code{0.35x} to \code{1750x} on Ubuntu 25.10 and
-\code{0.62x} to \code{435x} on Windows 11 Pro for Workstations.
+spans \code{0.3x} to \code{1750.0x} on Ubuntu 25.10 and
+\code{0.6x} to \code{435.2x} on Windows 11 Pro for Workstations.
 The median across all tested cells and all competitors is
 \code{9.64x} on Ubuntu 25.10 and \code{3.72x} on Windows 11 Pro
 for Workstations.
@@ -120,8 +120,8 @@ for Workstations.
 The sub-1.0x cells are concentrated on the \code{1 id + 9 value}
 shape, where \code{polars} is faster than \code{melt()}:
 \code{polars @ rows=10,000,000, 10 id + 9 val} on Ubuntu
-(\code{0.35x}), and \code{polars @ rows=100,000, 10 id + 9 val}
-on Windows (\code{0.62x}).  Every other cell has \code{melt()}
+(\code{0.3x}), and \code{polars @ rows=100,000, 10 id + 9 val}
+on Windows (\code{0.6x}).  Every other cell has \code{melt()}
 ahead of or on par with the fastest competitor.
 
 The speed-up comes from three design choices:
@@ -160,7 +160,9 @@ The output is identical to \code{reshape2::melt},
 \code{data.table::melt}, \code{tidyr::pivot_longer},
 \code{collapse::pivot(how = "longer")}, \code{pandas.melt},
 \code{polars.unpivot}, \code{dask}, and \code{duckdb UNPIVOT} on
-every tested shape, within \code{tol = 1e-12}. See
+every tested shape.  Since \code{melt()} performs no arithmetic --
+it is pure data movement -- the output is bit-identical across
+engines.  See
 \code{vignette("dataprep-melt-dcast")} for the implementation notes
 and \code{vignette("dataprep-performance")} for the full benchmark
 tables, including \code{mean}, \code{median}, and the

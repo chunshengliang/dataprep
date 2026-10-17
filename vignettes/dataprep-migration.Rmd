@@ -286,7 +286,7 @@ core configuration is listed here; full details are in
 
 * **Performance and cross-engine consistency** —
   `vignette("dataprep-performance")`. Full benchmark tables and
-  8-engine consistency checks.
+  9-engine consistency checks.
 
 * **Fast reshaping** — `vignette("dataprep-melt-dcast")`.
 

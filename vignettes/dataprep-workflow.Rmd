@@ -286,7 +286,7 @@ Full hardware details are in `README.md`.
 
 * **Performance and cross-engine consistency** —
   `vignette("dataprep-performance")`. Full benchmark tables and
-  8-engine consistency checks.
+  9-engine consistency checks.
 
 * **Upgrading from 0.1.5 to 0.1.8.1** —
   `vignette("dataprep-migration")`. Behaviour changes and the

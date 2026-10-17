@@ -92,6 +92,13 @@ Output buffers use \code{MADV_HUGEPAGE} and, on Linux 6.1+,
 \code{MADV_POPULATE_WRITE} to avoid first-touch page faults;
 input columns are promoted with \code{MADV_COLLAPSE}.
 
+On the non-aggregated long-to-wide shape, \code{dcast()} is
+likewise pure data movement, so its output is bit-identical to
+\code{reshape2::dcast}, \code{data.table::dcast},
+\code{tidyr::pivot_wider}, \code{collapse::pivot(how = "wider")},
+\code{pandas.pivot}, \code{polars.pivot}, \code{dask}, and
+\code{duckdb PIVOT}.
+
 When \code{fun.aggregate} is supplied, \code{dcast()} routes to a
 fused C++ kernel that reads the long input once and writes the
 aggregated wide output directly, without materialising an
