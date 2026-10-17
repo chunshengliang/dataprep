@@ -14,7 +14,7 @@ and
 benchmarked here against all **eight** major alternatives in the R and
 Python ecosystems:
 
-- **R**: `reshape2`, `data.table`, `tidyr`
+- **R**: `reshape2`, `data.table`, `tidyr`, `collapse`
 - **Python**: `pandas`, `polars`, `dask`, `duckdb`
 
 Every cell is measured with a C++ steady-clock timer and an adaptive
