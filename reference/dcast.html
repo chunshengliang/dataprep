@@ -167,6 +167,12 @@ recognises <code>sum</code>, <code>mean</code>, <code>min</code>, <code>max</cod
 Output buffers use <code>MADV_HUGEPAGE</code> and, on Linux 6.1+,
 <code>MADV_POPULATE_WRITE</code> to avoid first-touch page faults;
 input columns are promoted with <code>MADV_COLLAPSE</code>.</p>
+<p>On the non-aggregated long-to-wide shape, <code>dcast()</code> is
+likewise pure data movement, so its output is bit-identical to
+<code><a href="https://rdrr.io/pkg/reshape2/man/cast.html" class="external-link">reshape2::dcast</a></code>, <code><a href="https://rdrr.io/pkg/data.table/man/dcast.data.table.html" class="external-link">data.table::dcast</a></code>,
+<code><a href="https://tidyr.tidyverse.org/reference/pivot_wider.html" class="external-link">tidyr::pivot_wider</a></code>, <code>collapse::pivot(how = "wider")</code>,
+<code>pandas.pivot</code>, <code>polars.pivot</code>, <code>dask</code>, and
+<code>duckdb PIVOT</code>.</p>
 <p>When <code>fun.aggregate</code> is supplied, <code>dcast()</code> routes to a
 fused C++ kernel that reads the long input once and writes the
 aggregated wide output directly, without materialising an

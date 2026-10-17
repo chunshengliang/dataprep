@@ -563,7 +563,7 @@ be read from a nearby observation in the same segment.
 
 - **Performance and cross-engine consistency** —
   [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
-  Full benchmark tables (median + mean for every cell), the 8-engine
+  Full benchmark tables (median + mean for every cell), the 9-engine
   consistency checks, and the reproducible runner.
 
 - **Upgrading from 0.1.5 to 0.1.8.1** —

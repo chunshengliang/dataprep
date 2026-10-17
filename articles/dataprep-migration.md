@@ -298,7 +298,7 @@ configuration is listed here; full details are in
 
 - **Performance and cross-engine consistency** —
   [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
-  Full benchmark tables and 8-engine consistency checks.
+  Full benchmark tables and 9-engine consistency checks.
 
 - **Fast reshaping** —
   [`vignette("dataprep-melt-dcast")`](https://chunshengliang.github.io/dataprep/articles/dataprep-melt-dcast.md).

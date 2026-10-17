@@ -141,16 +141,16 @@ columns (integer / character alternation for `n_id >= 2`) are the
 default; set `DATAPREP_MIXED_TYPES=FALSE` to force the all-integer
 baseline.
 
-The median speed-up of `melt()` relative to each competitor spans
-`0.35x` to `1750x` on Ubuntu 25.10 and `0.62x` to `435x` on Windows 11
-Pro for Workstations. The median across all tested cells and all
-competitors is `9.64x` on Ubuntu 25.10 and `3.72x` on Windows 11 Pro for
+The median speed-up of `melt()` relative to each competitor spans `0.3x`
+to `1750.0x` on Ubuntu 25.10 and `0.6x` to `435.2x` on Windows 11 Pro
+for Workstations. The median across all tested cells and all competitors
+is `9.64x` on Ubuntu 25.10 and `3.72x` on Windows 11 Pro for
 Workstations.
 
 The sub-1.0x cells are concentrated on the `1 id + 9 value` shape, where
 `polars` is faster than `melt()`:
-`polars @ rows=10,000,000, 10 id + 9 val` on Ubuntu (`0.35x`), and
-`polars @ rows=100,000, 10 id + 9 val` on Windows (`0.62x`). Every other
+`polars @ rows=10,000,000, 10 id + 9 val` on Ubuntu (`0.3x`), and
+`polars @ rows=100,000, 10 id + 9 val` on Windows (`0.6x`). Every other
 cell has `melt()` ahead of or on par with the fastest competitor.
 
 The speed-up comes from three design choices:
@@ -184,8 +184,9 @@ The output is identical to
 [`data.table::melt`](https://rdrr.io/pkg/data.table/man/melt.data.table.html),
 [`tidyr::pivot_longer`](https://tidyr.tidyverse.org/reference/pivot_longer.html),
 `collapse::pivot(how = "longer")`, `pandas.melt`, `polars.unpivot`,
-`dask`, and `duckdb UNPIVOT` on every tested shape, within
-`tol = 1e-12`. See
+`dask`, and `duckdb UNPIVOT` on every tested shape. Since `melt()`
+performs no arithmetic – it is pure data movement – the output is
+bit-identical across engines. See
 [`vignette("dataprep-melt-dcast")`](https://chunshengliang.github.io/dataprep/articles/dataprep-melt-dcast.md)
 for the implementation notes and
 [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md)

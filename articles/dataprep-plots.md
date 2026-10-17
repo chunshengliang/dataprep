@@ -304,7 +304,7 @@ percplot(
 
 - **Performance and cross-engine consistency** —
   [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
-  Benchmark tables and 8-engine consistency checks.
+  Benchmark tables and 9-engine consistency checks.
 
 - **Upgrading from 0.1.5 to 0.1.8.1** —
   [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md).

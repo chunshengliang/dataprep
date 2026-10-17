@@ -278,7 +278,7 @@ data_report(data1, cols = 3:7, verbose = TRUE)
 #> 4 6495.960 926.9235
 #> 5 6474.645 927.0629
 #> 
-#> Time used by data_report: 0.0103 secs
+#> Time used by data_report: 0.00944 secs
 invisible(data_report(data1, cols = 3:7))
 ```
 
@@ -362,7 +362,7 @@ and full AVX-512. Full hardware details are in `README.md`.
 
 - **Performance and cross-engine consistency** —
   [`vignette("dataprep-performance")`](https://chunshengliang.github.io/dataprep/articles/dataprep-performance.md).
-  Full benchmark tables and 8-engine consistency checks.
+  Full benchmark tables and 9-engine consistency checks.
 
 - **Upgrading from 0.1.5 to 0.1.8.1** —
   [`vignette("dataprep-migration")`](https://chunshengliang.github.io/dataprep/articles/dataprep-migration.md).

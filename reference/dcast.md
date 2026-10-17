@@ -125,6 +125,14 @@ buffers use `MADV_HUGEPAGE` and, on Linux 6.1+, `MADV_POPULATE_WRITE` to
 avoid first-touch page faults; input columns are promoted with
 `MADV_COLLAPSE`.
 
+On the non-aggregated long-to-wide shape, `dcast()` is likewise pure
+data movement, so its output is bit-identical to
+[`reshape2::dcast`](https://rdrr.io/pkg/reshape2/man/cast.html),
+[`data.table::dcast`](https://rdrr.io/pkg/data.table/man/dcast.data.table.html),
+[`tidyr::pivot_wider`](https://tidyr.tidyverse.org/reference/pivot_wider.html),
+`collapse::pivot(how = "wider")`, `pandas.pivot`, `polars.pivot`,
+`dask`, and `duckdb PIVOT`.
+
 When `fun.aggregate` is supplied, `dcast()` routes to a fused C++ kernel
 that reads the long input once and writes the aggregated wide output
 directly, without materialising an intermediate long table. The output

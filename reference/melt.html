@@ -179,16 +179,16 @@ time.  Mixed-type id columns (integer / character alternation for
 <code>n_id &gt;= 2</code>) are the default; set
 <code>DATAPREP_MIXED_TYPES=FALSE</code> to force the all-integer baseline.</p>
 <p>The median speed-up of <code>melt()</code> relative to each competitor
-spans <code>0.35x</code> to <code>1750x</code> on Ubuntu 25.10 and
-<code>0.62x</code> to <code>435x</code> on Windows 11 Pro for Workstations.
+spans <code>0.3x</code> to <code>1750.0x</code> on Ubuntu 25.10 and
+<code>0.6x</code> to <code>435.2x</code> on Windows 11 Pro for Workstations.
 The median across all tested cells and all competitors is
 <code>9.64x</code> on Ubuntu 25.10 and <code>3.72x</code> on Windows 11 Pro
 for Workstations.</p>
 <p>The sub-1.0x cells are concentrated on the <code>1 id + 9 value</code>
 shape, where <code>polars</code> is faster than <code>melt()</code>:
 <code>polars @ rows=10,000,000, 10 id + 9 val</code> on Ubuntu
-(<code>0.35x</code>), and <code>polars @ rows=100,000, 10 id + 9 val</code>
-on Windows (<code>0.62x</code>).  Every other cell has <code>melt()</code>
+(<code>0.3x</code>), and <code>polars @ rows=100,000, 10 id + 9 val</code>
+on Windows (<code>0.6x</code>).  Every other cell has <code>melt()</code>
 ahead of or on par with the fastest competitor.</p>
 <p>The speed-up comes from three design choices:</p>
 <ol><li><p><strong>Two layout paths, selected by <code>major</code>.</strong> The
@@ -221,7 +221,9 @@ engine even on tables of a few thousand rows.</p>
 <code><a href="https://rdrr.io/pkg/data.table/man/melt.data.table.html" class="external-link">data.table::melt</a></code>, <code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">tidyr::pivot_longer</a></code>,
 <code>collapse::pivot(how = "longer")</code>, <code>pandas.melt</code>,
 <code>polars.unpivot</code>, <code>dask</code>, and <code>duckdb UNPIVOT</code> on
-every tested shape, within <code>tol = 1e-12</code>. See
+every tested shape.  Since <code>melt()</code> performs no arithmetic –
+it is pure data movement – the output is bit-identical across
+engines.  See
 <code><a href="../articles/dataprep-melt-dcast.html">vignette("dataprep-melt-dcast")</a></code> for the implementation notes
 and <code><a href="../articles/dataprep-performance.html">vignette("dataprep-performance")</a></code> for the full benchmark
 tables, including <code>mean</code>, <code>median</code>, and the
