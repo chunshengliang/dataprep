@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
   comment   = "#>",
   fig.align = "center",
   fig.width = 6,
-  fig.height = 7,
+  fig.height = 6.5,
   out.width = "75%",
   fig.retina = 2
 )
@@ -30,7 +30,7 @@ library(dataprep)
 `dcast()`, benchmarked here against all **eight** major alternatives
 in the R and Python ecosystems:
 
-* **R**: `reshape2`, `data.table`, `tidyr`
+* **R**: `reshape2`, `data.table`, `tidyr`, `collapse`
 * **Python**: `pandas`, `polars`, `dask`, `duckdb`
 
 Every cell is measured with a C++ steady-clock timer and an
@@ -62,7 +62,7 @@ mean the two statistics agree; points above the line mean the
 mean is inflated by a long right tail in the per-iteration
 timings.
 
-```{r mean-vs-median, fig.width = 6, fig.height = 7, fig.retina = 2}
+```{r mean-vs-median, fig.width = 6, fig.height = 6.5, fig.retina = 2}
 suppressPackageStartupMessages(library(ggplot2))
 
 read_bench <- function(fname, op) {
