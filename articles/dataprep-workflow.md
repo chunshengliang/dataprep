@@ -278,7 +278,7 @@ data_report(data1, cols = 3:7, verbose = TRUE)
 #> 4 6495.960 926.9235
 #> 5 6474.645 927.0629
 #> 
-#> Time used by data_report: 0.00967 secs
+#> Time used by data_report: 0.00955 secs
 invisible(data_report(data1, cols = 3:7))
 ```
 
@@ -401,7 +401,7 @@ sessionInfo()
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] vctrs_0.7.3       cli_3.6.6         knitr_1.52        rlang_1.3.0      
-#>  [5] xfun_0.61         otel_0.2.0        textshaping_1.0.5 jsonlite_2.0.0   
+#>  [5] xfun_0.62         otel_0.2.0        textshaping_1.0.5 jsonlite_2.0.0   
 #>  [9] glue_1.8.1        htmltools_0.5.9   ragg_1.5.2        sass_0.4.10      
 #> [13] rmarkdown_2.32    evaluate_1.0.5    jquerylib_0.1.4   fastmap_1.2.0    
 #> [17] yaml_2.3.12       lifecycle_1.0.5   compiler_4.6.1    fs_2.1.0         

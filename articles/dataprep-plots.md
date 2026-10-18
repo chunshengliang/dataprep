@@ -348,7 +348,7 @@ sessionInfo()
 #> [13] fastmap_1.2.0      R6_2.6.1           labeling_0.4.3     generics_0.1.4    
 #> [17] knitr_1.52         tibble_3.3.1       desc_1.4.3         bslib_0.12.0      
 #> [21] pillar_1.11.1      RColorBrewer_1.1-3 rlang_1.3.0        cachem_1.1.0      
-#> [25] xfun_0.61          fs_2.1.0           sass_0.4.10        S7_0.2.2          
+#> [25] xfun_0.62          fs_2.1.0           sass_0.4.10        S7_0.2.2          
 #> [29] otel_0.2.0         cli_3.6.6          withr_3.0.3        pkgdown_2.2.1     
 #> [33] magrittr_2.0.5     digest_0.6.39      grid_4.6.1         lifecycle_1.0.5   
 #> [37] vctrs_0.7.3        evaluate_1.0.5     glue_1.8.1         farver_2.1.2      

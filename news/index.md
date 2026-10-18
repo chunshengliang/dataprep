@@ -105,6 +105,7 @@ identical; the absolute multipliers scale with the hardware.
 | data.table | 1.18.6.1 |
 | reshape2 | 1.4.5 |
 | tidyr | 1.3.2 |
+| collapse | 2.1.8 |
 | Python | 3.13.7 |
 | pandas | 3.0.6 |
 | polars | 1.44.2 (runtime rt64) |
@@ -132,6 +133,7 @@ identical; the absolute multipliers scale with the hardware.
 | data.table | 1.18.6.1 |
 | reshape2 | 1.4.5 |
 | tidyr | 1.3.2 |
+| collapse | 2.1.8 |
 | Python | 3.13.15 |
 | pandas | 3.0.6 |
 | polars | 1.44.2 (runtime rt64) |
